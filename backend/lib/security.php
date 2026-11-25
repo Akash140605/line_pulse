@@ -44,6 +44,7 @@ function sec_clean_ip(string $s): string
 {
     $s = strtolower(trim($s));
     if ($s === '') return '';
+    if ($s === 'remote') return $s;   // 25-11-2026: the remote access door (Cloudflare tunnel) — read only from outside
     if (filter_var($s, FILTER_VALIDATE_IP)) return $s;
     if (preg_match('/^(\d{1,3}\.){1,3}\*$/', $s)) return $s;
     return '';
@@ -114,10 +115,12 @@ function sec_check(?array $me, string $loginUser = ''): void
     $c = sec_conf();
     $user = $me['user'] ?? $loginUser;
     if (!sec_rate_ok($ip)) { sec_note('refused', 'too-many', (string)$user); auth_fail(429, 'Too many requests from this PC. Wait a minute.'); }
-    if (sec_ip_in($ip, $c['block'])) { sec_note('refused', 'blocked', (string)$user); auth_fail(403, 'This PC is blocked by the admin.'); }
+    // 25-11-2026: "remote" in the blocked list closes the remote door for everybody
+    if (sec_ip_in($ip, $c['block']) || (store_remote() && in_array('remote', $c['block'], true))) { sec_note('refused', 'blocked', (string)$user); auth_fail(403, 'This PC is blocked by the admin.'); }
     if (!sec_from_app()) { sec_note('refused', 'no-page', (string)$user); auth_fail(403, 'Direct API calls are not allowed — open Line Pulse in the browser.'); }
     $lock = $c['lock'][strtolower((string)$user)] ?? [];
-    if ($user !== '' && $lock && !sec_ip_in($ip, $lock)) { sec_note('refused', 'locked', (string)$user); auth_fail(403, 'This login works only on its own PC. Ask the admin.'); }
+    // a locked login works from outside only when its list says "remote" too (read only there)
+    if ($user !== '' && $lock && !(store_remote() ? in_array('remote', $lock, true) : sec_ip_in($ip, $lock))) { sec_note('refused', 'locked', (string)$user); auth_fail(403, 'This login works only on its own PC. Ask the admin.'); }
 }
 
 /** at most SEC_RATE_MAX calls a minute per PC (a counter file per PC and minute in the temp folder) */

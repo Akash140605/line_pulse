@@ -39,6 +39,18 @@ function call(int $port, string $path, array $h = [], ?string $post = null): arr
 }
 $login = fn($u, $p, $ip = '203.0.113.7', $extra = []) => call($port, 'auth.php', $extra + ['CF-Connecting-IP' => $ip, 'Origin' => 'https://' . HOST], json_encode(['action' => 'login', 'user' => $u, 'pass' => $p]));
 
+// a login locked to its plant PCs: refused through the remote door until its list says "remote"
+store_file_write('security', ['block' => [], 'lock' => ['boss' => ['192.168.2.50']]]);
+[$st] = call($port, 'auth.php', ['CF-Connecting-IP' => '203.0.113.9', 'Origin' => 'https://' . HOST], json_encode(['action' => 'login', 'user' => 'boss', 'pass' => 'Boss-test-123']));
+ok('a login locked to plant PCs is refused from outside', $st === 403, "HTTP $st");
+store_file_write('security', ['block' => [], 'lock' => ['boss' => ['192.168.2.50', 'remote']]]);
+[$st] = call($port, 'auth.php', ['CF-Connecting-IP' => '203.0.113.9', 'Origin' => 'https://' . HOST], json_encode(['action' => 'login', 'user' => 'boss', 'pass' => 'Boss-test-123']));
+ok('… and works when its list says "remote"', $st === 200, "HTTP $st");
+store_file_write('security', ['block' => ['remote'], 'lock' => []]);
+[$st] = call($port, 'auth.php', ['CF-Connecting-IP' => '203.0.113.9', 'Origin' => 'https://' . HOST], json_encode(['action' => 'login', 'user' => 'qa', 'pass' => 'Qa-test-123']));
+ok('"remote" in the blocked list closes the remote door', $st === 403, "HTTP $st");
+store_file_write('security', ['block' => [], 'lock' => []]);
+
 [$st] = call($port, 'ui_settings.php', ['Referer' => null]);
 ok('no page around it → 403', $st === 403, "HTTP $st");
 [$st] = $login('qa', 'Qa-test-123', '203.0.113.7', ['Origin' => 'https://evil.example', 'Referer' => 'https://evil.example/']);

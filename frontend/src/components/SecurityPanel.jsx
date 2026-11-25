@@ -14,7 +14,8 @@ const btn = 'inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-fs
 const WHY = { 'no-page': 'Not from a Line Pulse page (script / program)', blocked: 'PC blocked', locked: 'Login used on another PC', 'too-many': 'Too many requests in a minute', ok: '', 'security settings': 'Security settings changed' };
 const EV = { refused: ['Refused', 'bg-red-100 text-red-800'], login: ['Login', 'bg-emerald-100 text-emerald-800'], change: ['Changed', 'bg-blue-100 text-blue-800'] };
 const ROLE = { admin: 'Admin', management: 'Office', tv: 'TV' };
-const ipOk = (s) => /^(\d{1,3}\.){3}\d{1,3}$/.test(s) || /^(\d{1,3}\.){1,3}\*$/.test(s) || s === '::1';
+// 25-11-2026: "remote" = the remote access door (Cloudflare tunnel, read only from outside the plant)
+const ipOk = (s) => /^(\d{1,3}\.){3}\d{1,3}$/.test(s) || /^(\d{1,3}\.){1,3}\*$/.test(s) || s === '::1' || s === 'remote';
 const dmyt = (s) => (s ? `${s.slice(8, 10)}-${s.slice(5, 7)} ${s.slice(11, 16)}` : '');
 
 export default function SecurityPanel() {
@@ -147,6 +148,10 @@ export default function SecurityPanel() {
                       <td className="whitespace-nowrap py-1 pl-1">
                         {/* 25-11-2026: one click — this login only on the PC in front of you (the server PC also by localhost) */}
                         <button type="button" data-testid={`lock-here-${u.user}`} onClick={() => setLock((x) => ({ ...x, [u.user]: [...new Set([...(x[u.user] || []), ...herePcs])] }))} className="mr-1 rounded border border-[#1F3864] px-1.5 py-1 text-fs-11 font-bold text-[#1F3864] hover:bg-[#EEF3FB]" title={`Allow this login on this PC (${herePcs.join(', ')})`}>This PC</button>
+                        {(lock[u.user] || []).length > 0 && u.role !== 'tv' && (() => { const on = (lock[u.user] || []).includes('remote'); return (
+                          <button type="button" data-testid={`lock-remote-${u.user}`} aria-pressed={on} onClick={() => setLock((x) => ({ ...x, [u.user]: on ? (x[u.user] || []).filter((v) => v !== 'remote') : [...new Set([...(x[u.user] || []), 'remote'])] }))}
+                            className={`mr-1 rounded border px-1.5 py-1 text-fs-11 font-bold ${on ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+                            title="Also from outside the plant through the remote access link — read only there (nothing can be saved)">Remote{on ? ' ✓' : ''}</button>); })()}
                         {seen.length > 0 && !(lock[u.user] || []).length && <button type="button" onClick={() => setLock((x) => ({ ...x, [u.user]: seen }))} className="rounded border border-slate-300 px-1.5 py-1 text-fs-11 font-bold text-slate-700 hover:bg-slate-50" title="Lock to the PCs it was used on">Use seen</button>}
                       </td>
                     </tr>

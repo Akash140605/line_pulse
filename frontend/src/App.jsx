@@ -1,6 +1,7 @@
 import HeaderBar, { segGroup, segBtn } from './components/HeaderBar';
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import MesDrawer from './components/MesDrawer';
+import useMediaQuery from './hooks/useMediaQuery';
 import { X, Maximize2 } from 'lucide-react';
 
 import { getLine, setLine, LINE_IDS, api, scopeLabel } from './api';
@@ -118,6 +119,22 @@ const PAGE_FALLBACK = <PageLoader label="Opening the page" />;
 
 const ANALYTICS_PAGES = ['distribution', 'pareto', 'models', 'trends'];
 // OLE pages keep their own period (and line tabs), so the scan filters (company, model, outliers) are not shown above them
+/** 25-11-2026: on a phone a filter card folds behind one line (tap to open); on a wider screen it is always open */
+function PhoneFold({ summary, children }) {
+  const phone = useMediaQuery('(max-width: 767px)');
+  const [open, setOpen] = React.useState(false);
+  if (!phone) return children;
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <button type="button" aria-expanded={open} data-testid="phone-filters" onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-2 px-3 py-2.5 text-left">
+        <span className="shrink-0 rounded-md bg-dixon-navy px-2 py-1 text-fs-12 font-bold text-white">{open ? 'Hide filters' : 'Filters'}</span>
+        <span className="min-w-0 flex-1 truncate text-fs-13 font-semibold text-slate-600">{summary}</span>
+        <span aria-hidden className={`text-slate-500 transition-transform ${open ? 'rotate-90' : ''}`}>›</span>
+      </button>
+      {open && <div className="border-t border-slate-100">{children}</div>}
+    </div>
+  );
+}
 const OWN_PERIOD_PAGES = ['capa', 'universe', 'qdash', 'custprod', 'serials', 'repcmp', 'methodplan', 'rwkdash', 'rcadash', 'kpidash', 'lqentry', 'kpientry', 'dash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'entrydash', 'oledrill', 'master', 'reports', 'ole', 'oleentry', 'qentry', 'rca', 'quality', 'targetcheck', 'linetargets', 'daily', 'lossan', 'rejan', 'rwkan'];
 
 const PANEL_TITLES = {
@@ -587,6 +604,8 @@ function Dashboard({ line, onLineChange, embedded = false, pageProp = null, read
 
           {OWN_PERIOD_PAGES.includes(page) ? null : d.range ? (embedded ? null : (
             // Filters and outlier settings in one compact card (two thin rows). Live status is in the header.
+            // 25-11-2026: on a phone the card folds behind one "Filters" line, so the page's numbers come first
+            <PhoneFold summary={`${d.range.start === d.range.end ? d.range.start.split('-').reverse().join('-') : `${d.range.start.slice(8)}-${d.range.start.slice(5, 7)} → ${d.range.end.slice(8)}-${d.range.end.slice(5, 7)}`} · ${(d.companies || []).find((c) => String(c.CompanyId) === String(d.companyId))?.CompanyTitle || 'All companies'} · ${(d.models || []).find((m) => String(m.mmId) === String(d.mmId))?.model || 'All models'}`}>
             <div className="rounded-xl border border-slate-200 bg-white shadow-sm divide-y divide-slate-100">
               {!embedded && <FilterBar bare
                 companies={d.companies} models={d.models} companyId={d.companyId} mmId={d.mmId}
@@ -615,6 +634,7 @@ function Dashboard({ line, onLineChange, embedded = false, pageProp = null, read
               />
               )}
             </div>
+            </PhoneFold>
           )) : (
             !d.error && !OWN_PERIOD_PAGES.includes(page) && (
               <div className="bg-white border border-slate-200 rounded-xl shadow-sm text-slate-700 text-fs-14 font-semibold py-16 flex items-center justify-center">

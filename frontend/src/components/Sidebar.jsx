@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import useMediaQuery from '../hooks/useMediaQuery';
 import DixonLogo, { DixonMark } from './DixonLogo';
 import { FOLDER_DEFAULT, RETIRED_PAGES } from '../utils/uiSettings';
-import { Box, Barcode, Building2, LayoutDashboard, Gauge, Clock, ShieldAlert, Boxes, BarChart3, ListOrdered, TrendingUp, Sigma, ChevronsLeft, ChevronsRight, ChevronDown, ChevronRight, Folder, FolderOpen, Search, LineChart, Timer, Filter, Sparkles, Target, ClipboardList, Settings2, ClipboardCheck, Crosshair, Wrench, LayoutGrid, ShieldCheck, CalendarDays, Database, FileSpreadsheet, Sunrise, PackageX, RotateCcw, CalendarRange, ListChecks, Layers , CalendarClock, GitCompare } from 'lucide-react';
+import { Box, Barcode, Building2, LayoutDashboard, Gauge, Clock, ShieldAlert, Boxes, BarChart3, ListOrdered, TrendingUp, Sigma, ChevronsLeft, ChevronsRight, ChevronDown, ChevronRight, Folder, FolderOpen, Search, LineChart, Timer, Filter, Sparkles, Target, ClipboardList, Settings2, ClipboardCheck, Crosshair, Wrench, LayoutGrid, ShieldCheck, CalendarDays, Database, FileSpreadsheet, Sunrise, PackageX, RotateCcw, CalendarRange, ListChecks, Layers , CalendarClock, GitCompare, Menu, X } from 'lucide-react';
 
 export const PAGES = [
   { id: 'overview', label: 'Plant overview', icon: LayoutDashboard, color: 'text-sky-300' },
@@ -88,6 +88,8 @@ const jump = (id) => {
   return !!el;
 };
 const OPEN_KEY = 'ems.side.closed';
+// a short name for the phone's bottom bar: "Plant overview" → "Overview", "OLE calendar" → "Calendar", "Plant Efficiency" → "Efficiency"
+const short = (label) => { const w = String(label).split(' ').filter(Boolean); const k = w.length > 1 && w[1] !== '&' && /^(OLE|Plant|Line|Loss|Model|Target|Daily|Cycle)$/i.test(w[0]) ? w[1] : w[0]; return k.charAt(0).toUpperCase() + k.slice(1); };
 
 export default function Sidebar({ page, onChange, focusDate, loading, pages: pagesIn = PAGES, brand = null, sections = false, folders = null }) {
   if (folders?.length) FOLDERS = folders;
@@ -100,6 +102,8 @@ export default function Sidebar({ page, onChange, focusDate, loading, pages: pag
   const [collapsed, setCollapsed] = useState(tablet);
   useEffect(() => setCollapsed(tablet), [tablet]);
   const [q, setQ] = useState('');
+  const [sheet, setSheet] = useState(false);   // 25-11-2026: phones — the full menu
+  useEffect(() => { setSheet(false); }, [page]);
   // groups the user folded (remembered in this browser); every group is open at first, the open page's group always
   const [closed, setClosed] = useState(() => { try { return JSON.parse(localStorage.getItem(OPEN_KEY) || '[]'); } catch { return []; } });
   const toggle = (g) => setClosed((c) => { const n = c.includes(g) ? c.filter((x) => x !== g) : [...c, g]; try { localStorage.setItem(OPEN_KEY, JSON.stringify(n)); } catch { /* blocked */ } return n; });
@@ -200,26 +204,59 @@ export default function Sidebar({ page, onChange, focusDate, loading, pages: pag
         </div>
       </aside>
 
-      {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 flex overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-[env(safe-area-inset-bottom)] bg-dixon-navy border-t border-t-white/10 text-white" style={bg}>
-        {pages.map(({ id, label, icon: Icon, color }) => {
-          const active = page === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              title={label}
-              aria-label={label}
-              aria-current={active ? 'page' : undefined}
-              onClick={() => onChange(id)}
-              className={`shrink-0 min-w-[76px] flex-1 flex flex-col items-center gap-0.5 py-2 text-fs-13 font-semibold ${active ? 'bg-white/15' : 'text-slate-300'}`}
-            >
-              <Icon size={18} className={active ? color : ''} />
-              <span className="truncate max-w-full px-1">{(() => { const w = label.split(' '); return w[0] === 'OLE' && w[1] ? w[1] : w[0]; })()}</span>
-            </button>
-          );
-        })}
+      {/* 25-11-2026 phones: a short bottom bar — four pages (the open page always among them) and Menu, which opens every page
+          folder by folder with a search (the long scrolling strip of 49 pages is gone) */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 flex pb-[env(safe-area-inset-bottom)] bg-dixon-navy border-t border-t-white/10 text-white" style={bg} aria-label="Pages (phone)">
+        {(() => {
+          const first = pages.slice(0, 4);
+          const cur = pages.find((p) => p.id === page);
+          const quick = cur && !first.some((p) => p.id === page) ? [...first.slice(0, 3), cur] : first;
+          return quick.map(({ id, label, icon: Icon, color }) => {
+            const active = page === id;
+            return (
+              <button key={id} type="button" title={label} aria-label={label} aria-current={active ? 'page' : undefined} onClick={() => { setSheet(false); onChange(id); }}
+                className={`min-w-0 flex-1 flex flex-col items-center gap-0.5 py-2 text-fs-12 font-semibold ${active ? 'bg-white/15' : 'text-slate-300'}`}>
+                <Icon size={18} className={active ? color : ''} />
+                <span className="w-full truncate px-1 text-center">{short(label)}</span>
+              </button>
+            );
+          });
+        })()}
+        <button type="button" aria-label="Menu — all pages" aria-expanded={sheet} data-testid="mobile-menu" onClick={() => setSheet((v) => !v)}
+          className={`min-w-0 flex-1 flex flex-col items-center gap-0.5 py-2 text-fs-12 font-semibold ${sheet ? 'bg-white/15' : 'text-slate-300'}`}>
+          {sheet ? <X size={18} /> : <Menu size={18} />}
+          <span>{sheet ? 'Close' : 'Menu'}</span>
+        </button>
       </nav>
+      {sheet && (
+        <div className="md:hidden fixed inset-x-0 top-0 flex flex-col bg-white" style={{ bottom: 'calc(56px + env(safe-area-inset-bottom))', zIndex: 2000 }} role="dialog" aria-label="All pages">
+          <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 px-3 py-2">
+            <label className="flex flex-1 items-center gap-2 rounded-md border border-slate-300 px-2.5 py-2 focus-within:border-[#2E75B6]">
+              <Search size={15} className="shrink-0 text-slate-500" />
+              <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search pages" aria-label="Search pages" className="min-w-0 flex-1 bg-transparent text-fs-15 outline-none" />
+            </label>
+            <button type="button" onClick={() => setSheet(false)} aria-label="Close the menu" className="grid h-10 w-10 place-items-center rounded-md border border-slate-300 text-slate-700"><X size={18} /></button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+            {(found ? [{ g: found.length ? 'Found' : `No page called “${q}”`, items: found }] : secs).map(({ g, items }) => (
+              <section key={g} className="mt-3" aria-label={`Pages: ${g}`}>
+                <h3 className="lp-caps mb-1.5 text-fs-12 font-extrabold tracking-wide text-slate-500">{g}</h3>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {items.map(({ id, label, icon: Icon }) => {
+                    const active = page === id;
+                    return (
+                      <button key={id} type="button" aria-current={active ? 'page' : undefined} onClick={() => { setSheet(false); setQ(''); onChange(id); }}
+                        style={{ minHeight: 44 }} className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-fs-14 font-semibold ${active ? 'border-dixon-navy bg-dixon-navy text-white' : 'border-slate-200 bg-slate-50 text-slate-800'}`}>
+                        <Icon size={16} className="shrink-0" /><span className="min-w-0 leading-tight">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }

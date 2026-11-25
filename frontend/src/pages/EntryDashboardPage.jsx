@@ -88,16 +88,17 @@ function Ranked({ title, rows, t, line = false }) {
 }
 
 // 23-11-2026: entry status — what is filled and what is left, line by line and hour by hour
+// 25-11-2026: colours readable as text on their cell (WCAG AA): darker green, dark text on amber, darker greys
 const ST = {
-  done: { bg: '#059669', fg: '#fff', t: 'Done' },
+  done: { bg: '#047857', fg: '#fff', t: 'Done' },
   auto: { bg: '#A7F3D0', fg: '#065F46', t: 'No loss (automatic)' },
-  pending: { bg: '#F59E0B', fg: '#fff', t: 'Pending' },
+  pending: { bg: '#F59E0B', fg: '#1F2937', t: 'Pending' },
   running: { bg: '#BAE6FD', fg: '#075985', t: 'Running hour' },
-  na: { bg: '#F1F5F9', fg: '#94A3B8', t: 'Not needed' },
-  future: { bg: '#fff', fg: '#CBD5E1', t: 'Not yet' },
+  na: { bg: '#F1F5F9', fg: '#4B5563', t: 'Not needed' },
+  future: { bg: '#fff', fg: '#64748B', t: 'Not yet' },
 };
 const pctTxt = (p) => (p == null ? '—' : `${Math.floor(p * 100)}%`);
-const pctColor = (p) => (p == null ? '#94A3B8' : p >= 0.999 ? '#059669' : p >= 0.8 ? '#D97706' : '#DC2626');
+const pctColor = (p) => (p == null ? '#64748B' : p >= 0.999 ? '#047857' : p >= 0.8 ? '#B45309' : '#DC2626');
 const addDays = (d, n) => { const t = new Date(`${d}T00:00:00Z`); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
 
 function Meter({ label, c, sub, icon: Icon }) {
@@ -205,7 +206,7 @@ function EntryStatus({ IDS, range, today, D, settings, onOpen, canOpen }) {
   return (
     <section className={`${card} overflow-hidden`} aria-label="Entry status">
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 py-2.5">
-        <h3 className="min-w-0 flex-1 text-fs-16 font-extrabold text-dixon-navy">Entry status — what is filled and what is left</h3>
+        <h3 className="min-w-0 flex-1 text-fs-16 font-extrabold text-dixon-navy" style={{ minWidth: 220 }}>Entry status — what is filled and what is left</h3>
         {left.length > 0 && can && (
           <button type="button" onClick={() => go(left[0].line, left[0].date, left[0].hour, left[0].what)} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-dixon-navy px-3 text-fs-13 font-bold text-white hover:bg-blue-900">
             <PencilLine size={14} aria-hidden />Fill next: Line {left[0].line}{left[0].hour != null ? ` · ${p2(left[0].hour)}:00` : ''} · {left[0].what}

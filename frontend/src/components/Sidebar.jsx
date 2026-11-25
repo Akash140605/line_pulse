@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import useMediaQuery from '../hooks/useMediaQuery';
 import DixonLogo, { DixonMark } from './DixonLogo';
+import CommandPalette from './CommandPalette';
 import { FOLDER_DEFAULT, RETIRED_PAGES } from '../utils/uiSettings';
 import { Box, Barcode, Building2, LayoutDashboard, Gauge, Clock, ShieldAlert, Boxes, BarChart3, ListOrdered, TrendingUp, Sigma, ChevronsLeft, ChevronsRight, ChevronDown, ChevronRight, Folder, FolderOpen, Search, LineChart, Timer, Filter, Sparkles, Target, ClipboardList, Settings2, ClipboardCheck, Crosshair, Wrench, LayoutGrid, ShieldCheck, CalendarDays, Database, FileSpreadsheet, Sunrise, PackageX, RotateCcw, CalendarRange, ListChecks, Layers , CalendarClock, GitCompare, Menu, X } from 'lucide-react';
 
@@ -204,6 +205,8 @@ export default function Sidebar({ page, onChange, focusDate, loading, pages: pag
         </div>
       </aside>
 
+      {/* 25-11-2026: Ctrl+K command palette — every page of this login, by name */}
+      <CommandPalette pages={pages} page={page} onChange={onChange} folderOf={groupOf} />
       {/* 25-11-2026 phones: a short bottom bar — four pages (the open page always among them) and Menu, which opens every page
           folder by folder with a search (the long scrolling strip of 49 pages is gone) */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 flex pb-[env(safe-area-inset-bottom)] bg-dixon-navy border-t border-t-white/10 text-white" style={bg} aria-label="Pages (phone)">

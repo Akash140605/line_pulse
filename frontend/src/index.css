@@ -707,3 +707,48 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
   .lp-top-row > .min-w-0.flex-1 { order: 3; flex-basis: 100%; }
   .lp-mes .lp-top .lp-top-title, .lp-top .lp-top-title { font-size: calc(15px * var(--fs, 1)); line-height: 1.25; }
 }
+
+/* 25-11-2026 command palette (Ctrl+K) and keyboard keys */
+.lp-palette-back { background: rgba(15, 23, 42, .45); backdrop-filter: blur(2px); animation: lpFade .12s ease-out both; }
+.lp-palette { animation: lpPop .14s ease-out both; }
+.lp-palette input::placeholder { color: #94a3b8; }
+@keyframes lpFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lpPop { from { opacity: 0; transform: translateY(-6px) scale(.985); } to { opacity: 1; transform: none; } }
+.lp-kbd { display: inline-block; min-width: 1.5em; padding: 1px 6px; border: 1px solid #cbd5e1; border-bottom-width: 2px; border-radius: 5px; background: #fff; color: #334155; font: 600 11px/1.5 var(--font-sans, inherit); text-align: center; }
+.lp-kbd-dark { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.35); color: #fff; }
+.lp-top-search { display: none; }
+@media (min-width: 1024px) { .lp-top-search { display: inline-flex; } }
+@media (max-width: 639px) { .lp-hide-xs { display: none !important; } }
+@media (prefers-reduced-motion: reduce) { .lp-palette, .lp-palette-back { animation: none; } }
+
+/* ── 25-11-2026 design pass (customer audit): text readable everywhere (WCAG AA 4.5:1), no type under 11 px, finger-size
+      controls on phones, sidebar names end in "…" (whole name on hover) ── */
+:root { --lp-muted: #666666; --lp-ok-ink: #0E6E2E; --lp-warn-ink: #8A5200; }
+.lp-mes { --mes-muted: #666666; }
+.lp-mes .text-slate-400, .lp-std .text-slate-400, .lp-std .text-slate-500 { color: #666666; }
+.text-\[\#777\], .text-\[\#888\] { color: #666666 !important; }
+.lp-mes .text-emerald-700, .lp-mes .text-emerald-800, .lp-std .text-emerald-700, .lp-std .text-emerald-800 { color: #0E6E2E; }
+.lp-mes .text-amber-700, .lp-mes .text-amber-800, .lp-std .text-amber-700, .lp-std .text-amber-800 { color: #8A5200; }
+.lp-mes .lp-side .lp-side-group { font-size: 11.5px !important; }
+.lp-mes .lp-side-count { font-size: 11px !important; }
+.lp-cal-ks { font-size: 10.5px; }
+.lp-mes .lp-side .lp-side-item > span, .lp-mes .lp-side .lp-side-item .truncate { display: block; flex: 1 1 auto; min-width: 0; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+@media (max-width: 767px) {
+  .lp-segbtn, .lp-field, .lp-arrow { min-height: 36px; }
+  main button:not(table *):not(.lp-tight), main select, main input:not([type=checkbox]):not([type=radio]):not([type=range]) { min-height: 36px; }
+  .lp-top-row button, .lp-top-row a { min-height: 36px; min-width: 36px; }
+}
+:focus-visible { outline: 2px solid #2E75B6; outline-offset: 2px; }
+/* 25-11-2026 design pass (2): fixed greens / greys written in the pages, sidebar folder names, phone controls outside <main> */
+.text-\[\#138A36\] { color: #0E6E2E !important; }
+.text-\[\#999\], .text-\[\#999999\] { color: #666666 !important; }
+.lp-mes .lp-side .lp-side-group > span.truncate, .lp-mes .lp-side .lp-side-group .truncate { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+@media (max-width: 767px) {
+  #root button:not(table *):not(nav *):not(.lp-tight):not(svg *), #root select { min-height: 36px; }
+}
+@media (max-width: 767px) { .lp-top-row { padding-top: 6px !important; padding-bottom: 6px !important; } .lp-top-logo { margin-top: 2px; } }
+/* 25-11-2026 review slideshow bar */
+.lp-showprog > i { position: absolute; inset: 0 auto 0 0; width: 0; background: #7DD3FC; border-radius: 9999px; }
+.lp-showprog > i.lp-showfill { animation-name: lpShowFill; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes lpShowFill { from { width: 0; } to { width: 100%; } }
+@media print { .lp-showbar, .lp-palette-back { display: none !important; } }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
+import { PALETTE_EVENT } from './CommandPalette';
 import { UserMenu } from './AuthGate';
 import DixonLogo from './DixonLogo';
 import NotificationBell from './NotificationBell';
@@ -126,6 +127,11 @@ export default function Header({ onRefresh, loading, title, extra }) {
           </nav>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {/* 25-11-2026: go to any page by name (Ctrl+K) */}
+          <button type="button" data-testid="palette-open" onClick={() => { try { window.dispatchEvent(new Event(PALETTE_EVENT)); } catch { /* old browser */ } }} title="Go to a page (Ctrl+K)" aria-label="Go to a page (Ctrl+K)"
+            className="lp-top-search items-center gap-2 rounded-md border border-white/25 bg-white/10 px-2.5 py-1.5 text-fs-13 font-semibold text-white/90 hover:bg-white/20">
+            <Search size={14} aria-hidden /> Search <kbd className="lp-kbd lp-kbd-dark">Ctrl K</kbd>
+          </button>
           <InfoBox />
           <Clock />
           <SecurityAlertWatch />

@@ -52,7 +52,7 @@ function activity_num($v): string { return is_numeric($v) ? rtrim(rtrim(number_f
 /** the PC and browser of this request */
 function activity_client(): array
 {
-    return ['ip' => activity_txt($_SERVER['REMOTE_ADDR'] ?? '', 45), 'ua' => activity_txt($_SERVER['HTTP_USER_AGENT'] ?? '', 200)];
+    return ['ip' => activity_txt(function_exists('store_client_ip') ? store_client_ip() : ($_SERVER['REMOTE_ADDR'] ?? ''), 45) . (function_exists('store_remote') && store_remote() ? ' (remote)' : ''), 'ua' => activity_txt($_SERVER['HTTP_USER_AGENT'] ?? '', 200)];
 }
 
 /** the login of an event: {user, name, role} ([] = no login) */

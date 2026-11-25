@@ -82,7 +82,7 @@ function files_body(): array
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
     $origin = $_SERVER['HTTP_ORIGIN'] ?? null;
-    if (!store_private_ip($_SERVER['REMOTE_ADDR'] ?? '')) store_fail(403, 'Changes are accepted only from the plant network');
+    if (store_remote() || !store_private_ip(store_client_ip())) store_fail(403, 'Changes are accepted only from the plant network');
     if (!store_origin_ok($origin)) store_fail(403, 'Changes are accepted only from the dashboard');
     if (($_SERVER['HTTP_X_EMS_WRITE'] ?? '') !== '1') store_fail(403, 'Missing X-EMS-Write header');
     $raw = file_get_contents('php://input');

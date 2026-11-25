@@ -262,6 +262,19 @@ function loss_clean(array $e): array
 /* ───────────── who may write ───────────── */
 
 /** Private / local network address? (writes are only accepted from the plant network) */
+/**
+ * 25-11-2026 remote access: a request that came in through the remote door — Apache 127.0.0.1:8090 (only Line Pulse,
+ * SetEnv LP_REMOTE 1) behind the Cloudflare tunnel. A browser cannot set this (it is an Apache variable, not a header).
+ */
+function store_remote(): bool { return !empty($_SERVER['LP_REMOTE']) || !empty($_SERVER['REDIRECT_LP_REMOTE']); }
+
+/** the address of the PC that sent the request: through the remote door the visitor's own address (Cloudflare tells it), never 127.0.0.1 */
+function store_client_ip(): string
+{
+    if (store_remote()) { $cf = trim((string)($_SERVER['HTTP_CF_CONNECTING_IP'] ?? '')); return filter_var($cf, FILTER_VALIDATE_IP) ? $cf : 'remote'; }
+    return (string)($_SERVER['REMOTE_ADDR'] ?? '');
+}
+
 function store_private_ip(string $ip): bool
 {
     if ($ip === '::1' || $ip === '127.0.0.1') return true;
@@ -276,6 +289,8 @@ function store_origin_ok(?string $origin): bool
     if ($origin === 'null') return false;                    // sandboxed / file page
     $host = parse_url($origin, PHP_URL_HOST);
     if (!$host) return false;
+    // through the remote door: only a page of the remote address itself (the tunnel's name)
+    if (store_remote()) return strcasecmp($host, (string)parse_url('//' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST)) === 0;
     if ($host === 'localhost' || substr($host, -6) === '.local' || substr($host, -10) === '.localhost') return true;
     return filter_var($host, FILTER_VALIDATE_IP) !== false && store_private_ip($host);
 }
@@ -294,7 +309,9 @@ function store_begin(): ?array
     if ($m === 'OPTIONS') { http_response_code(204); exit; }
     if ($m === 'GET') return null;
     if ($m !== 'POST') store_fail(405, 'Only GET and POST');
-    if (!store_private_ip($_SERVER['REMOTE_ADDR'] ?? '')) store_fail(403, 'Changes are accepted only from the plant network');
+    // 25-11-2026: from outside the plant (remote door) Line Pulse is read only — only a login / log out and the activity notes
+    if (store_remote()) { if (!in_array(basename((string)($_SERVER['SCRIPT_NAME'] ?? '')), ['auth.php', 'activity.php'], true)) store_fail(403, 'From outside the plant Line Pulse is read only.'); }
+    elseif (!store_private_ip(store_client_ip())) store_fail(403, 'Changes are accepted only from the plant network');
     if (!store_origin_ok($origin)) store_fail(403, 'Changes are accepted only from the dashboard');
     if (($_SERVER['HTTP_X_EMS_WRITE'] ?? '') !== '1') store_fail(403, 'Missing X-EMS-Write header');
     $raw = file_get_contents('php://input');

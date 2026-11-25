@@ -19,6 +19,7 @@ const ALERT_TEXT = [
     'admin-new-pc' => 'The admin login was used on a new PC',
     'bulk-download' => 'Many reports downloaded in a short time',
     'security' => 'The security settings were changed',
+    'remote-login' => 'A login from outside the plant (remote access)',
     'test' => 'Test alert from Line Pulse',
 ];
 
@@ -28,7 +29,7 @@ function alert_time(): string { return function_exists('activity_now') ? activit
 function alert_raise(string $kind, string $detail = '', string $user = '', ?string $ip = null): void
 {
     try {
-        $ip = $ip ?? (string)($_SERVER['REMOTE_ADDR'] ?? '');
+        $ip = $ip ?? (function_exists('store_client_ip') ? store_client_ip() : (string)($_SERVER['REMOTE_ADDR'] ?? ''));
         $mark = sys_get_temp_dir() . '/ems_alert_' . md5($kind . '|' . $ip . '|' . $user);
         if ($kind !== 'test' && is_file($mark) && filemtime($mark) > time() - ALERT_QUIET) return;
         @touch($mark);

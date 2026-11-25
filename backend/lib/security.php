@@ -17,7 +17,7 @@ require_once __DIR__ . '/alerts.php';   // the admin is told (bell + e-mail)
 const SEC_LOG_MAX = 500;
 const SEC_RATE_MAX = 900;   // API calls of one PC in one minute (a TV makes about 30, a busy office page a few hundred)
 
-function sec_ip(): string { return (string)($_SERVER['REMOTE_ADDR'] ?? ''); }
+function sec_ip(): string { return store_client_ip(); }   // 25-11-2026: the visitor's own address through the remote door
 
 /** Setup → Security saved (JSON file in the data folder) */
 function sec_save(array $conf): void

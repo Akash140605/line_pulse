@@ -72,7 +72,9 @@ if ($body === null) {
 }
 
 $action = (string)($body['action'] ?? '');
-$ip = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+$ip = store_client_ip();   // 25-11-2026: the visitor's own address (remote door: Cloudflare's, never 127.0.0.1)
+// from outside the plant only a login and a log out — users, passwords, security, mail: only on the plant network
+if (store_remote() && !in_array($action, ['login', 'logout'], true)) auth_fail(403, 'From outside the plant Line Pulse is read only.');
 try {
     if ($action === 'login') {
         // 20-11-2026: every login (and every failed one) goes to the activity log — never the password (lib/activity.php)
@@ -99,6 +101,7 @@ try {
             if ($seen && !array_filter($seen, fn($e) => ($e['ip'] ?? '') === $ip)) alert_raise('admin-new-pc', 'Admin login from ' . $ip, $user, $ip);
         }
         sec_note('login', 'ok', $user, (string)($u['role'] ?? ''));   // the security log has every login, TV logins too
+        if (store_remote()) alert_raise('remote-login', 'Login from outside the plant (remote access): ' . $user . ' · ' . $ip, $user, $ip);   // 25-11-2026
         echo json_encode(['token' => $t['token'], 'exp' => $t['exp'], 'user' => $user, 'role' => $u['role'], 'display' => $u['display'] ?? $user] + auth_user_info($u));
         exit;
     }

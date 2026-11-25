@@ -1,0 +1,6 @@
+# Only the built app (dist/) is served from here. Sources, tests, packages and build settings are not.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule ^(src|tests|node_modules)(/|$) - [F]
+RewriteRule ^(package(-lock)?\.json|vite\.config\.js|tailwind\.config\.js|postcss\.config\.js|\.env[^/]*|index\.html)$ - [F]
+</IfModule>

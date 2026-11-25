@@ -1,0 +1,2 @@
+# Backup copy run: only from this PC (backup_sync.bat calls http://localhost/...).
+Require local

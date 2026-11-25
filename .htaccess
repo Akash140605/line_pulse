@@ -1,0 +1,16 @@
+# Line Pulse: no folder listings anywhere. The app is frontend/dist/, the data API is backend/api/.
+Options -Indexes
+
+# 25-11-2026 security: files of the admin, notes and old copies are never served to the network
+<FilesMatch "(?i)^(README\.md|.*\.pdf|.*\.bat|.*\.sh|.*\.ps1|web\.config|.*\.zip|.*\.md5|.*\.txt|.*\.bak|.*\.log|.*\.sql|.*\.ini|composer\.(json|lock))$">
+  Require all denied
+</FilesMatch>
+# the browser's security headers on every answer of Line Pulse
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always unset X-Powered-By
+  Header unset X-Powered-By
+</IfModule>
+ServerSignature Off

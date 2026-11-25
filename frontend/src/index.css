@@ -1,0 +1,702 @@
+@tailwind base;
+@tailwind components;
+/* text sizes also here, so they work even before the dev server has re-read tailwind.config.js (same values as there) */
+.text-fs-10 { font-size: calc(11px * var(--fs, 1)); }
+.text-fs-11 { font-size: calc(11.5px * var(--fs, 1)); }
+.text-fs-12 { font-size: calc(12.5px * var(--fs, 1)); }
+.text-fs-13 { font-size: calc(13px * var(--fs, 1)); }
+.text-fs-14 { font-size: calc(14px * var(--fs, 1)); }
+.text-fs-15 { font-size: calc(15px * var(--fs, 1)); }
+.text-fs-16 { font-size: calc(16px * var(--fs, 1)); }
+.text-fs-17 { font-size: calc(17px * var(--fs, 1)); }
+.text-fs-18 { font-size: calc(18px * var(--fs, 1)); }
+.text-fs-20 { font-size: calc(20px * var(--fs, 1)); }
+.text-fs-22 { font-size: calc(22px * var(--fs, 1)); }
+.text-fs-24 { font-size: calc(24px * var(--fs, 1)); }
+.text-fs-26 { font-size: calc(26px * var(--fs, 1)); }
+.text-fs-28 { font-size: calc(28px * var(--fs, 1)); }
+.text-fs-30 { font-size: calc(30px * var(--fs, 1)); }
+.text-fs-34 { font-size: calc(34px * var(--fs, 1)); }
+.text-fs-40 { font-size: calc(40px * var(--fs, 1)); }
+.text-fs-42 { font-size: calc(42px * var(--fs, 1)); }
+.text-fs-50 { font-size: calc(50px * var(--fs, 1)); }
+@tailwind utilities;
+
+/* ───────── Dixon theme ─────────
+   Default = the standard navy blue (#0B3A74 / #0B2545) with red and sky. The admin changes them in Setup → Theme; the app then sets
+   these same variables on <html> (src/utils/themeEngine.js). Colours are "r g b" so Tailwind can add opacity. */
+:root {
+  --blue-50: 238 244 252; --blue-100: 216 230 248; --blue-200: 179 205 240; --blue-300: 128 171 228; --blue-400: 70 130 210; --blue-500: 31 100 191; --blue-600: 14 86 174; --blue-700: 11 70 143; --blue-800: 11 58 116; --blue-900: 11 37 69; --blue-950: 6 16 31;
+  --sky-50: 240 249 255; --sky-100: 224 242 254; --sky-200: 186 230 253; --sky-300: 125 211 252; --sky-400: 56 189 248; --sky-500: 14 165 233; --sky-600: 2 132 199; --sky-700: 3 105 161; --sky-800: 7 89 133; --sky-900: 12 74 110; --sky-950: 8 47 73;
+  --red-50: 254 242 242; --red-100: 254 226 226; --red-200: 254 202 202; --red-300: 252 165 165; --red-400: 248 113 113; --red-500: 239 68 68; --red-600: 220 38 38; --red-700: 185 28 28; --red-800: 153 27 27; --red-900: 127 29 29; --red-950: 69 10 10;
+  --navy: 11 37 69; --tv-a: 18 58 102; --tv-c: 8 25 47; --sidebar: 11 37 69; --page: 238 241 245;
+  --line-1: #2F6FD0; --line-2: #12866F; --line-3: #C9821A; --line-4: #7A4FB8;
+  --fs: 1; --fs-tv: 1;
+  --font-sans: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Archivo", ui-monospace, Consolas, monospace;
+}
+/* Archivo — the wide, heavy grotesque family of the Dixon logo; built in (works without internet), SIL Open Font License
+   (assets/fonts/OFL.txt). One variable file: weight 100–900, width 62–125 %. */
+/* Poppins — the font of the Dixon Production Management System (MES); built in, SIL Open Font License (assets/fonts/Poppins-OFL.txt) */
+@font-face { font-family: "Poppins"; src: url("./assets/fonts/poppins-400.woff") format("woff"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Poppins"; src: url("./assets/fonts/poppins-500.woff") format("woff"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Poppins"; src: url("./assets/fonts/poppins-600.woff") format("woff"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Poppins"; src: url("./assets/fonts/poppins-700.woff") format("woff"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Poppins"; src: url("./assets/fonts/poppins-800.woff") format("woff"); font-weight: 800 900; font-style: normal; font-display: swap; }
+/* Dixon MES look (Setup → Theme → Dixon MES): square, office-style corners (2–3 px) and crisp grey borders; pills stay round */
+.lp-mes .rounded-2xl, .lp-mes .rounded-xl { border-radius: 3px; }
+.lp-mes .rounded-lg, .lp-mes .rounded-md, .lp-mes .rounded { border-radius: 2px; }
+.lp-mes .border-slate-200, .lp-mes .border-slate-100 { border-color: #D4D4D4; }
+.lp-mes .border-slate-300 { border-color: #BFBFBF; }
+.lp-mes h1, .lp-mes h2, .lp-mes h3 { letter-spacing: 0; }
+@font-face { font-family: "Archivo"; src: url("./assets/fonts/archivo-latin.woff") format("woff"); font-weight: 100 900; font-stretch: 62% 125%; font-style: normal; font-display: swap; }
+/* Dixon look: titles in the wide cut of the font, like the logo */
+h1, h2, h3, .lp-brand { font-stretch: 112%; letter-spacing: -0.005em; }
+html { -webkit-text-size-adjust: 100%; }
+body { background: rgb(var(--page)); color: #0F1B2D; font-family: var(--font-sans); text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+/* dark TV / live-line cards: primary colour, lighter top-left */
+.lp-tv-bg { background: radial-gradient(120% 140% at 0% 0%, rgb(var(--tv-a)) 0%, rgb(var(--navy)) 45%, rgb(var(--tv-c)) 100%); }
+.font-mono, .tabular-nums { font-variant-numeric: tabular-nums slashed-zero; }
+::selection { background: rgb(var(--blue-200)); color: rgb(var(--navy)); }
+:focus-visible { outline: 2px solid rgb(var(--blue-600)); outline-offset: 2px; }
+/* small labels stay as written (sentence case); 17-11-2026, the Dixon MES look: every word of page titles, headings, tabs and
+   the menu starts with a capital ("Down Time Reasons"), and the big section titles are in CAPITALS (.lp-caps).
+   The live lines and the TV keep their own look. */
+.uppercase { text-transform: none; }
+.lp-caps { text-transform: uppercase; }
+:where(h1, h2, h3, h4, h5, h6, legend, [role="tab"], .lp-side-nav button, [role="dialog"] h2) { text-transform: capitalize; }
+:is(.lp-tv-bg, [data-tv-look], [data-tv-light]) :is(h1, h2, h3, h4, h5, h6, [role="tab"]) { text-transform: none; }
+/* details panels slide in from the right */
+@keyframes lpSlideIn { from { transform: translateX(40px); opacity: .4; } to { transform: none; opacity: 1; } }
+.lp-slide-in { animation: lpSlideIn .22s ease-out; }
+/* 17-11-2026 motion (not on the live lines or the TV): a page rises in, its cards follow one after another, buttons give
+   under the finger, cards lift on hover, the OLE dial draws itself; a skeleton shimmers while a page is read */
+@keyframes lpRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes lpDraw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes lpShimmer { from { background-position: 100% 50%; } to { background-position: 0 50%; } }
+@keyframes lpDots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+.lp-anim > * { animation: lpRise .3s cubic-bezier(.2, .7, .2, 1) both; }
+.lp-anim section { animation: lpRise .34s cubic-bezier(.2, .7, .2, 1) both; }
+.lp-anim section:nth-of-type(2) { animation-delay: .04s; } .lp-anim section:nth-of-type(3) { animation-delay: .08s; }
+.lp-anim section:nth-of-type(4) { animation-delay: .12s; } .lp-anim section:nth-of-type(5) { animation-delay: .16s; }
+.lp-anim section:nth-of-type(n+6) { animation-delay: .2s; }
+.lp-anim :is(button, [role="button"]):not(:disabled) { transition: transform .12s ease, background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.lp-anim :is(button, [role="button"]):not(:disabled):active { transform: scale(.97); }
+.lp-anim .lp-lift { transition: transform .18s ease, box-shadow .18s ease; }
+.lp-anim .lp-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 20px -10px rgba(15, 39, 84, .35); }
+.lp-anim .lp-gauge-arc { stroke-dasharray: 1 1; animation: lpDraw .8s cubic-bezier(.2, .7, .2, 1) both .1s; }
+:is(.lp-tv-bg, [data-tv-look], [data-tv-light]) :is(section, button, .lp-lift, .lp-gauge-arc) { animation: none; }
+/* the OLE gauge needle swings to its value (components/OleParts.jsx Gauge); still for a reduced-motion screen */
+@media (prefers-reduced-motion: reduce) { .lp-gauge-needle { transition: none !important; } }
+.lp-skel { background: linear-gradient(90deg, #e3e9f1 25%, #f4f7fb 37%, #e3e9f1 63%); background-size: 400% 100%; animation: lpShimmer 1.3s ease infinite; }
+.lp-skel-dark { background: linear-gradient(90deg, rgba(255,255,255,.16) 25%, rgba(255,255,255,.34) 37%, rgba(255,255,255,.16) 63%); background-size: 400% 100%; }
+.lp-dots::after { content: ""; animation: lpDots 1.2s steps(4) infinite; }
+.tracking-wide, .tracking-wider { letter-spacing: 0.005em; }
+/* tables: quiet headers, crisp rows */
+thead th { font-weight: 600; letter-spacing: 0; }   /* colour comes from the table (dark header rows keep their white text) */
+tbody tr { transition: background-color .12s ease; }
+/* thin scrollbars inside panels */
+.overflow-auto, .overflow-y-auto, .overflow-x-auto { scrollbar-width: thin; scrollbar-color: #B8C2CF transparent; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-delay: 0s !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+/* ───────── readability: darker secondary text, dark chart labels (text-fs-10/11/12 are read bigger, see tailwind.config.js) ───────── */
+.text-slate-500 { color: #475569; }
+.text-slate-600 { color: #334155; }
+.text-slate-700 { color: #1F2937; }
+.recharts-cartesian-axis-tick-value { fill: #1E293B; font-weight: 500; }
+.recharts-legend-item-text { font-weight: 600; }
+.recharts-label-list text, .recharts-label-list tspan { font-size: max(calc(11px * var(--fs, 1)), 1em) !important; }
+.recharts-default-tooltip { font-size: calc(13px * var(--fs, 1)); }
+
+/* Print / Save-as-PDF: hide navigation chrome, keep filters + content, avoid split cards */
+@media print {
+  aside, header, nav, .no-print { display: none !important; }
+  body { background: #fff !important; }
+  main { padding: 0 !important; max-width: none !important; }
+  .overflow-y-auto, .overflow-x-auto { max-height: none !important; overflow: visible !important; }
+  [class*="rounded-xl"] { break-inside: avoid; box-shadow: none !important; }
+  @page { size: A4 landscape; margin: 10mm; }
+}
+
+/* Phones: wide tables scroll sideways — a soft shadow on the side that has more columns shows it */
+@media (max-width: 767px) {
+  .overflow-x-auto:has(> table), .overflow-auto:has(> table) {
+    background:
+      linear-gradient(to right, #fff 30%, rgba(255, 255, 255, 0)) left center / 28px 100% no-repeat local,
+      linear-gradient(to left, #fff 30%, rgba(255, 255, 255, 0)) right center / 28px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, rgba(15, 23, 42, .25), rgba(15, 23, 42, 0)) left center / 12px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, rgba(15, 23, 42, .25), rgba(15, 23, 42, 0)) right center / 12px 100% no-repeat scroll;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ───────── TV mode looks (components/TvStage.jsx): light colour sets and card styles, only inside TV mode ───────── */
+/* light sets: the dark TV design re-coloured — light page, white cards, dark ink; coloured chips keep white text */
+[data-tv-light] { background: rgb(var(--tvl-bg)) !important; }
+[data-tv-light] .lp-tv-bg { background: linear-gradient(160deg, rgb(var(--tvl-a)) 0%, rgb(var(--tvl-bg)) 100%) !important; border-color: rgb(var(--tvl-line)) !important; }
+[data-tv-light] .text-white:not([class*="bg-emerald"]):not([class*="bg-red-6"]):not([class*="bg-sky-5"]):not([class*="bg-sky-6"]):not([class*="bg-dixon"]):not([class*="bg-blue-7"]):not([class*="bg-blue-8"]),
+[data-tv-light] .text-white\/90, [data-tv-light] .text-white\/95, [data-tv-light] .text-slate-100 { color: rgb(var(--tvl-ink)) !important; }
+[data-tv-light] .text-sky-100, [data-tv-light] .text-sky-200, [data-tv-light] .text-sky-200\/80, [data-tv-light] .text-slate-200, [data-tv-light] .text-slate-300 { color: rgb(var(--tvl-ink2)) !important; }
+[data-tv-light] .text-sky-300 { color: rgb(var(--tvl-acc)) !important; }
+[data-tv-light] .bg-white\/\[\.07\], [data-tv-light] .bg-white\/\[\.06\], [data-tv-light] .bg-white\/\[\.04\], [data-tv-light] .bg-white\/\[\.03\], [data-tv-light] .bg-white\/\[\.12\] { background-color: rgb(var(--tvl-card)) !important; }
+[data-tv-light] .bg-white\/10, [data-tv-light] .bg-white\/20 { background-color: rgb(var(--tvl-ink) / .07) !important; }
+[data-tv-light] .border-white\/10, [data-tv-light] .border-white\/25, [data-tv-light] .border-dixon-navy { border-color: rgb(var(--tvl-line)) !important; }
+[data-tv-light] .from-blue-800\/70 { background-image: linear-gradient(to bottom, rgb(var(--tvl-card)), rgb(var(--tvl-a))) !important; }
+[data-tv-light] .bg-sky-400\/15 { background-color: rgb(var(--tvl-acc) / .12) !important; }
+[data-tv-light] .ring-sky-300\/70 { --tw-ring-color: rgb(var(--tvl-acc) / .6) !important; }
+[data-tv-light] .bg-blue-950\/95 { background-color: rgb(var(--tvl-card) / .97) !important; }
+[data-tv-light] .text-red-300 { color: #B91C1C !important; }
+/* card styles (any colour set) */
+[data-tv-style="solid"] .bg-white\/\[\.07\] { background-color: rgb(var(--blue-900)) !important; border-color: rgb(255 255 255 / .16) !important; }
+[data-tv-light][data-tv-style="solid"] .bg-white\/\[\.07\] { background-color: rgb(var(--tvl-card)) !important; border-color: rgb(var(--tvl-line)) !important; box-shadow: 0 1px 2px rgb(15 27 45 / .08); }
+[data-tv-style="outline"] .bg-white\/\[\.07\] { background-color: transparent !important; border-width: 2px !important; border-color: rgb(255 255 255 / .35) !important; }
+[data-tv-light][data-tv-style="outline"] .bg-white\/\[\.07\] { border-color: rgb(var(--tvl-ink) / .28) !important; }
+[data-tv-style="raised"] .bg-white\/\[\.07\] { border-color: transparent !important; box-shadow: 0 10px 24px rgb(0 0 0 / .35), inset 0 1px 0 rgb(255 255 255 / .08); }
+[data-tv-light][data-tv-style="raised"] .bg-white\/\[\.07\] { box-shadow: 0 8px 20px rgb(15 27 45 / .12); }
+[data-tv-style="sharp"] .rounded-xl, [data-tv-style="sharp"] .rounded-2xl, [data-tv-style="sharp"] .rounded-lg { border-radius: 4px !important; }
+[data-tv-light] .text-red-400 { color: #B91C1C !important; }
+[data-tv-light] .text-emerald-400, [data-tv-light] .text-emerald-300 { color: #047857 !important; }
+/* light sets: the all-lines strip of the TV wall, status pills, small grey labels */
+[data-tv-light] .bg-dixon-navy { background-color: rgb(var(--tvl-card)) !important; border-color: rgb(var(--tvl-line)) !important; box-shadow: 0 1px 3px rgb(15 27 45 / .08) !important; }
+[data-tv-light] .text-slate-400 { color: rgb(var(--tvl-ink2)) !important; }
+[data-tv-light] .text-red-200 { color: #B91C1C !important; }
+[data-tv-light] .bg-white\/\[\.03\] { background-color: rgb(var(--tvl-bg)) !important; }
+[data-tv-light] .border-white\/25 { border-color: rgb(var(--tvl-ink) / .25) !important; }
+[data-tv-light] .ring-sky-300\/50 { --tw-ring-color: rgb(var(--tvl-acc) / .5) !important; }
+[data-tv-light] .bg-dixon-navy.text-white { color: rgb(var(--tvl-ink)) !important; }
+[data-tv-light] { --tv-pct: #0F172A; }
+:root { --tv-ok: #22C55E; --tv-bad: #F87171; }
+[data-tv-light] { --tv-ok: #15803D; --tv-bad: #B91C1C; }
+
+/* Loss entry hour form: one line per entry (pages/LossEntryPage.jsx) */
+@media (min-width: 640px) {
+  .le-row-time { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) 96px minmax(0, 0.9fr) 40px !important; }
+  .le-row-q { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1.3fr) 88px minmax(0, 0.8fr) 40px !important; }
+}
+
+/* ── Dixon OEE Dashboard – UI Design Standard (Setup → Theme → "Dixon OEE standard") ──
+   Six text levels only: H1 22px (page title, A/P/Q name and %) · H2 19px (section headings) · H3 15px (card titles, table
+   headings, A/P/Q rows) · H4 14px (top bar, filters, sidebar, table values) · H5 13px (badges, legends, axis) · H6 12px
+   (subtitles, keys). Bigger hero numbers (40 px and up, the gauge) keep their size. */
+.lp-std {
+  --t-10: 12px; --t-11: 12px; --t-12: 12px; --t-13: 13px; --t-14: 14px; --t-15: 15px; --t-16: 15px; --t-17: 15px;
+  --t-18: 19px; --t-20: 19px; --t-22: 22px; --t-24: 22px; --t-26: 22px; --t-28: 22px; --t-30: 22px; --t-34: 22px;
+}
+.lp-std body { color: #222222; }
+.lp-std h1 { color: #1F3864; }
+.lp-std h2, .lp-std h3 { color: #1F3864; }
+/* a heading on a dark band (navy / blue header, white text) keeps the band's white text — the navy above made it invisible */
+.lp-std :is(.text-white, .bg-dixon-navy, .bg-blue-700, .bg-blue-800, .bg-blue-900, .bg-slate-800, .bg-slate-900) :is(h1, h2, h3, h4):not([class*="text-slate"]):not([class*="text-dixon"]):not([class*="text-blue"]),
+.lp-std :is(h1, h2, h3, h4).text-white { color: inherit; }
+.lp-std .text-slate-900, .lp-std .text-slate-950, .lp-std .text-dixon-ink { color: #222222; }
+.lp-std .text-slate-600, .lp-std .text-slate-700 { color: #555555; }
+.lp-std .text-slate-500, .lp-std .text-slate-400 { color: #777777; }
+.lp-std .border-slate-200, .lp-std .border-slate-100, .lp-std .divide-slate-200 > * + *, .lp-std .divide-slate-100 > * + * { border-color: #D4D4D4; }
+.lp-std .border-slate-300 { border-color: #BDD7EE; }
+.lp-std thead tr { background: #DDEBF7; }
+.lp-std thead th { color: #1F3864; }
+.lp-std tbody tr:hover { background: #EBF3FA; }
+.lp-std .bg-slate-100 { background-color: #F3F3F3; }
+.lp-std .text-emerald-700, .lp-std .text-emerald-800 { color: #006100; }
+.lp-std .text-amber-700, .lp-std .text-amber-800 { color: #9C5700; }
+.lp-std .text-red-700, .lp-std .text-red-800 { color: #C00000; }
+.lp-std .bg-emerald-50 { background-color: #C6EFCE; }
+.lp-std .bg-amber-50 { background-color: #FFEB9C; }
+.lp-std .bg-red-50 { background-color: #FFC7CE; }
+.lp-std .border-blue-600 { border-color: #2E75B6; }
+.lp-std [aria-pressed="true"].bg-blue-600, .lp-std [aria-pressed="true"].bg-blue-700, .lp-std [aria-pressed="true"].bg-dixon-navy,
+.lp-std [aria-selected="true"].bg-blue-600 { background: linear-gradient(#2C70AE, #205280); color: #fff; }
+
+/* ── Dixon MES look, measured from the Production Management System (192.168.3.87:3002, C8 overall dashboard, 18-11-2026) ──
+   Setup → Theme → "Dixon MES" or "Dixon OEE standard". Its sizes: tick 11 · label 12 · body 13 · sub 14 · title 15 · KPI 20 ·
+   hero 30 px, Poppins; Office colours (navy #1F3864, accent #2E75B6, head fill #DDEBF7, frame #BFBFBF, hair #D4D4D4);
+   square 2–3 px corners; a dense page: 4 px around and between the blocks; tables 3 × 6 px cells. */
+html.lp-mes {
+  --t-10: 11px; --t-11: 12px; --t-12: 13px; --t-13: 14px; --t-14: 15px; --t-15: 15px; --t-16: 16px; --t-17: 17px;
+  --t-18: 18px; --t-20: 22px; --t-22: 24px; --t-24: 24px; --t-26: 26px; --t-28: 30px; --t-30: 32px; --t-34: 36px;
+  --mes-navy: #1F3864; --mes-steel: #1F4E79; --mes-accent: #2E75B6; --mes-head: #DDEBF7; --mes-tint: #EAF2FB; --mes-line: #BDD7EE;
+  --mes-page: #E9EFF6; --mes-strip: #F3F3F3; --mes-frame: #BFBFBF; --mes-hair: #D4D4D4; --mes-ink: #222; --mes-soft: #555; --mes-muted: #777;
+}
+.lp-mes body { color: var(--mes-ink); background: var(--mes-page); }
+.lp-mes h1, .lp-mes h2, .lp-mes h3, .lp-mes .lp-brand { font-stretch: 100%; letter-spacing: 0; }
+/* ── top of the page, 19-11-2026, as the C8 MES: navy bar (title 20 px + its path) | light filter strip | status bar ── */
+.lp-mes .lp-top { background: transparent; border: 0; box-shadow: 0 1px 3px rgba(15, 29, 36, .18); backdrop-filter: none; }
+.lp-mes .lp-top-row { min-height: 60px; background: linear-gradient(180deg, #213E6E 0%, var(--mes-navy) 100%); border-bottom: 2px solid var(--mes-accent); }
+.lp-mes .lp-top .lp-top-title { color: #fff; font-size: calc(20px * var(--fs, 1)); font-weight: 700; line-height: 1.15; letter-spacing: .005em; }
+.lp-mes .lp-top-path { margin-top: 2px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9DB7D5; white-space: nowrap; }
+.lp-mes .lp-top-path .lp-top-path-now { color: #DDEBF7; }
+.lp-mes .lp-top-box { min-height: 42px; align-self: center; border: 1px solid rgba(255, 255, 255, .22); border-radius: 3px; background: rgba(255, 255, 255, .06); padding-top: 3px; padding-bottom: 3px; }
+.lp-mes .lp-top .lp-top-logo { filter: brightness(0) invert(1); }   /* phones: the logo on the navy bar in white */
+.lp-mes .lp-top-strip { background: #fff; border-bottom: 1px solid var(--mes-frame); }
+.lp-mes .lp-top-strip .lp-segbtn.bg-blue-600, .lp-mes .lp-top-strip .lp-segbtn.bg-dixon-navy { background: #1F4E79; color: #fff; }
+.lp-mes .lp-top button.bg-white, .lp-mes .lp-top a.bg-white { border-radius: 3px; }
+/* the status bar at the bottom (PC): the page keeps 28 px free for it; the sidebar stops above it */
+body.lp-has-status .lp-main { padding-bottom: 40px; }
+@media (min-width: 768px) { body.lp-has-status .lp-side { height: calc(100vh - 28px); } }
+.lp-status-side { width: 208px; }
+@media (max-width: 1100px) { .lp-status-side { width: auto; } }
+
+/* ── sidebar of the C8 MES menu: white, logo + tagline, "Search pages", folder groups with a count and a chevron,
+   the pages of a group in a framed box on a tree line, the open page framed in navy; "Collapse menu" at the foot ── */
+.lp-mes .lp-side { background: #fff !important; color: #24313F; border-right: 1px solid var(--mes-frame); }
+.lp-mes .lp-side-logo { height: 68px; background: #fff; border-bottom: 1px solid var(--mes-frame); }
+.lp-mes .lp-side .lp-side-tag { color: #3B3B3B; font-size: 12px; letter-spacing: .01em; }
+.lp-mes .lp-side-search { border-bottom: 1px solid #E6E9EE; }
+.lp-mes .lp-side .lp-side-nav { scrollbar-width: thin; scrollbar-color: #CBD3DD transparent; }
+.lp-mes .lp-side-sec + .lp-side-sec { margin-top: 6px; }
+.lp-mes .lp-side .lp-side-group { display: flex; width: 100%; align-items: center; gap: 9px; padding: 6px 4px 6px 4px; color: #1D2B3A; font-size: 13px; font-weight: 700; text-transform: none; letter-spacing: 0; border-radius: 3px; }
+.lp-mes .lp-side .lp-side-group:hover { background: #F3F6FA; }
+.lp-mes .lp-side-folder { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: 3px; border: 1px solid #C9D1DB; background: #fff; color: #3B4A5C; }
+.lp-mes .lp-side-group.is-open .lp-side-folder { background: #1F3864; border-color: #1F3864; color: #fff; }
+.lp-mes .lp-side-count { min-width: 20px; height: 18px; padding: 0 5px; border-radius: 3px; background: #EEF1F5; border: 1px solid #DDE2E8; color: #3B4A5C; font-size: 11px; font-weight: 700; line-height: 16px; text-align: center; }
+.lp-mes .lp-side-box { position: relative; margin: 4px 0 2px; padding: 4px 6px 4px 16px; border: 1px solid #D4D9E0; border-radius: 3px; background: #FBFCFD; }
+.lp-mes .lp-side-box::before { content: ""; position: absolute; left: 13px; top: 8px; bottom: 18px; border-left: 1px solid #C3CBD5; }   /* the tree line */
+.lp-mes .lp-side .lp-side-item { height: 32px; margin: 1px 0; padding: 0 8px; gap: 9px; border: 1px solid transparent; border-radius: 3px; color: #2B3746; font-size: 13px; font-weight: 500; }
+.lp-mes .lp-side .lp-side-leaf { margin-left: 6px; width: calc(100% - 6px); }
+.lp-mes .lp-side .lp-side-leaf::before { content: ""; position: absolute; left: -10px; top: 50%; width: 9px; border-top: 1px solid #C3CBD5; }   /* the branch to the page */
+.lp-mes .lp-side .lp-side-item svg { color: #5B6B7E; }
+.lp-mes .lp-side .lp-side-item:hover { background: #EEF3F9; color: #0F1D2B; }
+.lp-mes .lp-side .lp-side-item[aria-current="page"] { background: #fff; border-color: #1F3864; color: #1F3864; font-weight: 700; box-shadow: 0 1px 2px rgba(15, 29, 36, .12); }
+.lp-mes .lp-side .lp-side-item[aria-current="page"] svg { color: #1F3864; }
+.lp-mes .lp-side .lp-side-foot { border-top: 1px solid var(--mes-frame); }
+.lp-mes .lp-side .lp-side-foot button { color: #3B4A5C; }
+.lp-mes .lp-side .lp-side-foot button:hover { background: #F3F5F8; color: #1D2B3A; }
+/* the page: 4 px around and between the blocks */
+.lp-mes .lp-main { padding: 4px; gap: 4px; background: var(--mes-page); }
+.lp-mes .lp-main :is(.gap-3, .gap-4, .gap-5) { gap: 6px; }
+.lp-mes .lp-main :is(.space-y-3, .space-y-4, .space-y-5) > :not([hidden]) ~ :not([hidden]) { margin-top: 6px; }
+/* filters: 28 px controls, 2 px corners, grey frame (std-filter of the MES) */
+.lp-mes .lp-seg { border-radius: 2px; border-color: var(--mes-frame); box-shadow: 0 1px 0 rgba(15, 29, 36, .04); }
+.lp-mes .lp-segbtn { height: 28px; padding: 0 10px; border-color: var(--mes-frame); font-size: 13px; }
+.lp-mes .lp-arrow { height: 28px; width: 28px; border-radius: 2px; border-color: var(--mes-frame); color: var(--mes-navy); }
+.lp-mes .lp-field { height: 28px; border-radius: 2px; border-color: var(--mes-frame); font-size: 13px; color: var(--mes-ink); }
+.lp-mes .lp-filterbar { border-radius: 0; border: 0; border-bottom: 1px solid var(--mes-line); padding: 6px 8px; background: linear-gradient(180deg, #fff 0%, var(--mes-tint) 100%); box-shadow: inset 0 1px #fff, 0 1px 2px rgba(31, 56, 100, .08); }
+/* a card = MES section: white sheet, grey frame, 2 px corners; head strip 40 px with the 3 px accent bar and a 15 px navy title */
+.lp-mes .lp-card { padding: 0; border-radius: 2px; border-color: var(--mes-frame); box-shadow: 0 1px 2px rgba(15, 29, 36, .06); }
+.lp-mes .lp-card-head { min-height: 40px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--mes-hair); }
+.lp-mes .lp-card-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; line-height: 1.25; color: var(--mes-navy); }
+.lp-mes .lp-card-title::before { content: ""; width: 3px; height: 16px; flex: none; border-radius: 1px; background: var(--mes-accent); }
+.lp-mes .lp-card-sub { font-size: 12px; color: var(--mes-muted); margin-top: 0; }
+.lp-mes .lp-card-body { padding: 8px 12px; }
+.lp-mes .lp-card-body > :first-child { margin-top: 0; }
+/* a KPI tile: 12 px caps label, 20 px value */
+.lp-mes .lp-stat { min-height: 0; padding: 8px 12px 6px; border-radius: 3px; border-color: var(--mes-hair); box-shadow: 0 1px 2px rgba(15, 29, 36, .07); }
+.lp-mes .lp-stat-bar { left: 0; right: auto; top: 0; bottom: 0; width: 4px; height: auto; border-radius: 0; }
+.lp-mes .lp-stat-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--mes-muted); }
+.lp-mes .lp-stat-val { font-size: 20px; margin-top: 2px; letter-spacing: 0; }
+.lp-mes .lp-stat-sub { font-size: 12px; color: var(--mes-soft); }
+/* the white blocks of every page: MES sheet padding (8 × 12 px) instead of 16–24 px */
+.lp-mes .lp-main .bg-white:is(.rounded-xl, .rounded-2xl, .rounded-lg):is(.p-4, .p-5, .p-6) { padding: 8px 12px; }
+.lp-mes .lp-main .bg-white:is(.rounded-xl, .rounded-2xl, .rounded-lg):is(.border, .border-2) { border-color: var(--mes-frame); box-shadow: 0 1px 2px rgba(15, 29, 36, .06); }
+/* tables: Excel-like — head fill, frame lines, 3 × 6 px cells, 13 px */
+.lp-mes .lp-main table { border-collapse: collapse; }
+.lp-mes .lp-main thead :is(th, td) { background-color: var(--mes-head); color: var(--mes-navy); font-weight: 700; border: 1px solid var(--mes-frame); padding: 3px 6px; }
+.lp-mes .lp-main tbody :is(th, td), .lp-mes .lp-main tfoot :is(th, td) { border: 1px solid var(--mes-hair); padding: 3px 6px; }
+.lp-mes .lp-main tfoot :is(th, td) { background-color: var(--mes-strip); font-weight: 700; border-color: var(--mes-frame); }
+
+/* ── the detail drawer of the Dixon MES (components/MesDrawer.jsx): same card, header, buttons and motion ── */
+.mes-drawer { position: fixed; display: flex; flex-direction: column; overflow: hidden; background: #fff; border-radius: 2px; font-family: var(--font-sans);
+  box-shadow: 0 24px 60px -12px rgba(11, 26, 46, .45), 0 8px 18px rgba(11, 26, 46, .16); inset: 0; width: 100vw; max-width: 100vw; height: 100%; }
+@media (min-width: 768px) {
+  .mes-drawer[data-method="right"] { inset: auto; top: 10px; right: 10px; bottom: 10px; height: auto; width: max(var(--mes-drawer-w, 75vw), 560px); max-width: calc(100vw - 20px); border: 1px solid color-mix(in srgb, #1F3864 18%, transparent); }
+  .mes-drawer[data-method="center"] { inset: auto; top: 50%; left: 50%; width: max(var(--mes-drawer-w, 40vw), 560px); max-width: calc(100vw - 40px); height: auto; max-height: min(88vh, 1000px); border: 1px solid color-mix(in srgb, #1F3864 18%, transparent); }
+  .mes-drawer[data-method="fullscreen"] { inset: 10px; width: auto; max-width: none; height: auto; border: 1px solid color-mix(in srgb, #1F3864 18%, transparent); }
+  /* 20-11-2026: a drawer of tables (fit) opens only as big as its tables: from 560 px up to the width given, and only as
+     tall as they are (a long list scrolls inside, up to the screen height) */
+  .mes-drawer[data-method="right"][data-fit] { width: fit-content; min-width: min(var(--mes-drawer-min, 560px), calc(100vw - 20px)); max-width: min(var(--mes-drawer-w, 75vw), calc(100vw - 20px)); }
+  .mes-drawer[data-method="right"][data-fit="all"] { bottom: auto; max-height: calc(100vh - 20px); }
+}
+.mes-drawer { --mes-from: translateX(calc(100% + 24px)); --mes-at: none; }
+@media (min-width: 768px) {
+  .mes-drawer[data-method="center"] { --mes-from: translate(-50%, -46%) scale(.96); --mes-at: translate(-50%, -50%); }
+  .mes-drawer[data-method="fullscreen"] { --mes-from: scale(.97); }
+}
+@keyframes mesDrawerIn { 0% { transform: var(--mes-from); opacity: 0; } 45% { opacity: 1; } 100% { transform: var(--mes-at); opacity: 1; } }
+@keyframes mesDrawerGone { from { transform: var(--mes-at); opacity: 1; } to { transform: var(--mes-from); opacity: 0; } }
+@keyframes mesDrawerFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mesDrawerFadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes mesContentIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.mes-drawer-in { animation: mesDrawerIn .46s cubic-bezier(.22, 1, .36, 1) both; }
+.mes-drawer-in .mes-drawer-body > *, .mes-drawer-in .mes-drawer-titles { animation: mesContentIn .38s cubic-bezier(.22, 1, .36, 1) .14s both; }
+.mes-drawer-closing { animation: mesDrawerGone .18s cubic-bezier(.4, 0, .9, .6) both !important; pointer-events: none; }
+.mes-drawer-overlay-in { animation: mesDrawerFade .3s ease-out both; }
+.mes-drawer-overlay-out { animation: mesDrawerFadeOut .18s ease-in both; pointer-events: none; }
+.mes-drawer-overlay[data-backdrop="blur"] { background: radial-gradient(120% 90% at 100% 50%, rgba(11, 31, 51, .42), rgba(11, 31, 51, .26)); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); cursor: default; }
+.mes-drawer-crumbs { display: flex; align-items: center; gap: 2px; min-width: 0; overflow: hidden; white-space: nowrap; font-size: 11.5px; line-height: 1.2; margin-bottom: 3px; }
+.mes-drawer-crumb { max-width: 220px; overflow: hidden; text-overflow: ellipsis; border-radius: 2px; padding: 1px 5px; opacity: .82; transition: background-color .15s ease, opacity .15s ease; }
+.mes-drawer-crumb:hover { opacity: 1; background: rgba(255, 255, 255, .16); text-decoration: underline; text-underline-offset: 2px; }
+.mes-drawer-crumb-sep { opacity: .55; flex-shrink: 0; }
+.mes-drawer-depth { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: 9px; font-size: 10.5px; font-weight: 700; background: rgba(255, 255, 255, .18); flex-shrink: 0; }
+.mes-drawer-head { position: relative; color: #fff; }
+.mes-drawer-head[data-style="navy"] { background-image: linear-gradient(115deg, #1F3864 0%, #1F4E79 58%, #2E75B6 100%); }
+.mes-drawer-head[data-style="navy"]::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(260px 120px at 92% -30%, rgba(255, 255, 255, .22), transparent 70%), radial-gradient(200px 90px at 8% 140%, rgba(255, 255, 255, .10), transparent 70%); }
+.mes-drawer-head[data-style="navy"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, #5BC0F8, #8FE3C8 45%, rgba(255, 255, 255, 0)); }
+.mes-drawer-sub { opacity: .8; }
+.mes-drawer-icon { background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .24); }
+.mes-drawer-sep { background: rgba(255, 255, 255, .25); }
+.mes-drawer-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; min-width: 32px; border-radius: 2px; color: #fff; background: rgba(255, 255, 255, .10); border: 1px solid rgba(255, 255, 255, .22); transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .15s ease; }
+.mes-drawer-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .22); border-color: rgba(255, 255, 255, .42); }
+.mes-drawer-btn:active:not(:disabled) { transform: scale(.96); }
+.mes-drawer-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+.mes-drawer-close:hover { background: rgba(220, 60, 60, .9) !important; border-color: rgba(255, 255, 255, .5) !important; color: #fff !important; }
+.mes-drawer-body { scrollbar-width: thin; scrollbar-color: #BFD3E6 transparent; }
+.mes-drawer-body::-webkit-scrollbar { width: 10px; height: 10px; }
+.mes-drawer-body::-webkit-scrollbar-thumb { background: #BFD3E6; border: 2px solid #F3F6FA; border-radius: 6px; }
+.mes-drawer-scrolled { box-shadow: 0 6px 14px -6px rgba(11, 26, 46, .35); }
+.mes-drawer-foot { background: linear-gradient(180deg, #fff, color-mix(in srgb, #EAF2FB 60%, white)); box-shadow: 0 -6px 14px -10px rgba(11, 26, 46, .35); }
+/* the MES "light" drawer header (white → tint, 3 px accent line, navy text): the hour form of Loss / Quality entry */
+.mes-drawer-light > :first-child { background: linear-gradient(180deg, #fff, color-mix(in srgb, #EAF2FB 70%, white)); border-bottom: 3px solid #2E75B6; }
+.mes-drawer-light > :first-child h2 { color: #1F3864; }
+.mes-drawer-light { overflow: hidden; }
+.mes-drawer-light > .overflow-y-auto, .mes-drawer-light > .min-h-0 { scrollbar-width: thin; scrollbar-color: #BFD3E6 transparent; }
+/* the drawer's own tables: MES cells (head fill, frame lines, 3 × 6 px) */
+.mes-drawer-body table { border-collapse: collapse; }
+.mes-drawer-body thead :is(th, td) { background-color: #DDEBF7; color: #1F3864; font-weight: 700; border: 1px solid #BFBFBF; padding: 3px 6px; }
+.mes-drawer-body tbody :is(th, td) { border: 1px solid #D4D4D4; padding: 3px 6px; }
+@media (prefers-reduced-motion: reduce) { .mes-drawer-in, .mes-drawer-overlay-in, .mes-drawer-in .mes-drawer-body > *, .mes-drawer-in .mes-drawer-titles, .mes-drawer-closing { animation: none !important; } }
+@media (max-width: 640px) { .lp-mes .lp-top .lp-top-title { font-size: calc(16px * var(--fs, 1)); } .lp-mes .lp-top-row { min-height: 52px; } }
+/* ── OLE calendar as the C8 MES (19-11-2026): the month fits the screen (PC), solid day colours, a week column ── */
+@media (min-width: 1280px) and (min-height: 640px) {
+  .lp-cal[style] .lp-cal-card, .lp-cal[style] .lp-cal-side { height: 100%; }
+  .lp-cal-side > section:last-child { overflow-y: auto; }
+}
+.lp-cal-day { container-type: size; }
+.lp-cal-big { font-size: clamp(16px, min(33cqh, 22cqw), 36px); line-height: 1.05; }   /* 19-11-2026: % bigger in the same box */
+@container (max-height: 100px) { .lp-cal-pcs { display: none; } }
+@container (max-height: 62px) { .lp-cal-sub { display: none; } }
+.lp-cal-short { display: none; }
+@container (max-width: 190px) { .lp-cal-long { display: none; } .lp-cal-short { display: inline; letter-spacing: -0.02em; } }
+.lp-cal-sub, .lp-cal-pcs { font-size: 11px; max-width: 100%; }
+.lp-cal-sub { font-size: clamp(11px, min(10cqw, 18cqh), 17px); letter-spacing: -0.015em; font-weight: 700; margin-top: 2px; }   /* A · P · Q readable */
+.lp-cal-wk { font-size: clamp(14px, 1.6vh + 4px, 20px); }
+@media (max-width: 767px) { .lp-cal-sub, .lp-cal-pcs, .lp-cal-day .lp-caps, .lp-cal-week .text-\[11px\]:last-child { display: none; } .lp-cal-big { font-size: 11px; letter-spacing: -0.04em; } .lp-cal-day { padding: 2px 2px; min-height: 46px; } .lp-cal-day > span.m-auto { font-size: 0; } .lp-cal-grid { grid-template-columns: repeat(7, minmax(0, 1fr)) 48px !important; gap: 3px; padding: 4px; } .lp-cal-wk { font-size: 11px; } .lp-cal-week { min-height: 46px; } }
+.lp-cal-hatch { background: repeating-linear-gradient(135deg, #F3F6FA 0 6px, #E6ECF3 6px 7px); }
+
+/* ── 19-11-2026: as the C8 MES — bigger type, numbers in the same font, stronger colours, darker greys ── */
+.lp-mes .font-mono { font-family: var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.lp-mes .text-emerald-700, .lp-mes .text-emerald-800 { color: #138A36; }
+.lp-mes .text-red-700, .lp-mes .text-red-800 { color: #C00000; }
+.lp-mes .text-amber-700, .lp-mes .text-amber-800 { color: #B86E00; }
+.lp-mes .text-slate-500 { color: #5A6472; }
+.lp-mes .text-slate-600 { color: #444C57; }
+.lp-mes .text-slate-700 { color: #2F3640; }
+.lp-mes .lp-top .lp-top-title { font-size: calc(22px * var(--fs, 1)); }
+.lp-mes .lp-top-box b { font-size: 15px; }
+.lp-mes .lp-user b { font-size: 14px; }
+.lp-mes .lp-top-strip .lp-segbtn, .lp-mes .lp-top-strip .lp-seg > button { font-size: 14px; }
+.lp-mes .lp-pbar .h-8, .lp-mes .lp-top-strip .h-8 { height: 32px; }
+.lp-mes .lp-side .lp-side-group { font-size: 14.5px; }
+.lp-mes .lp-side-folder { width: 32px; height: 32px; }
+.lp-mes .lp-side .lp-side-item { height: 35px; font-size: 14px; }
+.lp-mes .lp-side .lp-side-item svg { width: 17px; height: 17px; }
+.lp-mes .lp-side-search input { font-size: 14px; }
+.lp-mes .lp-side .lp-side-tag { font-size: 13px; }
+.lp-status { font-size: 13px; }
+.lp-mes .lp-top-strip :is(button, select, input).h-8 { height: 32px; font-size: 14px; }
+
+/* 19-11-2026: a factor box of a line tile — its name and % size to the box, never cut ("Performa…") */
+.lp-fac { container-type: inline-size; }
+.lp-fac-name { font-size: clamp(12px, 7.6cqw, 16px); }
+.lp-fac-val { font-size: clamp(15px, 10.6cqw, 22px); }
+
+/* 19-11-2026: thinner menu (184 px) — names wrap to a 2nd line instead of being cut, tighter padding, logo fits */
+.lp-mes .lp-side .lp-side-nav { padding-left: 6px; padding-right: 6px; }
+.lp-mes .lp-side .lp-side-item { height: auto; min-height: 34px; padding: 4px 6px; gap: 7px; font-size: 13.5px; line-height: 1.15; }
+.lp-mes .lp-side .lp-side-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+.lp-mes .lp-side .lp-side-item .truncate, .lp-mes .lp-side .lp-side-group .truncate { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.lp-mes .lp-side .lp-side-group { font-size: 14px; gap: 7px; }
+.lp-mes .lp-side .lp-side-leaf { margin-left: 4px; width: calc(100% - 4px); }
+.lp-mes .lp-side-logo svg, .lp-mes .lp-side-logo img { max-width: 100%; height: auto; max-height: 26px; }
+.lp-mes .lp-side-logo { padding-left: 10px; padding-right: 10px; }
+.lp-mes .lp-side-search { padding-left: 6px; padding-right: 6px; }
+
+/* 19-11-2026: the tree goes to the part of the page (MES): the open page's parts one level deeper */
+.lp-anchor { scroll-margin-top: 10px; }
+.lp-mes .lp-side .lp-side-subs { position: relative; margin: 1px 0 4px 22px; padding-left: 8px; border-left: 1px solid #C3CBD5; }
+.lp-mes .lp-side .lp-side-sub { position: relative; display: block; width: 100%; text-align: left; padding: 4px 6px; border-radius: 3px; font-size: 13px; color: #3B4756; }
+.lp-mes .lp-side .lp-side-sub::before { content: ""; position: absolute; left: -8px; top: 50%; width: 6px; border-top: 1px solid #C3CBD5; }
+.lp-mes .lp-side .lp-side-sub:hover { background: #EEF3F9; color: #0F1D2B; }
+
+/* 19-11-2026: Hourly analysis — the matrix fills the screen, rows share the height (--hm-row from the page) */
+.lp-hm .lp-hm-cell { height: calc(var(--hm-row, 40px) - 1px); }
+.lp-hm thead th { height: var(--hm-row, 40px); }
+.lp-hm tbody th, .lp-hm tbody td { line-height: 1.15; }
+.lp-hm tbody th .text-fs-13, .lp-hm tbody th .text-fs-12, .lp-hm .lp-hm-cell span { line-height: 1.1; }
+.lp-hm tbody td.p-0 { padding: 0 !important; }
+.lp-hm tbody th, .lp-hm tbody td:not(.p-0) { padding-top: 0 !important; padding-bottom: 0 !important; }
+/* folder names whole words (never "Performan-ce"); a little smaller to fit the thin menu */
+.lp-mes .lp-side .lp-side-group { font-size: 13px; letter-spacing: -0.01em; gap: 6px; }
+.lp-mes .lp-side .lp-side-group .truncate { overflow-wrap: normal; word-break: normal; }
+.lp-mes .lp-side .lp-side-count { padding-left: 5px; padding-right: 5px; }
+
+/* 19-11-2026: a line page's filters in the top bar — compact, as few rows as possible */
+#lp-header-slot select { width: auto; max-width: 150px; }
+#lp-header-slot input[type="date"] { width: 132px; }
+#lp-header-slot .ml-auto { margin-left: 0; }
+#lp-header-slot [role="group"][aria-label="Line page filters"] { row-gap: 6px; }
+
+/* 23-11-2026: Hourly matrix (hm2) — tiles with a small gap, sticky head / hour / totals, today and the running hour marked */
+.hm2-box { background: #fff; }
+.lp-hm thead th.hm2-h { height: 46px; background: #F8FAFC; color: #334155; border-bottom: 1px solid #E2E8F0; padding: 2px 4px; text-align: center; font-weight: 700; font-size: 13px; white-space: nowrap; }
+.lp-hm thead th.hm2-h:first-child { padding-left: 12px; }
+.lp-hm thead th.hm2-today { background: #1E3A8A; color: #fff; }
+.lp-hm tbody th.hm2-rowh { background: #fff; border-right: 1px solid #E2E8F0; padding: 0 8px 0 10px !important; text-align: left; font-weight: 600; white-space: nowrap; }
+.lp-hm tbody tr:hover th.hm2-rowh { background: #F1F5F9; }
+.lp-hm tbody th.hm2-lunch, .lp-hm tbody td.hm2-lunch { background: #F1F5F9; color: #334155; }
+.lp-hm td.hm2-td { padding: 0 !important; }
+.lp-hm .hm2-cell { display: flex; align-items: center; justify-content: center; width: calc(100% - 4px); height: calc(var(--hm-row, 40px) - 4px); margin: 2px; border-radius: 6px; border: 0; transition: transform .08s ease, box-shadow .08s ease; position: relative; }
+.lp-hm .hm2-cell-lunch { background: repeating-linear-gradient(135deg, #F1F5F9 0 6px, #E2E8F0 6px 12px); color: #475569; font-family: ui-monospace, monospace; font-size: 13px; }
+.lp-hm .hm2-click { cursor: pointer; }
+.lp-hm .hm2-click:hover { box-shadow: 0 0 0 2px #0F172A; z-index: 5; }
+.lp-hm .hm2-sel { box-shadow: 0 0 0 3px #0F172A, 0 0 0 5px #fff; z-index: 6; }
+.lp-hm .hm2-run { outline: 2px dashed rgba(255,255,255,.95); outline-offset: -5px; }
+.lp-hm .hm2-run::after { content: ''; position: absolute; top: 4px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.35); animation: hm2pulse 1.6s ease-in-out infinite; }
+@keyframes hm2pulse { 50% { opacity: .35; } }
+.lp-hm .hm2-below { outline: 1.5px dashed currentColor; outline-offset: -4px; opacity: .85; }
+.lp-hm tr.hm2-off .hm2-cell { opacity: .45; }
+.lp-hm td.hm2-avg { background: #F8FAFC; border-left: 2px solid #CBD5E1; text-align: center; padding: 0 4px !important; }
+.lp-hm .hm2-foot { background: #F8FAFC; border-top: 1px solid #E2E8F0; text-align: center; font-family: ui-monospace, monospace; font-size: 13px; font-weight: 700; padding: 0 4px; white-space: nowrap; }
+.lp-hm .hm2-foot-top { border-top: 2px solid #94A3B8; }
+.lp-hm th.hm2-foot-l { text-align: left; padding-left: 12px; font-family: inherit; color: #334155; background: #F1F5F9; border-right: 1px solid #E2E8F0; cursor: help; }
+.lp-hm td.hm2-foot-r { background: #EEF2F7; border-left: 2px solid #CBD5E1; }
+@media (prefers-reduced-motion: reduce) { .lp-hm .hm2-run::after { animation: none; } }
+/* 23-11-2026: OLE calendar — A · P · Q of a day as three small labelled boxes (the lowest darker) */
+
+/* 23-11-2026 Entry dashboard: a clickable status cell */
+.lp-ed-hit { transition: box-shadow .12s; }
+.lp-ed-hit:not(:disabled):hover, .lp-ed-hit:focus-visible { box-shadow: 0 0 0 2px #2563eb; outline: none; }
+
+.lp-cal-day .lp-cal-apq { display: flex; gap: 3px; width: 100%; max-width: 100%; justify-content: center; margin-top: 3px; font-size: inherit; letter-spacing: 0; }
+.lp-cal-k { flex: 1 1 0; min-width: 0; max-width: 64px; display: flex; flex-direction: column; align-items: center; border-radius: 4px; padding: 2px 2px 1px; background: rgba(255,255,255,.75); border: 1px solid rgba(15,23,42,.08); color: #334155; line-height: 1.05; }
+.lp-cal-k b { font-size: clamp(11px, min(11cqw, 15cqh), 16px); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lp-cal-k i { font-style: normal; font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #64748B; white-space: nowrap; }
+.lp-cal-k.is-low { background: #FEE2E2; border-color: #FCA5A5; color: #B42318; box-shadow: none; }
+.lp-cal-k.is-low i { color: #B42318; }
+.lp-cal-ks { display: none; }
+@container (max-width: 150px) { .lp-cal-kl { display: none; } .lp-cal-ks { display: inline; } .lp-cal-day .lp-cal-apq { gap: 2px; } }
+.lp-cal-day span.lp-cal-pcs { display: inline; font-size: 11px; }
+@container (max-width: 88px) { .lp-cal-day span.lp-cal-pcs { display: none; } }
+@media (max-width: 767px) { .lp-cal-day span.lp-cal-pcs { display: none; } }
+@media (max-width: 767px) { .lp-cal-day .lp-cal-apq { display: none; } }
+/* 23-11-2026 (2): Hourly matrix compact — lower head, 24 px total rows, so a whole shift fits without scrolling */
+.lp-hm thead th.hm2-h { height: 38px; padding: 1px 4px; }
+.lp-hm tfoot th, .lp-hm tfoot td { height: 24px; font-size: 12.5px; padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1.1; }
+/* 23-11-2026: a hidden chart tooltip left far right must not widen the page on a phone */
+.recharts-tooltip-wrapper[style*="visibility: hidden"] { display: none !important; }
+/* 23-11-2026: sidebar logo row as high as the title bar (60 px), the search box as high as the filter strip
+   under it (47 px, box centred like the filter buttons) — one straight line across the top of the screen */
+.lp-side-logo { height: 60px !important; min-height: 60px; padding-top: 0 !important; padding-bottom: 0 !important; }
+.lp-side-search { height: 47px; display: flex; align-items: center; padding-top: 0 !important; padding-bottom: 0 !important; border-bottom: 1px solid #BFBFBF; box-sizing: border-box; }
+.lp-side-search > * { width: 100%; height: 34px; box-sizing: border-box; padding-top: 0 !important; padding-bottom: 0 !important; }
+.lp-top-strip { min-height: 47px; }
+/* 23-11-2026: OLE panel — the gauge foot and the A / P / Q loss strips one height, one straight line */
+.lp-apq-foot { height: 46px; box-sizing: border-box; padding-top: 0; padding-bottom: 0; }
+/* 23-11-2026: Loss / quality entry rows — each field as wide as its content needs (model names ~22 chars, minutes 4
+   digits, a department one word), the reason takes the rest */
+@media (min-width: 640px) {
+  .le-row-time { grid-template-columns: minmax(150px, 210px) minmax(0, 1fr) 84px 130px 36px !important; }
+  .le-row-q { grid-template-columns: minmax(130px, 170px) minmax(150px, 210px) minmax(0, 1fr) 76px 120px 36px !important; }
+}
+/* the model-wise table of an hour: as wide as its columns, a little room between them */
+table[aria-label="Model-wise target vs actual"] th, table[aria-label="Model-wise target vs actual"] td { padding-left: 12px; padding-right: 12px; }
+table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label="Model-wise target vs actual"] td:first-child { padding-left: 0; }
+/* 23-11-2026: depth and motion — cards lift in 3D on hover, the OLE factor panels tilt a little, KPI numbers pop in,
+   the title bar has a slow light sweep. Never on the TV screens, never when the PC asks for less motion. */
+@keyframes lpPop { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes lpSheen { 0% { transform: translateX(-120%) skewX(-20deg); } 60%, 100% { transform: translateX(320%) skewX(-20deg); } }
+@media (prefers-reduced-motion: no-preference) {
+  /* 23-11-2026: cards only deepen their shadow on hover — no 3D tilt / will-change (it made the text blurry and moved forms while typing) */
+  .lp-main .rounded-xl.shadow-sm, .lp-main .rounded-xl.border.bg-white { transition: box-shadow .22s ease; }
+  .lp-main .rounded-xl.shadow-sm:hover { box-shadow: 0 14px 28px -14px rgba(15, 39, 84, .38), 0 2px 6px -2px rgba(15, 39, 84, .12); }
+  .lp-main .lp-fac { transition: transform .25s cubic-bezier(.2,.7,.2,1), box-shadow .25s ease; }
+  .lp-main .lp-fac:hover { transform: translateY(-2px); box-shadow: 0 12px 22px -14px rgba(15, 39, 84, .45); z-index: 1; position: relative; }
+  .lp-main .font-mono.font-extrabold.tabular-nums, .lp-main .lp-cal-big, .lp-main [data-testid^="qd-"] .font-mono { animation: lpPop .45s cubic-bezier(.2,.8,.2,1) both .08s; }
+  .lp-main .lp-cal-day:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 10px 18px -12px rgba(15, 39, 84, .5); transition: transform .2s ease, box-shadow .2s ease; }
+  .lp-top-row { position: relative; overflow: hidden; }
+  .lp-top-row::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 18%; pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.10), transparent); animation: lpSheen 9s ease-in-out infinite 2s; }
+  aside button[aria-current="page"], aside .lp-side-active { box-shadow: 0 6px 14px -8px rgba(15, 39, 84, .55), inset 0 -2px 0 rgba(15, 39, 84, .12); transform: translateZ(0); }
+}
+[data-tv-look] *, [data-tv-look] *::after { animation: none !important; }
+[data-tv-look] .rounded-xl:hover, [data-tv-look] .lp-fac:hover { transform: none !important; }
+/* 23-11-2026: the notification bell rings softly while something is unread; the welcome message slides in */
+@keyframes lpBell { 0%, 88%, 100% { transform: rotate(0); } 90% { transform: rotate(14deg); } 93% { transform: rotate(-12deg); } 96% { transform: rotate(8deg); } }
+@keyframes lpSlideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .lp-bell-ring { animation: lpBell 4s ease-in-out infinite; transform-origin: 50% 2px; }
+  .lp-welcome { animation: lpSlideIn .35s ease-out both; }
+}
+/* 23-11-2026: text that may need a second line instead of being cut with "…" */
+.lp-clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; overflow-wrap: break-word; }
+/* 23-11-2026: the 2xl (≥ 1536 px) grid classes used by the pages were missing from the stylesheet, so big screens kept the narrower layout */
+@media (min-width: 1536px) {
+  .\32xl\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .\32xl\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .\32xl\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .\32xl\:grid-cols-9 { grid-template-columns: repeat(9, minmax(0, 1fr)); }
+  .\32xl\:col-span-3 { grid-column: span 3 / span 3; }
+  .\32xl\:grid-cols-\[minmax\(0\2c 1fr\)_minmax\(0\2c 1\.2fr\)\] { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+}
+/* 23-11-2026: "Month:" / "Year:" words beside the selects only on very wide screens, so the filter strip stays on one line */
+.lp-pbar-lab { display: none; }
+@media (min-width: 1800px) { .lp-pbar-lab { display: inline; } }
+/* 23-11-2026: the "Up to date" words show on very wide screens; below that only the dot (its tooltip says it) — the page filters keep one line */
+@media (max-width: 1799px) { .lp-wide-text { display: none; } .lp-uptodate { padding-left: 8px; padding-right: 8px; } }
+/* 24-11-2026: the page-actions place beside Refresh takes no room when a page has none */
+#lp-header-actions:empty { display: none; }
+/* 24-11-2026: page names on one line in the menu (a long custom name ends with "…", its tooltip shows it whole) */
+.lp-mes .lp-side .lp-side-item { min-height: 32px; font-size: 13.5px; }
+.lp-mes .lp-side .lp-side-item .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+
+/* 24-11-2026: sidebar refresh — lighter sections (no boxes), small caps folder titles, a filled active page, pill counts */
+.lp-mes .lp-side { background: linear-gradient(180deg, #FFFFFF 0%, #F7F9FC 100%) !important; }
+.lp-mes .lp-side-search label { border-radius: 9px !important; border-color: #D5DCE6 !important; background: #F4F7FB !important; }
+.lp-mes .lp-side-search label:focus-within { background: #fff !important; }
+.lp-mes .lp-side .lp-side-nav { padding: 6px 8px 10px; }
+.lp-mes .lp-side-sec + .lp-side-sec { margin-top: 6px; padding-top: 6px; border-top: 1px solid #E9EDF3; }
+.lp-mes .lp-side .lp-side-group { padding: 5px 4px; gap: 8px; border-radius: 8px; font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #5B6B80; }
+.lp-mes .lp-side .lp-side-group:hover { background: #EEF2F8; color: #1F3864; }
+.lp-mes .lp-side-folder { width: 26px; height: 26px; border-radius: 8px; border: 0; background: #E8EEF7; color: #1F3864; }
+.lp-mes .lp-side-group.is-open .lp-side-folder { background: linear-gradient(135deg, #2E5597, #1F3864); color: #fff; box-shadow: 0 3px 8px -3px rgba(31, 56, 100, .6); }
+.lp-mes .lp-side-group.is-open { color: #1F3864; }
+.lp-mes .lp-side-count { min-width: 22px; height: 18px; border-radius: 999px; border: 0; background: #E8EEF7; color: #1F3864; font-size: 11px; line-height: 18px; letter-spacing: 0; }
+.lp-mes .lp-side-box { margin: 2px 0 2px 2px; padding: 2px 0 2px 14px; border: 0; border-radius: 0; background: transparent; }
+.lp-mes .lp-side-box::before { left: 15px; top: 4px; bottom: 14px; border-left: 1.5px solid #DCE3EC; }
+.lp-mes .lp-side .lp-side-leaf { margin-left: 6px; width: calc(100% - 6px); }
+.lp-mes .lp-side .lp-side-leaf::before { left: -5px; width: 5px; border-top: 1.5px solid #DCE3EC; }
+.lp-mes .lp-side .lp-side-item { min-height: 33px; margin: 1px 0; padding: 4px 9px; gap: 9px; border: 0; border-radius: 8px; color: #334155; font-size: 13.5px; font-weight: 500; transition: background .15s, color .15s; }
+.lp-mes .lp-side .lp-side-item svg { color: #64748B; }
+.lp-mes .lp-side .lp-side-item:hover { background: #EEF3FB; color: #1F3864; }
+.lp-mes .lp-side .lp-side-item:hover svg { color: #2E5597; }
+.lp-mes .lp-side .lp-side-item[aria-current="page"] { background: linear-gradient(90deg, #1F3864, #2E5597); color: #fff; font-weight: 700; border: 0; box-shadow: 0 6px 14px -8px rgba(31, 56, 100, .8); }
+.lp-mes .lp-side .lp-side-item[aria-current="page"] svg { color: #fff; }
+.lp-mes .lp-side .lp-side-subs { margin: 1px 0 4px 24px; border-left: 1.5px solid #DCE3EC; }
+.lp-mes .lp-side .lp-side-sub { border-radius: 6px; font-size: 12.5px; color: #475569; }
+.lp-mes .lp-side .lp-side-sub:hover { background: #EEF3FB; color: #1F3864; }
+.lp-mes .lp-side .lp-side-foot button { font-size: 12.5px; }
+
+/* 24-11-2026: Loss entry head — hour + numbers | model table (full width) | copy */
+.lp-le-head { display: grid; grid-template-columns: minmax(250px, auto) minmax(0, 1fr) auto; gap: 8px 18px; align-items: start; }
+@media (max-width: 900px) { .lp-le-head { grid-template-columns: minmax(0, 1fr); } }
+.lp-le-models th, .lp-le-models td { padding: 3px 10px; }
+.lp-le-models tbody tr:nth-child(even) { background: #F8FAFC; }
+
+/* ═══ 24-11-2026: one standard look for every page (not the TV / live cards): fonts, table heads, titles, buttons ═══ */
+/* numbers: the theme's font everywhere (Setup → Theme), also where a page wrote a mono font of its own */
+.lp-mes main [style*="monospace"]:not(svg *):not(.lp-tv-bg *) { font-family: var(--font-sans) !important; font-variant-numeric: tabular-nums; }
+.lp-mes main :is(input, select, textarea, button) { font-family: inherit; }
+/* table heads: light blue band, navy bold 13 px (navy-band heads too) */
+.lp-mes main th:not(.lp-tv-bg *) { font-size: calc(13px * var(--fs, 1)); font-weight: 700; letter-spacing: 0; }
+.lp-mes main :is(thead.bg-dixon-navy, thead.bg-slate-50, thead.bg-white, tr.bg-slate-50, tr.bg-white) th:not(.lp-tv-bg *),
+.lp-mes main thead.bg-dixon-navy { background: #DDEBF7 !important; color: #1F3864 !important; }
+/* section titles: navy, bold, one size; card titles (h3) in capitals as the MES, sub titles (h4) as written */
+.lp-mes main h3:not(.lp-tv-bg *):not(.text-white):not(.text-white *):not([class*="text-white"]) { font-size: calc(15.5px * var(--fs, 1)); font-weight: 700; color: #1F3864; text-transform: uppercase; letter-spacing: .02em; }
+.lp-mes main h4:not(.lp-tv-bg *):not(.text-white):not(.text-white *) { font-size: calc(15px * var(--fs, 1)); font-weight: 700; color: #1F3864; }
+.lp-mes main h2:not(.lp-tv-bg *):not(.text-white):not(.text-white *):not([role="dialog"] *) { color: #1F3864; font-weight: 800; }
+/* primary buttons: one navy (was blue-600 / 700 / 800, #294C89, #162948 …) */
+.lp-mes main button:is(.bg-blue-600, .bg-blue-700, .bg-blue-800, .bg-slate-800, .bg-slate-900, .bg-dixon-navy):not(.lp-tv-bg *):not(:disabled),
+.lp-mes [role="dialog"] button:is(.bg-blue-600, .bg-blue-700, .bg-blue-800, .bg-slate-800, .bg-dixon-navy):not(:disabled) { background: #1F3864 !important; color: #fff !important; border-color: #1F3864 !important; }
+.lp-mes main button:is(.bg-blue-600, .bg-blue-700, .bg-blue-800, .bg-slate-800, .bg-slate-900, .bg-dixon-navy):not(.lp-tv-bg *):not(:disabled):hover,
+.lp-mes [role="dialog"] button:is(.bg-blue-600, .bg-blue-700, .bg-blue-800, .bg-slate-800, .bg-dixon-navy):not(:disabled):hover { background: #2E5597 !important; }
+/* the smallest text: never under 11 px (was 9 / 10 px in places) */
+.lp-mes main :is(.text-\[9px\], .text-\[10px\], .text-\[10\.5px\], .text-fs-9):not(.lp-tv-bg *):not(svg *) { font-size: calc(11px * var(--fs, 1)) !important; }
+/* cards: one corner and border */
+.lp-mes main section:is(.rounded-xl, .rounded-2xl, .rounded-lg):not(.lp-tv-bg) { border-color: #D9DEE6; }
+
+/* 24-11-2026: Hourly matrix in soft tints — a coloured edge on the left, dark numbers; hover / selected rings keep the edge */
+.lp-hm .hm2-cell { box-shadow: inset 3px 0 0 var(--edge, transparent); }
+.lp-hm .hm2-click:hover { box-shadow: inset 3px 0 0 var(--edge, transparent), 0 0 0 2px #1F3864; }
+.lp-hm .hm2-sel { box-shadow: inset 3px 0 0 var(--edge, transparent), 0 0 0 3px #1F3864, 0 0 0 5px #fff; }
+.lp-hm .hm2-run { outline: 2px dashed currentColor; outline-offset: -5px; }
+.lp-hm .hm2-run::after { background: var(--edge, #1F3864); box-shadow: 0 0 0 2px rgba(255,255,255,.9); }
+
+/* 24-11-2026 (2): sidebar — full names (wrap, no "…"), flatter tree for more room, quiet scrollbar, active page with a gold edge */
+.lp-mes .lp-side .lp-side-item > span.truncate { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.22; overflow-wrap: anywhere; }
+.lp-mes .lp-side .lp-side-item { min-height: 32px; padding: 5px 9px; align-items: center; }
+.lp-mes .lp-side .lp-side-item svg { flex-shrink: 0; width: 16px; height: 16px; }
+.lp-mes .lp-side-box { padding-left: 8px; margin-left: 4px; }
+.lp-mes .lp-side-box::before { left: 13px; top: 2px; bottom: 10px; border-left: 1px solid #E2E8F0; }
+.lp-mes .lp-side .lp-side-leaf { margin-left: 4px; width: calc(100% - 4px); }
+.lp-mes .lp-side .lp-side-leaf::before { display: none; }
+.lp-mes .lp-side .lp-side-group { padding: 6px 6px; font-size: 11px; letter-spacing: .08em; }
+.lp-mes .lp-side-folder { width: 24px; height: 24px; border-radius: 7px; }
+.lp-mes .lp-side-folder svg { width: 14px; height: 14px; }
+.lp-mes .lp-side .lp-side-item[aria-current="page"] { background: #1F3864; box-shadow: inset 3px 0 0 #F2B705, 0 6px 14px -9px rgba(31, 56, 100, .9); }
+.lp-mes .lp-side .lp-side-item:not([aria-current="page"]):hover { background: #EEF3FB; box-shadow: inset 3px 0 0 #9DB5DA; }
+.lp-mes .lp-side .lp-side-nav { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
+.lp-mes .lp-side .lp-side-nav::-webkit-scrollbar { width: 6px; }
+.lp-mes .lp-side .lp-side-nav::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 6px; }
+.lp-mes .lp-side .lp-side-nav::-webkit-scrollbar-track { background: transparent; }
+.lp-mes .lp-side .lp-side-foot { border-top: 1px solid #E9EDF3; }
+
+/* 24-11-2026 (3): hourly matrix — a straight coloured edge (the 6 px corner made it look like a bracket) */
+.lp-hm .hm2-cell { border-radius: 3px; }
+
+/* 25-11-2026: Loss / Quality entry — the day so far as tiles: a small label on top, the number big */
+.lp-mes .lp-le-day > span { display: inline-flex; flex-direction: column; justify-content: center; min-width: 108px; padding: 6px 12px; border: 1px solid #E2E8F0; border-radius: 10px; background: #F8FAFC; color: #475569; font-size: 12px; font-weight: 700; line-height: 1.2; text-transform: none; }
+.lp-mes .lp-le-day > span > b { margin-top: 2px; color: #0F172A; font-size: 22px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.lp-mes .lp-le-day > span > b.text-red-700 { color: #B91C1C; }
+.lp-mes .lp-le-day > span.lp-le-warn { border-color: #FCD34D; background: #FEF3C7; color: #92400E; }
+.lp-mes .lp-le-day > span.lp-le-warn > b { color: #92400E; }
+.lp-mes .lp-le-day > span.bg-emerald-50 { border-color: #A7F3D0; background: #ECFDF5; color: #065F46; font-size: 13px; }
+.lp-mes .lp-le-day > span.bg-amber-100 { border-color: #FCD34D; background: #FEF3C7; color: #92400E; }
+
+/* 25-11-2026: TV "Today" number — plain size first (old TV browsers), the width-fitted size where container units work */
+.lp-tv-today { font-size: calc(var(--tvn, 68px) * var(--fs, 1)); }
+@supports (width: 1cqw) { .lp-tv-today { font-size: min(calc(var(--tvn, 68px) * var(--fs, 1)), var(--tvw, 100vw)); } }
+
+/* 25-11-2026 (2): Loss entry — the day tiles share one row; quick reasons as small pills (more of the form on screen) */
+.lp-mes .lp-le-day > span { flex: 1 1 0; min-width: 92px; }
+.lp-mes .lp-le-day > span.bg-emerald-50, .lp-mes .lp-le-day > span.bg-amber-100:not(.lp-le-warn) { flex: 0 0 auto; }
+.lp-mes .lp-le-quick > button { padding: 3px 10px; border-radius: 999px; font-size: 13px; line-height: 1.35; }
+.lp-mes .lp-le-day > span { flex: 1 1 auto; }
+.lp-mes .lp-le-day > span > b { white-space: nowrap; font-size: 20px; }
+
+/* 25-11-2026 (3): a calm entry screen — the day so far as one slim row (label and number side by side) */
+.lp-mes .lp-le-day > span { flex: 0 1 auto; flex-direction: row; align-items: baseline; gap: 6px; min-width: 0; padding: 3px 10px; border-radius: 8px; font-size: 12px; }
+.lp-mes .lp-le-day > span > b { margin-top: 0; font-size: 15px; }
+.lp-mes .lp-le-models th, .lp-mes .lp-le-models td { padding: 2px 8px; }
+.lp-mes .lp-le-day { gap: 5px !important; }
+.lp-mes .lp-le-day > span { padding: 2px 8px; gap: 5px; font-size: 11.5px; }
+.lp-mes .lp-le-day > span > b { font-size: 14px; }
+.lp-mes .lp-le-day { gap: 4px !important; }
+.lp-mes .lp-le-day > span { padding: 2px 7px; gap: 4px; }
+
+/* 25-11-2026 (4): model table on one line per model (no "38m / 6s" on two lines) */
+.lp-mes .lp-le-models th, .lp-mes .lp-le-models td { white-space: nowrap; }
+.lp-mes .lp-le-models td:first-child { white-space: normal; overflow-wrap: anywhere; min-width: 120px; }
+
+/* 25-11-2026: rework grid — the model's pieces of the hour shown faint in an empty box */
+.lp-rg-box::placeholder { font-weight: 400; color: #CBD5E1; }
+
+/* 25-11-2026 (5): compact hour head — a long model name stays on one line (… and the full name on hover), small rows */
+.lp-mes .lp-le-models td:first-child { white-space: nowrap; overflow-wrap: normal; max-width: 230px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.lp-mes .lp-le-models th, .lp-mes .lp-le-models td { padding: 1px 7px; line-height: 1.35; }
+.lp-le-head { gap: 4px 14px; }
+
+/* 25-11-2026: slim, modern sidebar (180 px) — small rows, a gradient pill with a glowing dot on the open page, thin scrollbar */
+.lp-mes .lp-side { border-right: 0 !important; box-shadow: 1px 0 0 #E2E8F0, 8px 0 22px -16px rgba(15, 39, 84, .35); }
+.lp-mes .lp-side .lp-side-nav { padding: 4px 6px 8px; scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
+.lp-mes .lp-side .lp-side-nav::-webkit-scrollbar { width: 5px; }
+.lp-mes .lp-side .lp-side-nav::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
+.lp-mes .lp-side .lp-side-nav::-webkit-scrollbar-track { background: transparent; }
+.lp-mes .lp-side .lp-side-item { min-height: 28px; margin: 1px 0; padding: 3px 8px; gap: 8px; border-radius: 7px; font-size: 12.5px; letter-spacing: .005em; transition: background .15s, color .15s, transform .15s; }
+.lp-mes .lp-side .lp-side-item:hover { transform: translateX(2px); }
+.lp-mes .lp-side .lp-side-item[aria-current="page"] { padding-right: 18px; background: linear-gradient(100deg, #1F3864 0%, #2E5597 70%, #3B6CB8 100%); box-shadow: 0 4px 12px -6px rgba(31, 56, 100, .9), inset 0 1px 0 rgba(255, 255, 255, .16); }
+.lp-mes .lp-side .lp-side-item[aria-current="page"]:hover { transform: none; }
+.lp-mes .lp-side .lp-side-item[aria-current="page"]::after { content: ''; position: absolute; right: 7px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: #FBBF24; box-shadow: 0 0 0 3px rgba(251, 191, 36, .28); }
+.lp-mes .lp-side .lp-side-group { padding: 4px 3px; gap: 6px; border-radius: 7px; font-size: 10.5px; letter-spacing: .08em; }
+.lp-mes .lp-side-folder { width: 22px; height: 22px; border-radius: 7px; }
+.lp-mes .lp-side-count { min-width: 18px; height: 16px; font-size: 10px; line-height: 16px; }
+.lp-mes .lp-side-sec + .lp-side-sec { margin-top: 4px; padding-top: 4px; }
+.lp-mes .lp-side-box { padding-left: 11px; }
+.lp-mes .lp-side-box::before { left: 12px; border-left-width: 1px; }
+.lp-mes .lp-side .lp-side-leaf::before { border-top-width: 1px; }
+.lp-mes .lp-side .lp-side-subs { margin-left: 20px; border-left-width: 1px; }
+.lp-mes .lp-side .lp-side-sub { font-size: 11.5px; }
+.lp-mes .lp-side-search label { border-radius: 8px !important; }
+.lp-mes .lp-side .lp-side-foot button { font-size: 12px; padding-top: 7px; padding-bottom: 7px; }
+.lp-mes .lp-side .lp-side-item > span { white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal !important; word-break: normal !important; }
+
+/* 25-11-2026: 3 columns on a wide screen (Rework dashboard cards) */
+@media (min-width: 1536px) { .\32xl\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

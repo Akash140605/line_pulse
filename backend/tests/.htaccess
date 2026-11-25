@@ -1,0 +1,2 @@
+# Test scripts run only on this PC (php tests\x.php or http://localhost/...), never from other computers.
+Require local

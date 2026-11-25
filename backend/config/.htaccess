@@ -1,0 +1,2 @@
+# Code used by the API only: never opened directly from a browser (PHP still loads it from disk).
+Require all denied

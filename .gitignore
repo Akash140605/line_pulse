@@ -1,0 +1,20 @@
+# Line Pulse — never in git: credentials, logins, keys, live data, builds
+backend/config/db.php
+backend/data/
+**/scanner.ini
+**/users.json
+**/auth_secret.key
+*.key
+*.pem
+*.pfx
+.env
+.env.*
+**/security*.json
+*.lock
+*.log
+node_modules/
+frontend/dist/
+frontend/dist0/
+_to_delete/
+*.zip
+*.xlsx

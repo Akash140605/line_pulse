@@ -25,7 +25,7 @@ if ($hour === null || $hour < 0 || $hour > 23) {
 }
 
 cache_or_capture(20);
-$pdo = get_db();
+$pdo = snap_query_timeout(get_db(), 25);   // 25-11-2026: a hung query gives up after 25 s (it held a server thread 120 s)
 $range = with_scan_ids($pdo, $range);
 $cte = build_scan_diff_cte($range);
 

@@ -16,7 +16,7 @@ json_headers();
 $range = get_range_params();
 $minQty = get_min_qty_param();
 respond_cached(function () use ($range, $minQty) {
-    $pdo = get_db();
+    $pdo = snap_query_timeout(get_db(), 25);   // 25-11-2026: a hung query gives up after 25 s (it held a server thread 120 s)
     $range = with_scan_ids($pdo, $range);
     $rows = fetch_cube($pdo, $range);
     $hourly = attach_idle_hourly(build_hourly_payload($rows, $range['startDate'], $minQty), distribute_idle(fetch_idle_intervals($pdo, $range)));

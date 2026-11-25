@@ -2,6 +2,17 @@
 /** Rejected (false) scans for one day. Table auto-detected (needs FalseBarcode + ErrorMessage columns), fallback FALSE_SCAN_TABLE. */
 function detect_false_table(PDO $pdo): ?string
 {
+    // 25-11-2026: the INFORMATION_SCHEMA search ran on every day_overview call and hung for 120 s at night; the table of a
+    // line does not change, so its name is kept a day per line (database name + line) in the temp folder
+    $key = sys_get_temp_dir() . '/ems_false_table_' . md5((defined('DB_NAME') ? DB_NAME : '') . '|' . (string)($_GET['line'] ?? '')) . '.txt';
+    if (is_file($key) && time() - filemtime($key) < 86400) { $v = (string)@file_get_contents($key); return $v === '-' ? null : $v; }
+    $found = detect_false_table_now($pdo);
+    @file_put_contents($key, $found ?? '-', LOCK_EX);
+    return $found;
+}
+
+function detect_false_table_now(PDO $pdo): ?string
+{
     $t = $pdo->query("
         SELECT TOP 1 TABLE_SCHEMA + '.' + TABLE_NAME FROM INFORMATION_SCHEMA.COLUMNS
         WHERE COLUMN_NAME IN ('FalseBarcode', 'ErrorMessage')

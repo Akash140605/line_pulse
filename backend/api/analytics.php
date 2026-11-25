@@ -15,7 +15,7 @@ json_headers();
 $range = get_range_params();
 $minQty = get_min_qty_param();
 respond_cached(function () use ($range, $minQty) {
-    $pdo = get_db();
+    $pdo = snap_query_timeout(get_db(), 25);   // 25-11-2026: a hung query gives up after 25 s (it held a server thread 120 s)
     $range = with_scan_ids($pdo, $range);
     $agg = aggregate_scans(fetch_scan_rows($pdo, $range));
     $payload = build_analytics_payload($agg, fetch_model_meta($pdo), fetch_rejection_range($pdo, $range), $range, $minQty);

@@ -148,6 +148,7 @@ function respond_cached(callable $build, int $ttl = 20): void
     }
     cache_skip_stale_backup();
     if ($b = cache_backup_hit(max(BACKUP_CACHE_TTL, cache_ttl($ttl)))) { cache_backup_serve($b); return; }
+    if (cache_wait_for_other($ttl)) return;   // 25-11-2026 single flight (see cache_wait_for_other)
     // The connection code (config/db.php) answers "Database connection failed (Line N)" with a 500 by itself and ends
     // the request, so the check in the catch below never saw it: at night (lines switched off) every poll of the line
     // pages failed. Here, at the end of such a request, the last good copy of the same request is sent instead —
@@ -216,6 +217,50 @@ function respond_cached(callable $build, int $ttl = 20): void
  * For scripts that print their own JSON and exit: serve a fresh copy and exit, or capture what the script prints
  * (only a 200 JSON response is stored). Call it after the request parameters are validated.
  */
+/**
+ * Single flight: the first request of an answer that is not in the cache takes the lock of that answer and reads the
+ * database; another request of the same answer in the same moment waits (at most EMS_FLIGHT_WAIT seconds) and is then
+ * answered from the cache the first one wrote (X-Cache: SHARED). If the first one fails, the waiting one reads the
+ * database itself. The lock is a file handle: PHP drops it when the request ends, even after an error.
+ * Returns true when the answer was sent.
+ */
+const EMS_FLIGHT_WAIT = 8;
+const EMS_STALE_MAX = 900;   // seconds: the oldest answer given while the database is slow
+function cache_wait_for_other(int $ttl): bool
+{
+    if (!empty($_GET['refresh'])) return false;
+    $lk = @fopen(cache_file() . '.lock', 'c');
+    if (!$lk) return false;
+    if (flock($lk, LOCK_EX | LOCK_NB)) { $GLOBALS['EMS_FLIGHT_LOCK'] = $lk; return false; }   // first: read the database
+    $t0 = microtime(true);
+    $got = false;
+    while (microtime(true) - $t0 < EMS_FLIGHT_WAIT) {
+        usleep(80000);
+        if (flock($lk, LOCK_EX | LOCK_NB)) { $got = true; break; }   // the first one has finished
+    }
+    clearstatcache();
+    if ($got && ($f = cache_hit($ttl))) {
+        flock($lk, LOCK_UN); fclose($lk);
+        cache_headers('HIT');
+        header('X-Cache: SHARED', true);
+        header('X-Cache-Wait: ' . (int)round((microtime(true) - $t0) * 1000) . 'ms');
+        readfile($f);
+        return true;
+    }
+    if ($got) { $GLOBALS['EMS_FLIGHT_LOCK'] = $lk; return false; }   // the first one failed: this one reads the database (and holds the lock)
+    // the first one is still on a slow database: the last answer of this request (at most 15 min old) instead of one more
+    // query on a database that is already struggling (stale while revalidate); none → this one asks too
+    $f = cache_file();
+    if (is_file($f) && time() - filemtime($f) < EMS_STALE_MAX) {
+        cache_headers('HIT');
+        header('X-Cache: STALE', true);
+        header('X-Cache-Age: ' . (time() - filemtime($f)) . 's');
+        readfile($f);
+        return true;
+    }
+    return false;
+}
+
 function cache_or_capture(int $ttl, bool $snapshot = true): void
 {
     if (!defined('EMS_CAPTURE')) define('EMS_CAPTURE', true);
@@ -231,6 +276,9 @@ function cache_or_capture(int $ttl, bool $snapshot = true): void
     if ($snapshot) cache_skip_stale_backup();   // all-lines scripts decide per line (connect_line(…, allow))
     // all-lines screens ($snapshot false) keep a backup answer only for their own short TTL: the live lines stay live
     if ($b = cache_backup_hit($snapshot ? max(BACKUP_CACHE_TTL, cache_ttl($ttl)) : cache_ttl($ttl))) { cache_backup_serve($b); exit; }
+    // 25-11-2026 single flight (cache stampede guard): when the answer has just run out and several screens ask for it in
+    // the same moment (the TVs poll together), only the first one reads the database; the others wait for its answer
+    if (cache_wait_for_other($ttl)) exit;
     cache_headers('MISS');
     $file = cache_file();
     $snapKey = $snapshot ? snap_request_key() : null;   // all-lines scripts keep a snapshot per line row instead

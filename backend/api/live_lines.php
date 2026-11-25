@@ -43,7 +43,7 @@ $tDay = microtime(true);
 foreach ($focusReq ? [] : $LINES_ASKED as $id => $cfg) { // a requested day needs no lookup
     $tl = microtime(true);
     try {
-        $pdo = connect_line($id, !backup_stale_for((int)$id, $focusReq ?: ems_today()));   // a backup older than the day asked has nothing of it
+        $pdo = snap_query_timeout(connect_line($id, !backup_stale_for((int)$id, $focusReq ?: ems_today())), 15);   // 25-11-2026: gives up after 15 s → the line's last good row   // a backup older than the day asked has nothing of it
         $d = $legacy ? $pdo->query("SELECT CONVERT(char(10), MAX(s.ScanDate), 23) FROM dbo.ScanStatus s WHERE " . VALID)->fetchColumn()
                      : latest_scan_day($pdo);
         $maxDay[$id] = $d ?: '';
@@ -66,7 +66,7 @@ foreach ($LINES_ASKED as $id => $cfg) {
     $t0 = microtime(true);
     try {
         if (isset($downErr[$id])) throw new RuntimeException($downErr[$id]);
-        $pdo = connect_line($id, !backup_stale_for((int)$id, $focusReq ?: ems_today()));
+        $pdo = snap_query_timeout(connect_line($id, !backup_stale_for((int)$id, $focusReq ?: ems_today())), 15);   // 25-11-2026: gives up after 15 s → the line's last good row
         // line offline → answered from the local backup: show its last production day (unless a day was asked for)
         $row['backup'] = backup_row_info(backup_used(), $id);
         $day = $focus;

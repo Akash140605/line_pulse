@@ -134,6 +134,9 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
             <Tile testid="qd-rca" name="RCA pending" value={nf(t.rcaOpen)} sub={`of ${nf(t.rcaAll)} defect issues`} tone={t.rcaOpen ? 'text-amber-700' : 'text-emerald-700'} onClick={go('rca')} />
           </section>
 
+          {S && <StageFlow S={S} fpyT={fpyT} rtyT={rtyT} qs={qs} onPick={(idx, line = '') => setStage({ idx, line })} />}
+          {S && <FtyTable rows={S.rows} rtyT={rtyT} target={qs.rtyTarget} />}
+
           {/* 26-11-2026: as on OLE Quality — why parts are reworked (Pareto) and the share of every defect */}
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
             <section className={`${card} xl:col-span-2`} aria-label="Why parts are reworked">
@@ -142,12 +145,10 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
             </section>
             <section className={card} aria-label="Defects by reason">
               <Title right="share of every defect">Defects by reason</Title>
-              <Donut rows={Q.defects.map((d) => ({ label: d.name, value: d.bad }))} unit=" pcs" centre="defect pcs" empty="No defect in this period." />
+              <Donut top={5} rows={Q.defects.map((d) => ({ label: d.name, value: d.bad }))} unit=" pcs" centre="defect pcs" empty="No defect in this period." />
             </section>
           </div>
 
-          {S && <StageFlow S={S} fpyT={fpyT} rtyT={rtyT} qs={qs} onPick={(idx, line = '') => setStage({ idx, line })} />}
-          {S && <FtyTable rows={S.rows} rtyT={rtyT} target={qs.rtyTarget} />}
           {S && stage && <StageDrawer S={S} sheet={sheet || []} stations={stations} pick={stage} setPick={setStage} onClose={() => setStage(null)} fpyT={fpyT} group={group} period={periodText} ids={IDS.map(String)} />}
 
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">

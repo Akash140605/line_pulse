@@ -132,7 +132,7 @@ export default function ReworkDashboardPage() {
             </section>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          <div className={`grid grid-cols-1 gap-3 ${range.start !== range.end ? 'xl:grid-cols-2' : ''}`}>
             <section className={card} aria-label="By hour of the day">
               <Title right="pieces">Hour of the day</Title>
               <div className="h-[220px]">
@@ -147,6 +147,7 @@ export default function ReworkDashboardPage() {
                 </ResponsiveContainer>
               </div>
             </section>
+            {range.start !== range.end && (   // 26-11-2026: one day has no day by day
             <section className={card} aria-label="Day by day">
               <Title right="pieces · click a day to see only it">Day by day</Title>
               <div className="h-[220px]">
@@ -166,6 +167,7 @@ export default function ReworkDashboardPage() {
                 )}
               </div>
             </section>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">

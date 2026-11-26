@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Cell, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Cell, ReferenceLine, ComposedChart, Line } from 'recharts';
 import { FileSpreadsheet } from 'lucide-react';
 import HeaderBar, { segGroup, segBtn } from '../components/HeaderBar';
 import { PageLoader } from '../components/Loader';
@@ -155,7 +155,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                 </section>
                 <section className={card} aria-label="Share by department">
                   <Title right="who owns the lost time">Share by department</Title>
-                  <Donut rows={withDept(depts)} fmt={hrs} centre="idle time" empty="No idle time in this period." />
+                  <Donut top={6} rows={withDept(depts)} fmt={hrs} centre="idle time" empty="No idle time in this period." />
                   <DeptOwners depts={withDept(depts)} byDept={byDept} fmt={hrs} />
                   <NoDeptNote rows={depts} fmt={hrs} />
                 </section>
@@ -180,7 +180,71 @@ export default function FactorDashboardPage({ factor = 'A' }) {
             );
           })()}
 
+          {/* 26-11-2026: cycle time variation — model by model, hour by hour, day by day; and the reasons written as performance loss */}
+          {!isA && (() => {
+            const V = X.variation, hiV = Math.max(0.01, ...V.map((m) => Math.abs(m.var)));
+            const ctTip = (v, n) => [`${v}s`, n === 'act' ? 'Actual CT' : 'Std CT'];
+            const ctData = (list, key) => list.filter((d) => d.act != null).map((d) => ({ ...d, k: key(d), act: Math.round(d.act * 10) / 10, std: d.std == null ? null : Math.round(d.std * 10) / 10 }));
+            const hours = ctData(X.hourCT, (d) => `${p2(d.hour)}`), dayCt = ctData(X.days, (d) => d.date.slice(8, 10));
+            const ctChart = (data, label, onPick) => (
+              <div style={{ height: 250 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={data} margin={{ top: 18, right: 8, left: 0, bottom: 0 }} onClick={onPick ? (e) => { const d0 = e?.activePayload?.[0]?.payload; if (d0) onPick(d0); } : undefined} style={onPick ? { cursor: 'pointer' } : undefined}>
+                    <CartesianGrid stroke={GRID} vertical={false} />
+                    <XAxis dataKey="k" tick={tick()} interval={0} />
+                    <YAxis tick={tick()} width={40} unit="s" domain={[0, 'auto']} />
+                    <Tooltip formatter={ctTip} labelFormatter={(l, p) => (p?.[0]?.payload?.date ? dmy(p[0].payload.date) : `${l}:00`)} />
+                    <Bar dataKey="act" name="act" maxBarSize={30} radius={[3, 3, 0, 0]} isAnimationActive={false}>
+                      {data.map((d) => <Cell key={d.k} fill={d.std != null && d.act > d.std * 1.005 ? '#DC2626' : '#16A34A'} />)}
+                      <LabelList dataKey="act" position="top" style={{ fontSize: fs(10.5), fill: '#334155', fontWeight: 700 }} />
+                    </Bar>
+                    <Line dataKey="std" name="std" stroke={NAVY} strokeWidth={2} strokeDasharray="6 4" dot={false} isAnimationActive={false} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+                <p className="mt-1 text-fs-12 text-slate-600"><span className="font-bold text-red-700">Red</span> = slower than std · <span className="font-bold text-emerald-700">green</span> = at or faster · dashed line = std cycle{label ? ` · ${label}` : ''}</p>
+              </div>
+            );
+            return (
+              <>
+                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  <section className={card} aria-label="Cycle time variation by model">
+                    <Title right="actual cycle against std, slowest first · click a model for its hours">Cycle time variation · by model</Title>
+                    {!V.length ? <Empty text="No model with enough pieces and a std cycle." /> : (
+                      <div className="flex max-h-[300px] flex-col gap-1 overflow-y-auto pr-1" role="list" aria-label="Cycle time variation by model">
+                        {V.map((m) => (
+                          <div key={m.key} role="listitem" tabIndex={0} onClick={() => setMdl(m)} onKeyDown={(e) => { if (e.key === 'Enter') setMdl(m); }} title={`${m.model} on Line ${m.line}: ${sec(m.act)} against std ${sec(m.std)} · ${nf(m.qty)} pcs`}
+                            className="grid cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-fs-13 hover:bg-blue-50" style={{ gridTemplateColumns: 'minmax(0,1.2fr) minmax(0,1fr) 9.5rem' }}>
+                            <span className="break-words font-semibold leading-tight text-slate-800"><span className="font-mono">{m.model}</span> <span className="text-fs-12 text-slate-500">L{m.line}</span></span>
+                            <span className="relative h-3 rounded bg-slate-100"><span className="absolute top-0 h-full w-px bg-slate-400" style={{ left: '50%' }} />
+                              <span className="absolute top-0 h-full rounded" style={m.var > 0 ? { left: '50%', width: `${(m.var / hiV) * 50}%`, background: '#DC2626' } : { right: '50%', width: `${(-m.var / hiV) * 50}%`, background: '#16A34A' }} /></span>
+                            <span className={`text-right font-mono font-bold ${m.var > 0.005 ? 'text-red-700' : 'text-emerald-700'}`}>{m.var > 0 ? '+' : ''}{(m.var * 100).toFixed(1)}% <span className="text-fs-12 font-semibold text-slate-500">{sec(m.act)}/{sec(m.std)}</span></span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                  <section className={card} aria-label="Cycle time by hour of the day">
+                    <Title right="actual cycle vs std, every day of the period together">Cycle time · hour of the day</Title>
+                    {!hours.length ? <Empty text="No production in this period." /> : ctChart(hours, '')}
+                  </section>
+                </div>
+                {!oneDay && (
+                  <section className={card} aria-label="Cycle time day by day">
+                    <Title right="click a day to open it">Cycle time · day by day</Title>
+                    {!dayCt.length ? <Empty text="No production in this period." /> : ctChart(dayCt, '', (d0) => openDay(d0.date))}
+                  </section>
+                )}
+                <section className={card} aria-label="Performance loss reasons">
+                  <Title right="minutes written against a model (Loss entry)">Performance loss reasons</Title>
+                  {X.reasons.length ? <Pareto rows={X.reasons.map((r) => ({ label: r.name, value: r.min }))} fmt={(m) => dur(m)} time color="#C00000" />
+                    : <p className="text-fs-13 text-slate-600">No performance loss reason written in this period. A loss written on Loss entry counts in Availability (idle time) — see the Availability dashboard; set "loss with a model → Performance" in Setup → OLE formulas to see such reasons here. The speed loss of every model is above.</p>}
+                </section>
+              </>
+            );
+          })()}
+
           {/* line × day */}
+          {!oneDay && (
           <section className={card} aria-label={`${name} line by day`}>
             <Title right={`${name} % per line and day · green ≥ ${(ok * 100).toFixed(0)}%, amber ≥ ${(watch * 100).toFixed(0)}%`}>{name} · line × day</Title>
             {!X.days.length ? <Empty text="No production in this period." /> : (
@@ -207,10 +271,12 @@ export default function FactorDashboardPage({ factor = 'A' }) {
               </div>
             )}
           </section>
+          )}   {/* 26-11-2026: one day has no line × day */}
 
           {/* 26-11-2026: one under the other — the line table has many columns and must not be cut */}
           <div className="grid grid-cols-1 gap-3">
             {/* day by day */}
+            {!oneDay && (
             <section className={card} aria-label={`${name} day by day`}>
               <Title right={`${t.worstDay ? `lowest ${dmy(t.worstDay.date)} · ${pct(v(t.worstDay))} · ` : ''}click a day to open it`}>Day by day</Title>
               {!X.days.length ? <Empty text="No production in this period." /> : (
@@ -232,6 +298,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                 </div>
               )}
             </section>
+            )}
 
             {/* line by line */}
             <section className={card} aria-label={`${name} line by line`}>
@@ -286,7 +353,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
             <div className="grid grid-cols-1 gap-3">
               <section className={card} aria-label="Idle time by model">
                 <Title right="idle written against a model">Models</Title>
-                <Ranked label="Idle time by model" empty="No idle time written against a model." rows={X.models.map((m) => ({ key: m.name, label: <span><span className="mr-1 text-fs-11 font-bold uppercase text-slate-500">{co(m.name)}</span><span className="font-mono">{m.name}</span></span>, value: m.min, right: `${dur(m.min)} · ${m.n}×`, title: `${m.name}: mostly ${m.top}` }))} />
+                <Ranked label="Idle time by model" empty="No idle time written against a model." rows={X.models.map((m) => ({ key: m.name, label: <span><span className="mr-1 text-fs-11 font-bold uppercase text-slate-500">{co(m.name)}</span><span className="font-mono">{m.name}</span></span>, value: m.min, right: `${dur(m.min)} · ${m.n === 1 ? '1 time' : `${m.n} times`}`, title: `${m.name}: mostly ${m.top}` }))} />
               </section>
             </div>
           ) : (

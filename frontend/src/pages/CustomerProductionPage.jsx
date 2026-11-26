@@ -89,7 +89,7 @@ export default function CustomerProductionPage() {
             <Tile testid="cp-best" name="Best day" value={best && best.n ? nf(best.n) : '—'} sub={best && best.n ? dmy(best.d) : ''} />
           </div>
 
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
+          <div className={range.start !== range.end ? 'grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]' : 'grid gap-3'}>
             <section className={card} aria-label="Pieces by customer" title="Click a customer for its models and days">
               <Title right={IDS.length > 1 ? <span className="inline-flex flex-wrap items-center gap-2">{IDS.map((l, i) => <span key={l} className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: (LINE_COLOR[l] || NAVY) }} />L{l}</span>)}</span> : `${C.customers.length} customers`}>Pieces by customer</Title>
               {!top.length ? <p className="py-4 text-center text-fs-13 font-semibold text-slate-500">Nothing made in this period.</p> : (
@@ -108,6 +108,7 @@ export default function CustomerProductionPage() {
                 </div>
               )}
             </section>
+            {range.start !== range.end && (   // 26-11-2026: one day has no pieces-per-day chart
             <section className={card} aria-label="Pieces by day">
               <Title right={
                 <span className="inline-flex overflow-hidden rounded-md border border-slate-300" role="group" aria-label="Show">
@@ -156,6 +157,7 @@ export default function CustomerProductionPage() {
               </div>
               {idle.length > 0 && <p className="mt-1 text-fs-12 text-slate-500">No production on: {idle.map((d) => d.slice(8)).join(', ')}</p>}
             </section>
+            )}
           </div>
 
           {IDS.length > 1 && C.customers.length > 0 && (

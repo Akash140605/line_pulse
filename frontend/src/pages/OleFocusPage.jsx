@@ -82,15 +82,36 @@ export function Pareto({ rows, fmt = nf, unit = '', color = STEEL, empty, time =
   const total = rows.reduce((a, r) => a + r.value, 0);
   let cum = 0;
   const u = top.map((r) => { cum += r.value; return { ...r, cum: (cum / total) * 100 }; });
-  const W = 720, L = 48, Rr = 680, T = 18, B = 232;
+  const W = 720, L = 48, Rr = 680, T = 14, B = 176;   // 26-11-2026: lower — more on one screen
   const max = niceTop(Math.max(...u.map((r) => r.value)), time);
   const n = u.length, step = (Rr - L) / n, bw = Math.min(56, step * 0.62);
   // 26-11-2026: the whole name under its bar, word by word on as many lines as it needs (never cut with …)
   const per = Math.max(5, Math.floor(step / 7.2));   // letters that fit under one bar
   // a word is kept whole when it is only a little longer than the bar; only a very long word (a model code) is split
-  const wrap = (t) => { const out = []; let cur = ''; for (const w0 of String(t).split(/\s+/)) { for (let w = w0; w.length;) { const room = per - (cur ? cur.length + 1 : 0); if (w.length <= room) { cur = cur ? `${cur} ${w}` : w; w = ''; } else if (cur) { out.push(cur); cur = ''; } else if (w.length <= per + 4) { out.push(w); w = ''; } else { out.push(w.slice(0, per)); w = w.slice(per); } } } if (cur) out.push(cur); return out; };
+  const wrap = (t) => { const out = []; let cur = ''; for (const w0 of String(t).split(/\s+/)) { for (let w = w0; w.length;) { const room = per - (cur ? cur.length + 1 : 0); if (w.length <= room) { cur = cur ? `${cur} ${w}` : w; w = ''; } else if (cur) { out.push(cur); cur = ''; } else if (w.length <= per + 1) { out.push(w); w = ''; } else { out.push(w.slice(0, per)); w = w.slice(per); } } } if (cur) out.push(cur); return out; };
   const lab = u.map((r) => wrap(r.label));
   const H = B + 22 + 12 * Math.max(1, ...lab.map((l) => l.length));
+  const i80h = u.findIndex((r) => r.cum >= 80), vitalH = i80h >= 0 ? i80h + 1 : u.length;
+  // 26-11-2026: names that do not fit under a bar (long model codes) — the Pareto lies down: name · bar · value · cumulative %
+  if (u.some((r) => String(r.label).split(/\s+/).some((w) => w.length > per + 1)) || lab.some((l) => l.length > 3)) {
+    const hi = Math.max(...u.map((r) => r.value));
+    return (
+      <div>
+        <div className="mb-1 grid items-center gap-2 px-1 text-[11.5px] font-bold uppercase tracking-wide text-[#777]" style={{ gridTemplateColumns: 'minmax(0,1.1fr) minmax(0,1.6fr) 5.5rem 3.5rem' }}><span>Name</span><span>Time / pieces</span><span className="text-right">Value</span><span className="text-right">Cum. %</span></div>
+        <div className="flex flex-col gap-1" role="list" aria-label="Pareto list">
+          {u.map((r, i) => (
+            <div key={r.label} role="listitem" className="grid items-center gap-2 rounded px-1 py-0.5 text-[13px]" style={{ gridTemplateColumns: 'minmax(0,1.1fr) minmax(0,1.6fr) 5.5rem 3.5rem', ...(i === vitalH - 1 ? { borderBottom: '2px dashed #C00000', paddingBottom: 4 } : {}) }} title={`${r.label}: ${fmt(r.value)}${unit} · ${Math.round(r.cum)}% so far`}>
+              <span className="break-words font-semibold leading-tight text-[#222]">{r.label}</span>
+              <span className="h-3.5 overflow-hidden rounded-[2px] bg-[#EEF2F7]"><span className="block h-full rounded-[2px]" style={{ width: `${Math.max(2, (r.value / hi) * 100)}%`, background: i < vitalH ? color : '#9DB7D5' }} /></span>
+              <b className="text-right tabular-nums text-[#111]">{fmt(r.value)}{unit}</b>
+              <span className="text-right tabular-nums text-[#555]">{Math.round(r.cum)}%</span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-[13px] text-[#555]"><b className="text-[#1F3864]">{vitalH}</b> of {rows.filter((r) => r.value > 0).length} make <b className="text-[#1F3864]">{Math.round(u[Math.max(vitalH - 1, 0)].cum)}%</b> of the total{unit} <span className="text-[#C00000]">(red dashed line = 80%)</span></p>
+      </div>
+    );
+  }
   const axisFmt = time ? axisMin : (v) => nf(Math.round(v * 100) / 100);
   const x = (i) => L + step * (i + 0.5), y = (v) => B - (v / max) * (B - T), yc = (p) => B - (p / 100) * (B - T);
   const i80 = u.findIndex((r) => r.cum >= 80);
@@ -123,7 +144,8 @@ export function Pareto({ rows, fmt = nf, unit = '', color = STEEL, empty, time =
 }
 
 /** Donut of shares with its legend (value · %) */
-export function Donut({ rows, fmt = nf, unit = '', centre = 'Total', empty }) {
+export function Donut({ rows, fmt = nf, unit = '', centre = 'Total', empty, top = 0 }) {
+  const [all, setAll] = useState(false);   // 26-11-2026: `top` names in the legend, the rest on View all (the ring always shows every slice)
   const list = rows.filter((r) => r.value > 0);
   if (!list.length) return <Empty>{empty}</Empty>;
   const parts = list;   // 26-11-2026: every slice by its own name (no "Others")
@@ -138,20 +160,21 @@ export function Donut({ rows, fmt = nf, unit = '', centre = 'Total', empty }) {
   const seg = parts.map((r, i) => { const a = (r.value / total) * Math.PI * 2; const s = { ...r, from: a0, to: a0 + Math.max(a - 0.0001, 0.0001), color: r.label === 'Others' ? '#A5A5A5' : PALETTE[i % PALETTE.length], pct: (r.value / total) * 100 }; a0 += a; return s; });
   return (
     <div className="flex flex-wrap items-center gap-4">
-      <svg viewBox="0 0 160 160" className="h-[170px] w-[170px] shrink-0" role="img" aria-label="Share chart">
+      <svg viewBox="0 0 160 160" className="shrink-0" style={{ width: 140, height: 140 }} role="img" aria-label="Share chart">
         {seg.map((s) => <path key={s.label} d={arc(s.from, s.to)} fill={s.color} stroke="#fff" strokeWidth="1.5"><title>{`${s.label}: ${fmt(s.value)}${unit}`}</title></path>)}
         <text x={C} y={C - 2} textAnchor="middle" fontSize="17" fontWeight="700" fill={NAVY}>{fmt(total)}</text>
         <text x={C} y={C + 15} textAnchor="middle" fontSize="11" fill="#666">{centre}</text>
       </svg>
-      <ul className="min-w-[12rem] flex-1 space-y-1.5">
-        {seg.map((s) => (
-          <li key={s.label} className="flex items-center gap-2 text-[14px]">
+      <ul className="min-w-[12rem] flex-1 space-y-1">
+        {(top && !all ? seg.slice(0, top) : seg).map((s) => (
+          <li key={s.label} className="flex items-center gap-2 text-[13px]">
             <i className="h-3 w-3 shrink-0 rounded-[2px]" style={{ background: s.color }} />
             <span className="min-w-0 flex-1 break-words leading-tight text-[#333]" title={s.label}>{s.label}</span>
             <b className="tabular-nums text-[#111]">{fmt(s.value)}{unit}</b>
             <span className="w-12 text-right tabular-nums text-[#666]">{Math.round(s.pct)}%</span>
           </li>
         ))}
+        {top > 0 && seg.length > top && <li><button type="button" onClick={() => setAll((v) => !v)} className="mt-0.5 rounded-[3px] border border-[#BFBFBF] bg-white px-2 py-0.5 text-[12px] font-semibold text-[#1F3864] hover:bg-[#EAF2FB]">{all ? `Show top ${top}` : `View all ${seg.length}`}</button></li>}
       </ul>
     </div>
   );
@@ -189,7 +212,7 @@ export function DeptOwners({ depts, byDept = {}, fmt = nf }) {
               <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[#EEF2F7]"><span className="block h-full rounded-full" style={{ width: `${Math.max(4, (d.value / max) * 100)}%`, background: PALETTE[i % PALETTE.length] }} /></span>
               <b className="w-12 shrink-0 text-right tabular-nums text-[#C00000]">{fmt(d.value)}</b>
             </div>
-            <div className="break-words text-[11.5px] leading-snug text-[#555]" style={{ paddingLeft: 18 }}>{of(d).map((r, k) => <span key={r.label}>{k > 0 && ' · '}{r.label} <b className="text-[#222]">{fmt(r.value)}</b> <span className="text-[#777]">×{r.n}</span></span>)}</div>
+            <div className="break-words text-[11.5px] leading-snug text-[#555]" style={{ paddingLeft: 18 }}>{of(d).map((r, k) => <span key={r.label}>{k > 0 && ' · '}{r.label} <b className="text-[#222]">{fmt(r.value)}</b> <span className="text-[#777]">{r.n === 1 ? '1 time' : `${r.n} times`}</span></span>)}</div>
           </div>
         ))}
       </div>
@@ -382,7 +405,7 @@ export default function OleFocusPage({ factor = 'A' }) {
         </div>
         <div className="grid gap-3 xl:grid-cols-3">
           <Card title="Idle time reasons" sub="Pareto by time lost" className="xl:col-span-2"><Pareto rows={F.reasonsA} fmt={(v) => hrs(v)} time empty="No idle time in this period." color={RED} /></Card>
-          <Card title="Share by department" sub="who owns the lost time"><Donut rows={withDept(F.deptA)} fmt={(v) => hrs(v)} centre="idle time" empty="No idle time in this period." /><DeptOwners depts={withDept(F.deptA)} byDept={F.deptR} fmt={(v) => hrs(v)} /><NoDeptNote rows={F.deptA} fmt={(v) => hrs(v)} /></Card>
+          <Card title="Share by department" sub="who owns the lost time"><Donut top={6} rows={withDept(F.deptA)} fmt={(v) => hrs(v)} centre="idle time" empty="No idle time in this period." /><DeptOwners depts={withDept(F.deptA)} byDept={F.deptR} fmt={(v) => hrs(v)} /><NoDeptNote rows={F.deptA} fmt={(v) => hrs(v)} /></Card>
         </div>
         <div className="grid gap-3 xl:grid-cols-2">
           <Card title="When it happens" sub="idle time by hour of the day"><When hours={F.hoursA} fmt={(v) => `${Math.round(v)}`} unit=" min" empty="No idle time in this period." /></Card>
@@ -472,7 +495,7 @@ export default function OleFocusPage({ factor = 'A' }) {
         </div>
         <div className="grid gap-3 xl:grid-cols-3">
           <Card title="Why parts are reworked" sub="Pareto of the defects (rework)" className="xl:col-span-2"><Pareto rows={F.reasonsQ} unit=" pcs" color={RED} empty="No rework in this period." /></Card>
-          <Card title="Defects by reason" sub="share of every reason"><Donut rows={F.reasonsQ} unit=" pcs" centre="pcs reworked" empty="No rework in this period." /></Card>
+          <Card title="Defects by reason" sub="share of every reason"><Donut top={5} rows={F.reasonsQ} unit=" pcs" centre="pcs reworked" empty="No rework in this period." /></Card>
         </div>
         <div className="grid gap-3 xl:grid-cols-2">
           <Card title="When defects come" sub="pieces reworked by hour of the day"><When hours={F.hoursQ} unit=" pcs" empty="No rework in this period." /></Card>

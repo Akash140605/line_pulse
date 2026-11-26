@@ -67,3 +67,18 @@ describe('every date of a period', () => {
     expect(datesBetween('2026-11-05', '2026-11-04')).toEqual([]);
   });
 });
+
+describe('performance dashboard: cycle time variation', () => {
+  it('cycle time by hour of the day and by day; models by variation, slowest first', async () => {
+    const { perfDash } = await import('../src/utils/factorDash');
+    const P = perfDash(R, ['1', '2']);
+    const h9 = P.hourCT.find((h) => h.hour === 9);
+    // 9:00 → line 1 day 1: 90 pcs in 30 min, line 2: 180 in 60, line 1 day 2: 180 in 60 = 450 pcs in 150 min
+    expect(h9.qty).toBe(450);
+    expect(h9.act).toBeCloseTo((150 * 60) / 450, 6);
+    expect(h9.std).toBe(20);
+    expect(P.days[0].std).toBe(20);
+    expect(P.variation.map((m) => m.line)).toEqual(['2', '1']);
+    expect(P.reasons).toEqual([]);   // standard: loss is availability, no performance reason
+  });
+});

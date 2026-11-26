@@ -52,8 +52,9 @@ const modelsCell = (ms, unit = 'min', _max = 0, co = null) => {
   const name = (m) => <>{cOf(m) && <span className="mr-1 text-fs-11 font-bold uppercase text-[#777]">{cOf(m)}</span>}<span className="font-mono font-semibold">{m.name}</span></>;
   if (ms.length === 1) return <span className="whitespace-nowrap">{name(ms[0])}</span>;
   return (
-    <span className="flex flex-col gap-0.5 py-0.5">
-      {ms.map((m) => <span key={m.name} className="flex items-baseline justify-between gap-3 whitespace-nowrap"><span>{name(m)}</span><span className="text-fs-12 text-[#666]">{val(m)}</span></span>)}
+    // side by side as long as they fit, then the next line — every model, each with its pieces / time (short tables)
+    <span className="flex flex-wrap gap-x-4 gap-y-0.5 py-0.5">
+      {ms.map((m) => <span key={m.name} className="whitespace-nowrap">{name(m)} <span className="text-fs-12 font-semibold text-[#C00000]">{val(m)}</span></span>)}
     </span>
   );
 };
@@ -508,7 +509,10 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   const Q = useMemo(() => qualityOf(rows, D.ent.reasons.station || []), [rows, D.ent.reasons]);
   // 23-11-2026: no separate rejection — a defect is reworked or dismantled: the tables count rework (+ any old rejection)
   const QD = Q.rej + Q.rwk;
-  const defects = Q.defects.filter((x) => x.rej + x.rwk > 0).map((x) => ({ key: x.name, name: x.name, rej: x.rej + x.rwk, share: QD ? (x.rej + x.rwk) / QD : 0,
+  // 26-11-2026: the pieces dismantled for each defect (written on its rework rows)
+  const disOf = new Map();
+  for (const r of rows) { const e = r.e || normEntry(r.entry); for (const x of [...e.rejects, ...e.rework]) if (Number(x.dismantle) > 0) disOf.set(x.reason || 'Not given', (disOf.get(x.reason || 'Not given') || 0) + Number(x.dismantle)); }
+  const defects = Q.defects.filter((x) => x.rej + x.rwk > 0).map((x) => ({ key: x.name, name: x.name, rej: x.rej + x.rwk, dis: disOf.get(x.name) || 0, share: QD ? (x.rej + x.rwk) / QD : 0,
     models: (x.models || []).filter((m) => m.value > 0).map((m) => ({ name: m.name, value: m.value })).sort((a, b) => b.value - a.value) }));
   const lineRej = IDS.map((l) => ({ key: l, line: l, rej: (lineT[l]?.rejects || 0) + (lineT[l]?.rework || 0), qty: lineT[l]?.qty || 0 })).filter((x) => x.rej > 0).map((x) => ({ ...x, r: x.qty ? x.rej / x.qty : null })).sort((a, b) => b.rej - a.rej);
   const modelRej = Q.models.filter((m) => m.rej + m.rwk > 0).map((m) => ({ key: m.name, ...m, rej: m.rej + m.rwk, r: m.qty ? (m.rej + m.rwk) / m.qty : null })).sort((a, b) => b.rej - a.rej);
@@ -591,7 +595,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
       { k: 'target', label: 'Target Qty', right: true, render: (r) => (r.few ? fewNote(r.qty) : r.target == null ? '—' : nf(r.target)) },
       { k: 'qty', label: 'Actual Qty', right: true, render: (r) => nf(r.qty) },
       { k: 'ach', label: 'Achieved', right: true, render: (r) => (r.few || r.target == null ? '—' : achChip(r.ach)) }, { k: 'lost', label: 'Time Lost', right: true, render: (r) => (r.few ? '—' : lostCell(r.lostMin)) }],
-    defects: [{ k: 'name', label: 'Reason', wrap: true, render: (r) => <span className="lp-caps font-semibold">{r.name}</span> }, { k: 'models', label: 'Model', wrap: true, render: (r) => modelsCell(r.models, 'pcs', 1, co, true) }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'share', label: 'Share', right: true, render: (r) => `${Math.round(r.share * 1000) / 10}%` }],
+    defects: [{ k: 'name', label: 'Reason', wrap: true, render: (r) => <span className="lp-caps font-semibold">{r.name}</span> }, { k: 'models', label: 'Model', wrap: true, render: (r) => modelsCell(r.models, 'pcs', 1, co, true) }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'dis', label: 'Dismantle', right: true, render: (r) => (r.dis ? <b className="text-red-700">{nf(r.dis)}</b> : <span className="text-slate-400">0</span>) }, { k: 'share', label: 'Share', right: true, render: (r) => `${Math.round(r.share * 1000) / 10}%` }],
     lineRej: [{ k: 'line', label: 'Line', render: (r) => lineCell(r.line) }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'r', label: 'Rework %', right: true, render: (r) => <span className={`rounded px-1.5 py-0.5 font-bold ${rejChip(r.r)}`}>{pc(r.r, 2)}</span> }],
     modelRej: [{ k: 'company', label: 'Company', render: (r) => <CompanyCell name={co(r.name)} /> }, { k: 'name', label: 'Model', wrap: true, render: (r) => <span className="font-mono font-semibold">{r.name}</span> }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'r', label: 'Rework %', right: true, render: (r) => <span className={`rounded px-1.5 py-0.5 font-bold ${rejChip(r.r)}`}>{pc(r.r, 2)}</span> }],
     linePerf: [{ k: 'company', label: 'Company', render: (r) => <CompanyCell name={co(r.model)} /> }, { k: 'model', label: 'Model', render: (r) => <span className="font-mono font-semibold">{r.model}</span> }, { k: 'target', label: 'Target', right: true, render: (r) => (r.few ? '—' : r.target == null ? '—' : nf(r.target)) }, { k: 'qty', label: 'Produced', right: true, render: (r) => nf(r.qty) },
@@ -623,7 +627,12 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   const WIN = {
     down: ['Idle Time Reasons', downRows, wide(C.down, 'min')], perfLoss: ['Performance Loss Reasons', perfRows, wide(C.down, 'min')], lineLoss: ['Line-Wise Idle Time', lineLoss, C.lineLoss], perf: ['Cycle Time vs Standard', perf, C.perf],
     defects: ['Rework / Defect Reasons', defects, wide(C.defects, 'pcs')], lineRej: ['Line-Wise Rework', lineRej, C.lineRej], modelRej: ['Model-Wise Rework', modelRej, C.modelRej],
-  };
+  };  // 26-11-2026: a row of these tables opens its own entries (drill-down): a reason, a line or a model
+  const pickOf = (k, r) => (['lineRej', 'lineLoss'].includes(k) ? { f: 'line', v: String(r.line), label: `Line ${r.line}` }
+    : k === 'modelRej' ? { f: 'model', v: r.name, label: r.name } : { f: 'reason', v: r.name, label: r.name });
+  const drill = (k, back = null) => (k === 'perf' ? (r) => setWin({ kind: 'model', row: r, back }) : (r) => setWin({ kind: k, pick: pickOf(k, r), back }));
+  const pickRow = (k, r, pk) => (!pk ? true : pk.f === 'line' ? String(r.line) === pk.v : r.name === pk.v);
+
   // a factor: the OLE drill-down (A / P / Q → line → day → hour → model → reason) when this login has it, else its window
   const drillOk = !!onOpen && canOpen.includes('oledrill') && mode !== 'year';
   const openDrill = (k, line = null) => openOleDrill(onOpen, { f: k, line: line || (IDS.length === 1 ? IDS[0] : null), start: range.start, end: range.end });
@@ -720,19 +729,19 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
           <FactorBanner name="Availability" value={T.A} sub={`Idle Time ${hrs(T.lossMin)} Of ${hrs(T.plannedMin)} Planned`} />
           {/* 26-11-2026: each table the full width — no text cut, no sideways scroll */}
           <div className="grid gap-3">
-            <QTable title="Idle Time Reasons" rows={downRows} cols={C.down} empty="No idle time entered for this period." onAll={() => setWin({ kind: 'down' })} />
-            <QTable title="Line-Wise Idle Time" rows={lineLoss} cols={C.lineLoss} empty="No idle time entered for this period." onAll={() => setWin({ kind: 'lineLoss' })} />
+            <QTable title="Idle Time Reasons" rows={downRows} cols={C.down} empty="No idle time entered for this period." onAll={() => setWin({ kind: 'down' })} onRow={drill('down')} />
+            <QTable title="Line-Wise Idle Time" rows={lineLoss} cols={C.lineLoss} empty="No idle time entered for this period." onAll={() => setWin({ kind: 'lineLoss' })} onRow={drill('lineLoss')} />
           </div>
           <FactorBanner name="Performance" value={T.P} sub={`Performance Loss ${hrs(T.speedMin || 0)}${modelInP ? ` · Written ${hrs(T.perfLossMin || 0)}` : ''}`} />
           <div className="grid gap-3">
-            {modelInP && <QTable title="Performance Loss Reasons" rows={perfRows} cols={C.down} empty="No performance loss written for this period." onAll={() => setWin({ kind: 'perfLoss' })} />}
+            {modelInP && <QTable title="Performance Loss Reasons" rows={perfRows} cols={C.down} empty="No performance loss written for this period." onAll={() => setWin({ kind: 'perfLoss' })} onRow={drill('perfLoss')} />}
             <QTable title="Cycle Time vs Standard" rows={perf} cols={C.perf} empty="No model with a std cycle in this period." onAll={() => setWin({ kind: 'perf' })} onRow={(r) => setWin({ kind: 'model', row: r })} />
           </div>
           <FactorBanner name="Quality" value={T.Q} sub={`${nf((T.rejects || 0) + (T.rework || 0))} Reworked Of ${nf(T.qty)}`} />
-          <QTable title="Rework / Defect Reasons" rows={defects} cols={C.defects} empty="No rework entered for this period." onAll={() => setWin({ kind: 'defects' })} />
+          <QTable title="Rework / Defect Reasons" rows={defects} cols={C.defects} empty="No rework entered for this period." onAll={() => setWin({ kind: 'defects' })} onRow={drill('defects')} />
           <div className="grid gap-3 xl:grid-cols-2">
-            <QTable title="Line-Wise Rework" rows={lineRej} cols={C.lineRej} empty="No rework entered for this period." onAll={() => setWin({ kind: 'lineRej' })} />
-            <QTable title="Model-Wise Rework" rows={modelRej} cols={C.modelRej} empty="No rework entered for this period." onAll={() => setWin({ kind: 'modelRej' })} />
+            <QTable title="Line-Wise Rework" rows={lineRej} cols={C.lineRej} empty="No rework entered for this period." onAll={() => setWin({ kind: 'lineRej' })} onRow={drill('lineRej')} />
+            <QTable title="Model-Wise Rework" rows={modelRej} cols={C.modelRej} empty="No rework entered for this period." onAll={() => setWin({ kind: 'modelRej' })} onRow={drill('modelRej')} />
           </div>
 
           {win && win.kind === 'linePerf' && (() => {
@@ -788,15 +797,15 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
           })()}
           {/* a factor (19-11-2026): its tables in the side drawer; the full page only from the drawer's foot */}
           {win && win.kind === 'factor' && (() => {
-            const F = { A: ['Availability', T.A, [['down', 'Idle Time Reasons'], ['lineLoss', 'Line-Wise Idle Time']]], P: ['Performance', T.P, [...(modelInP ? [['perfLoss', 'Performance Loss Reasons']] : []), ['perf', 'Cycle Time vs Standard']]], Q: ['Quality', T.Q, [['defects', 'Rejection Reasons'], ['lineRej', 'Line-Wise Rejection'], ['modelRej', 'Model-Wise Rejection']]] }[win.f];
+            const F = { A: ['Availability', T.A, [['down', 'Idle Time Reasons'], ['lineLoss', 'Line-Wise Idle Time']]], P: ['Performance', T.P, [...(modelInP ? [['perfLoss', 'Performance Loss Reasons']] : []), ['perf', 'Cycle Time vs Standard']]], Q: ['Quality', T.Q, [['defects', 'Rework / Defect Reasons'], ['lineRej', 'Line-Wise Rework'], ['modelRej', 'Model-Wise Rework']]] }[win.f];
             return (
-              <MesDrawer title={`${F[0]} ${pc1(F[1])}`} sub={`${allView ? plantsText(IDS) : group} · ${periodText}`} icon={ListTree} onClose={() => setWin(null)} label={`${F[0]} details`} backdropLabel="Close details" width={70} fit
+              <MesDrawer title={`${F[0]} ${pc1(F[1])}`} sub={`${allView ? plantsText(IDS) : group} · ${periodText}`} icon={ListTree} onClose={() => setWin(null)} label={`${F[0]} details`} backdropLabel="Close details" width={92} fit
                 footer={focusOk(win.f) ? <button type="button" onClick={() => { setWin(null); openFocus(win.f); }} className="rounded-[2px] bg-[#2E75B6] px-3 py-1 text-mes-body font-semibold text-white hover:bg-[#1F4E79]">Open the {F[0]} page ›</button> : null}>
                 <div className="flex flex-col gap-3 p-2">
                   {F[2].map(([k, t]) => (
                     <section key={k} className="rounded-[2px] border border-[#BFBFBF] bg-white">
                       <h3 className="border-b border-[#BFBFBF] bg-[#F7F9FC] px-2.5 py-1.5 text-mes-body font-bold text-[#1F3864]">{t}</h3>
-                      {WIN[k][1].length ? <Grid rows={k === 'perf' ? WIN[k][1].map((r, i) => [r, i]).sort((a, b) => Number(a[0].line) - Number(b[0].line) || a[1] - b[1]).map(([r]) => r) : WIN[k][1]} cols={WIN[k][2]} label={t} onRow={k === 'perf' ? (r) => setWin({ kind: 'model', row: r, back: win }) : null} /> : <p className="p-3 text-fs-14 text-slate-600">Nothing entered for this period.</p>}
+                      {WIN[k][1].length ? <Grid rows={k === 'perf' ? WIN[k][1].map((r, i) => [r, i]).sort((a, b) => Number(a[0].line) - Number(b[0].line) || a[1] - b[1]).map(([r]) => r) : WIN[k][1]} cols={WIN[k][2]} label={t} onRow={drill(k, win)} rowTitle="Open its entries" /> : <p className="p-3 text-fs-14 text-slate-600">Nothing entered for this period.</p>}
                     </section>
                   ))}
                 </div>
@@ -804,13 +813,14 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
             );
           })()}
           {win && WIN[win.kind] && (
-            <Window title={WIN[win.kind][0]} sub={`${allView ? plantsText(IDS) : group} · ${periodText}`} onClose={() => setWin(null)} width={96}>
+            <Window title={`${WIN[win.kind][0]}${win.pick ? ` — ${win.pick.label}` : ''}`} sub={`${allView ? plantsText(IDS) : group} · ${periodText}${win.pick ? ' · its entries below' : ''}`} onClose={() => setWin(win.back || null)} width={96}>
               {/* a list of many lines: Line 1 first, then Line 2 … (its own order kept inside a line) */}
-              <Grid rows={win.kind === 'perf' ? WIN[win.kind][1].map((r, i) => [r, i]).sort((a, b) => Number(a[0].line) - Number(b[0].line) || a[1] - b[1]).map(([r]) => r) : WIN[win.kind][1]} cols={WIN[win.kind][2]} label={`${WIN[win.kind][0]} — all`} onRow={win.kind === 'perf' ? (r) => setWin({ kind: 'model', row: r, back: win }) : null} />
+              <Grid rows={win.kind === 'perf' ? WIN[win.kind][1].map((r, i) => [r, i]).sort((a, b) => Number(a[0].line) - Number(b[0].line) || a[1] - b[1]).map(([r]) => r) : WIN[win.kind][1].filter((r) => pickRow(win.kind, r, win.pick))} cols={WIN[win.kind][2]} label={`${WIN[win.kind][0]} — all`} onRow={drill(win.kind, win)} rowTitle="Open its entries" />
               {/* 26-11-2026: …and every entry behind it, as written (date, hour, line, model, all its details) */}
               {win.kind !== 'perf' && (() => {
                 const unit = ['defects', 'lineRej', 'modelRej'].includes(win.kind) ? 'qty' : 'min';
-                const E = entriesOf(R, IDS, unit, win.kind === 'perfLoss');
+                const pk = win.pick;
+                const E = entriesOf(R, IDS, unit, win.kind === 'perfLoss').filter((x) => !pk || (pk.f === 'line' ? x.line === pk.v : pk.f === 'model' ? x.model === pk.v : (x.reason || 'Not given') === pk.v));
                 const has = (k) => E.some((x) => x[k]);
                 const cols = [
                   { k: 'date', label: 'Date', render: (r) => <span className="whitespace-nowrap font-semibold">{dmy(r.date)}</span> },

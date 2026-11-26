@@ -5,7 +5,7 @@
  *   R   = oleRange(...) of the period · ids = the lines shown
  * → plain objects, no React (tests/factorDash.calc.test.js)
  */
-import { oleSum, normEntry, modelPerf, planTargetOf } from './ole';
+import { oleSum, normEntry, modelPerf, planTargetOf, oleConfig } from './ole';
 
 const ranT = (t) => !!t && ((t.plannedMin || 0) > 0 || (t.qty || 0) > 0);
 const top = (m) => [...m.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
@@ -78,6 +78,22 @@ export function perfDash(R, ids0) {
   const target = planTargetOf(T);
   const M = modelPerf(R, ids);
   const heat = new Map();   // line → hour → { qty, plan }
+  // 26-11-2026: cycle time by hour of the day (all days of the period) and the reasons written as performance loss
+  const ctH = new Map(), why = new Map();
+  for (const { l, r } of hourRows(R, ids)) {
+    if (r.qty > 0 && r.actualMin > 0) {
+      const o = ctH.get(r.hour) || { hour: r.hour, actSec: 0, qty: 0, stdSec: 0, cov: 0 };
+      o.actSec += r.actualMin * 60; o.qty += r.qty; o.stdSec += r.stdSec || 0; o.cov += (r.qty || 0) - (r.noStdQty || 0); ctH.set(r.hour, o);
+    }
+    const e = r.e || normEntry(r.entry);
+    for (const x of e.losses || []) {
+      const min = Number(x.min) || 0;
+      if (!min || !x.model || oleConfig().lossIn === 'avail') continue;   // written against a model = performance loss (admin's choice)
+      const k = x.reason || 'Not given';
+      const w = why.get(k) || { name: k, min: 0, n: 0, models: new Map(), lines: new Set() };
+      w.min += min; w.n += 1; w.lines.add(l); add(w.models, x.model, min); why.set(k, w);
+    }
+  }
   for (const { l, r } of hourRows(R, ids)) {
     if (!(r.qty > 0) && !(r.planQty > 0)) continue;
     const h = heat.get(l) || {}; const o = h[r.hour] || { qty: 0, plan: 0 };
@@ -86,7 +102,7 @@ export function perfDash(R, ids0) {
   const days = dayTotals(R, ids).map((d) => {
     const tg = planTargetOf(d.all);
     return { date: d.date, P: d.all.P, qty: d.all.qty, target: tg, ach: tg ? d.all.qty / tg : null, speed: d.all.speedMin || 0,
-      by: Object.fromEntries(ids.map((l) => [l, ranT(d.by[l]) ? d.by[l].P : null])) };
+      by: Object.fromEntries(ids.map((l) => [l, ranT(d.by[l]) ? d.by[l].P : null])), std: stdCt(d.all), act: actCt(d.all) };
   });
   const lines = ids.map((l) => {
     const t = oleSum((R?.days || []).map((d) => d.byLine[l]?.total));
@@ -103,6 +119,10 @@ export function perfDash(R, ids0) {
       slow: judged.filter((m) => m.var > 0.005).length, models: M.length, judged: judged.length, worstDay },
     days, lines, models: M,
     slow: judged.filter((m) => m.lostMin > 0).sort((a, b) => b.lostMin - a.lostMin),
+    // cycle time variation: every judged model, slowest (most + %) first
+    variation: judged.filter((m) => m.var != null).sort((a, b) => b.var - a.var),
+    hourCT: [...ctH.values()].sort((a, b) => a.hour - b.hour).map((o) => ({ hour: o.hour, act: o.qty ? o.actSec / o.qty : null, std: o.cov > 0 && o.stdSec > 0 ? o.stdSec / o.cov : null, qty: o.qty })),
+    reasons: [...why.values()].map((w) => ({ ...w, lines: [...w.lines].sort(), models: [...w.models.entries()].map(([name, min]) => ({ name, min })).sort((a, b) => b.min - a.min) })).sort((a, b) => b.min - a.min),
     heat: ids.map((l) => ({ line: l, by: heat.get(l) || {} })),
   };
 }

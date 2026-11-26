@@ -118,7 +118,12 @@ export default function Sidebar({ page, onChange, focusDate, loading, pages: pag
   const found = needle ? pages.filter((p) => p.label.toLowerCase().includes(needle)) : null;
 
   const tree0 = true;
-  const item = ({ id, label, icon: Icon }, tree = true) => {
+  // 26-11-2026: inside its folder a page needs no folder word — "Availability dashboard" in AVAILABILITY is "Dashboard"
+  // (the whole name stays on hover, in search and in Ctrl+K). A name the admin gave is shown as given.
+  const SIDE_NAME = { adash: ['Availability dashboard', 'Dashboard'], pdash: ['Performance dashboard', 'Dashboard'], qdash: ['Quality dashboard', 'Dashboard'],
+    targetcheck: ['Target rule & check', 'Target check'], custprod: ['Customer production', 'Customer output'], linetargets: ['Line target method', 'Target method'], rejan: ['Rejection analysis', 'Rejections'] };
+  const inFolder = (id, label) => { const x = SIDE_NAME[id]; return x && String(label).toLowerCase() === x[0].toLowerCase() ? x[1] : label; };
+  const item = ({ id, label, icon: Icon }, tree = true, folder = false) => {
     const active = page === id;
     return (
       <button
@@ -131,7 +136,7 @@ export default function Sidebar({ page, onChange, focusDate, loading, pages: pag
       >
         <Icon size={15} strokeWidth={2} className="shrink-0" />
         {/* 26-11-2026: a long name on two lines, never cut */}
-        {!collapsed && <span className="min-w-0 break-words leading-tight">{label}</span>}
+        {!collapsed && <span className="min-w-0 break-words leading-tight">{folder ? inFolder(id, label) : label}</span>}
       </button>
     );
   };
@@ -146,8 +151,8 @@ export default function Sidebar({ page, onChange, focusDate, loading, pages: pag
     <>
       {/* Desktop / tablet sidebar — the C8 MES menu: logo, search, folder groups with a count, pages on a tree line */}
       <aside
-        // 26-11-2026: 200 px open (every page name whole) · 25-11-2026 (admin): slimmer — 180 px open, 56 px folded (a long name ends in … and shows whole on hover)
-        style={{ width: collapsed ? 56 : 200 }}
+        // 26-11-2026: 184 px open — short names in their folder keep every name whole on one line · 25-11-2026 (admin): slimmer — 180 px open, 56 px folded (a long name ends in … and shows whole on hover)
+        style={{ width: collapsed ? 56 : 184 }}
         className="lp-side hidden md:flex shrink-0 flex-col sticky top-0 h-screen z-40 transition-all duration-200"
       >
         <div className={`lp-side-logo flex shrink-0 items-center ${collapsed ? 'justify-center px-2' : 'px-4'}`}>
@@ -189,7 +194,7 @@ export default function Sidebar({ page, onChange, focusDate, loading, pages: pag
                   <span className="lp-side-count">{items.length}</span>
                   {open ? <ChevronDown size={13} className="shrink-0 text-[#777]" /> : <ChevronRight size={13} className="shrink-0 text-[#777]" />}
                 </button>
-                {open && <div className="lp-side-box">{items.map((p) => <React.Fragment key={p.id}>{item(p)}{subs(p.id)}</React.Fragment>)}</div>}
+                {open && <div className="lp-side-box">{items.map((p) => <React.Fragment key={p.id}>{item(p, true, true)}{subs(p.id)}</React.Fragment>)}</div>}
               </section>
             );
           })}

@@ -770,3 +770,9 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
   white-space: normal !important; overflow: visible !important; text-overflow: clip !important; overflow-wrap: normal !important; word-break: normal !important; line-height: 1.18;
 }
 .lp-mes .lp-side .lp-side-item { height: auto !important; min-height: 32px; padding-top: 4px; padding-bottom: 4px; }
+/* 26-11-2026: slimmer sidebar (184 px) — 13 px names, less padding, so every name fits on one line */
+.lp-mes .lp-side .lp-side-item { font-size: 13px !important; gap: 7px !important; padding-left: 6px !important; padding-right: 4px !important; }
+.lp-mes .lp-side .lp-side-leaf { margin-left: 4px !important; width: calc(100% - 4px) !important; }
+.lp-mes .lp-side .lp-side-item svg { width: 15px; height: 15px; }
+.lp-mes .lp-side .lp-side-box { padding-left: 7px !important; }
+.lp-mes .lp-side .lp-side-item > span { letter-spacing: 0 !important; }

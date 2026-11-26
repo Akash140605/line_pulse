@@ -624,7 +624,7 @@ const EXTRA_C = '#8B5CF6';   // 26-11-2026: extra hour (outside the shift)
  */
 /* No dashed target line on the cards (every screen, TV too): the Hour and Cycle tiles carry the target. */
 const NO_TGT = ACTUAL;   // pieces of a model without a target: the colour of an hour without a target (light blue, no stripes)
-export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph = null, hint = '', hourTargets = null, hourNoTarget = null, small = false, std = false }) {
+export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph = null, hint = '', hourTargets = null, hourNoTarget = null, small = false, std = false, shiftFrom = 9, shiftTo = 21 }) {
   // std (24-11-2026, the page; on the TV too since 24-11-2026 13:30): target standard grey, actual green / orange / red by % achieved,
   // pieces of a model without a cycle time on top of the actual bar (light blue) instead of a bar of their own
   const TGTc = std ? TARGET_GREY : TGT;
@@ -648,6 +648,9 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
   // pieces of models WITHOUT a cycle time / target in the hour: their own light-blue bar beside the hour's bar (17-11-2026),
   // never added to the bar that is compared with the target (an hour with no target at all keeps one light-blue bar)
   const ntOf = (r) => Math.min(r.quantity, Number(hourNoTarget?.[r.hour]?.qty) || 0);
+  // 26-11-2026: EXTRA only for an hour outside the shift (before 09:00 / from 21:00); inside the shift an hour without a
+  // target is shown as no cycle time (light blue), never as extra
+  const outOfShift = (h) => h < shiftFrom || h >= shiftTo;
   const splitOf = (r) => !std && tg(r.hour) != null && ntOf(r) > 0;
   const mainOf = (r) => (splitOf(r) ? r.quantity - ntOf(r) : r.quantity);   // pieces on the hour's main bar
   const anyNt = rows.some((r) => ntOf(r) > 0);
@@ -739,7 +742,7 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
           const t = r0 ? tg(sel) : null, nt = r0 ? ntOf(r0) : 0, tq = (r0?.quantity || 0) - nt;
           const p = t ? (tq / t) * 100 : null;
           const col = p == null ? '#60A5FA' : achColor(tq, t, '#60A5FA');   // the same colours as the bars (achievement bands)
-          const extra = r0 && t == null && r0.quantity > 0 && nt < r0.quantity;
+          const extra = r0 && outOfShift(sel) && t == null && r0.quantity > 0 && nt < r0.quantity;
           const lbl = r0?.label?.includes(':') ? `${r0.label}–${pad2(sel + 1)}:00` : `${pad2(sel)}:00–${pad2(sel + 1)}:00`;
           const hiQ = Math.max(1, ...models.map((m) => m.qty));
           return (
@@ -827,7 +830,7 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
                   const main = mainOf(r);
                   const p = t ? (tq / t) * 100 : null;
                   // 26-11-2026: an extra hour (made outside the shift, no target) in its own violet, so it reads at a glance
-                  const isExtra = t == null && !future && r.quantity > 0 && nt < r.quantity;
+                  const isExtra = outOfShift(r.hour) && t == null && !future && r.quantity > 0 && nt < r.quantity;
                   const col = isExtra ? EXTRA_C : std ? achColor(tq, t, PERF.none) : p == null ? PERF.none : p >= 100 ? PERF.ok : p >= PERF_AMBER ? PERF.watch : PERF.bad;
                   const ntTop = std && nt > 0 && main > 0 ? (nt / main) * 100 : 0;   // std: share of the actual bar that has no cycle time (on top)
                   const mPct = main > 0 ? (main / max) * TOP : 0;
@@ -907,7 +910,7 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
                 })()}
                 {hourTargets && (() => { const t = tg(r.hour); const p = t ? ((r.quantity - ntOf(r)) / t) * 100 : null; const col = p == null ? null : p >= 100 ? PERF.ok : p >= PERF_AMBER ? PERF.watch : PERF.bad;
                   const pc = std && p != null ? achText(achColor(r.quantity - ntOf(r), t)) : null;
-                  if (t == null && r.quantity > 0 && ntOf(r) < r.quantity && !(nowHour != null && r.hour > nowHour)) return <span className={`mx-auto mt-0.5 rounded px-1 font-extrabold leading-tight text-white ${small ? 'text-fs-11' : 'text-fs-10'}`} style={{ background: EXTRA_C }} title="Extra hour: made outside the shift (no target)">EXTRA</span>;
+                  if (outOfShift(r.hour) && t == null && r.quantity > 0 && ntOf(r) < r.quantity && !(nowHour != null && r.hour > nowHour)) return <span className={`mx-auto mt-0.5 rounded px-1 font-extrabold leading-tight text-white ${small ? 'text-fs-11' : 'text-fs-10'}`} style={{ background: EXTRA_C }} title="Extra hour: made outside the shift (no target)">EXTRA</span>;
                   return <span className={`${small ? 'text-fs-14' : 'text-fs-12'} font-mono font-extrabold mt-0.5 leading-none text-center`} style={{ color: pc || (col ? 'var(--tv-pct, #CBD5E1)' : 'transparent') }} data-ach={pc || undefined}>{p != null ? `${p < 100 ? Math.floor(p) : Math.round(p)}%` : '·'}</span>; })()}
               </button>
             );

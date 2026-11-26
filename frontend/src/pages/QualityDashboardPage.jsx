@@ -124,14 +124,13 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
       {D.err && <div role="alert" className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-fs-14 font-semibold text-slate-700">{D.err}</div>}
       {!Q ? <PageLoader label="Reading the lines" sub="Production, defects, stages" /> : (
         <div ref={bodyRef} className="flex flex-col gap-3">
-          <section className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7" aria-label="Quality of the period">
+          <section className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-6" aria-label="Quality of the period">
             <Tile testid="qd-made" name="Total Production" value={nf(t.made)} sub={group} />
             <Tile testid="qd-bad" name="Defect" value={nf(t.bad)} sub={`${nf(t.defects)} defect types`} tone={t.bad ? 'text-red-700' : 'text-slate-900'} />
             <Tile testid="qd-pct" name="Defect %" value={pc(t.pct)} sub={t.ppm == null ? '—' : `${nf(t.ppm)} PPM · limit ${limit.toFixed(1)}%`} tone={rateTone(t.pct)} />
             <Tile testid="qd-dis" name="Dismantle" value={nf(t.dismantle)} sub={t.bad ? `${Math.round((t.dismantle / t.bad) * 100)}% of the defects` : '—'} tone={t.dismantle ? 'text-red-700' : 'text-slate-900'} />
             <Tile testid="qd-fpy" name="FPY (%)" value={yp(t.fpy)} sub={`Target ${qs.fpyTarget}%`} tone={yTone(t.fpy, fpyT)} />
             <Tile testid="qd-rty" name="RTY (%)" value={yp(S?.all.rty ?? t.rty)} sub={`Π of the 6 stages · target ${qs.rtyTarget}%`} tone={yTone(S?.all.rty ?? t.rty, rtyT)} />
-            <Tile testid="qd-rca" name="RCA pending" value={nf(t.rcaOpen)} sub={`of ${nf(t.rcaAll)} defect issues`} tone={t.rcaOpen ? 'text-amber-700' : 'text-emerald-700'} onClick={go('rca')} />
           </section>
 
           {S && <StageFlow S={S} fpyT={fpyT} rtyT={rtyT} qs={qs} onPick={(idx, line = '') => setStage({ idx, line })} />}
@@ -365,7 +364,6 @@ function StageFlow({ S, fpyT, rtyT, qs, onPick }) {
           <div className="text-fs-12 font-extrabold uppercase tracking-wide text-[#1F3864]">RTY</div>
           <div className={`mt-1 font-mono text-fs-22 font-extrabold tabular-nums ${tone(a.rty, rtyT)}`}>{ypc(a.rty)}</div>
           <div className="mt-1 text-fs-12 text-slate-600">target {qs.rtyTarget}% · {nf(a.qty)} made</div>
-          {a.unmapped > 0 && <div role="button" tabIndex={0} onClick={() => onPick(-1)} onKeyDown={(e) => e.key === 'Enter' && onPick(-1)} className="mt-0.5 cursor-pointer text-fs-12 text-amber-800 underline" title="Rework / rejection written at a station that is not one of the six stages (Setup → stations)">{nf(a.unmapped)} pcs at no stage</div>}
         </div>
       </div>
       <div className="mt-3 overflow-x-auto">
@@ -373,7 +371,7 @@ function StageFlow({ S, fpyT, rtyT, qs, onPick }) {
           <thead><tr className="bg-[#DCE6F2] text-[#1F3864]">
             <th className="px-2 py-1.5 text-left">Line</th><th className="px-2 py-1.5 text-right">Production</th>
             {STAGE_SHORT.map((n) => <th key={n} className="px-2 py-1.5 text-right">{n}</th>)}
-            <th className="px-2 py-1.5 text-right">No stage</th><th className="px-2 py-1.5 text-right">RTY</th>
+            <th className="px-2 py-1.5 text-right">RTY</th>
           </tr></thead>
           <tbody>
             {S.lines.map((r) => (
@@ -385,7 +383,6 @@ function StageFlow({ S, fpyT, rtyT, qs, onPick }) {
                     {r.qty ? ypc(v) : '—'}{r.stages[i] ? <span className="ml-1 text-fs-11 text-slate-500">({r.stages[i]})</span> : null}
                   </td>
                 ))}
-                <td onClick={r.unmapped ? () => onPick(-1, r.line) : undefined} className={`px-2 py-1.5 text-right font-mono ${r.unmapped ? 'cursor-pointer text-amber-800 underline hover:bg-amber-50' : 'text-slate-400'}`}>{nf(r.unmapped)}</td>
                 <td className={`px-2 py-1.5 text-right font-mono font-extrabold ${tone(r.rty, rtyT)}`}>{ypc(r.rty)}</td>
               </tr>
             ))}
@@ -453,7 +450,6 @@ function StageDrawer({ S, sheet, stations, pick, setPick, onClose, fpyT, group, 
         <div className="flex flex-wrap items-center gap-1.5">
           <div className="flex flex-wrap gap-1" role="group" aria-label="Stage">
             {STAGE_SHORT.map((n, i) => <button key={n} type="button" aria-pressed={idx === i} onClick={() => setPick({ idx: i, line })} className={chip(idx === i)}>{i + 1}. {n}</button>)}
-            {(S.all.unmapped > 0 || idx < 0) && <button type="button" aria-pressed={idx < 0} onClick={() => setPick({ idx: -1, line })} className={chip(idx < 0)}>No stage</button>}
           </div>
           {ids.length > 1 && (
             <div className="ml-auto flex flex-wrap gap-1" role="group" aria-label="Line">

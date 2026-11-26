@@ -186,6 +186,13 @@ export default function Sidebar({ page, onChange, focusDate, loading, pages: pag
           ) : secs.map(({ g, items }) => {
             const hasOn = items.some((p) => p.id === page);
             const open = hasOn || !closed.includes(g);
+            // 26-11-2026: a folder with one page (a management login) — no folder to open: its name as a small caption, the page under it
+            if (items.length === 1) return (
+              <section key={g} className="lp-side-sec lp-side-solo" aria-label={`Pages: ${g}`}>
+                <div className="lp-side-cap" aria-hidden>{g}</div>
+                {item(items[0], false, true)}{subs(items[0].id)}
+              </section>
+            );
             return (
               <section key={g} className="lp-side-sec" aria-label={`Pages: ${g}`}>
                 <button type="button" onClick={() => !hasOn && toggle(g)} aria-expanded={open} className={`lp-side-group ${open ? 'is-open' : ''}`} aria-label={hasOn ? g : open ? `Fold ${g}` : `Open ${g}`}>

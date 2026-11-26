@@ -616,6 +616,7 @@ const ACTUAL = 'rgb(var(--sky-400))';   // hour without a target
 const MET = '#2563EB', TGT = '#F97316';   // 18-11-2026: actual always blue, target orange (no "behind" colour)
 const PERF = { ok: MET, watch: MET, bad: MET, none: ACTUAL };
 const PERF_AMBER = 100;
+const EXTRA_C = '#8B5CF6';   // 26-11-2026: extra hour (outside the shift)
 
 /**
  * Hour bars that fill whatever height the parent gives them.
@@ -732,34 +733,50 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
       </div>
 
       <div className={`relative flex-1 ${small ? 'min-h-0' : 'min-h-[110px]'}`}>
-        {sel != null && (
-          <div className={`absolute top-0 z-30 w-[min(15rem,72%)] max-h-full flex flex-col rounded-lg border border-sky-400/40 bg-blue-950/95 backdrop-blur shadow-2xl p-2 ${popRight ? 'right-0' : 'left-0'}`}>
-            <div className="flex items-center justify-between gap-2 mb-1 shrink-0">
-              <div className="text-fs-13 font-extrabold text-white">{pad2(sel)}-{pad2(sel + 1)} <span className="text-slate-300 font-mono">· {selQty} pcs</span></div>
-              <button type="button" onClick={() => setSel(null)} className="text-slate-300 hover:text-white text-fs-13 font-bold leading-none px-1" aria-label="Close">✕</button>
-            </div>
-            <div className="overflow-auto space-y-1 min-h-0">
-              {models.length ? models.map((m) => (
-                <div key={m.model} className="flex items-center gap-2 text-fs-13">
-                  <span className="truncate flex-1 text-slate-100 font-semibold" title={[m.company, m.model].filter(Boolean).join(' · ')}>{m.company && <span className="text-slate-300">{m.company} · </span>}{m.model}{(hourNoTarget?.[sel]?.models || []).includes(m.model) && <span className="ml-1 rounded px-1 text-fs-11 font-bold text-slate-900" style={{ background: NO_TGT }}>no cycle time</span>}</span>
-                  <span className="font-mono font-extrabold text-sky-300 tabular-nums">{m.qty}</span>
-                  <span className="w-9 text-right font-mono text-fs-12 text-slate-300">{selQty ? Math.round((m.qty / selQty) * 100) : 0}%</span>
+        {sel != null && (() => {
+          // 26-11-2026: the hour's popup — the hour, its pieces against the target, then every model with its share
+          const r0 = rows.find((x) => x.hour === sel);
+          const t = r0 ? tg(sel) : null, nt = r0 ? ntOf(r0) : 0, tq = (r0?.quantity || 0) - nt;
+          const p = t ? (tq / t) * 100 : null;
+          const col = p == null ? '#60A5FA' : achColor(tq, t, '#60A5FA');   // the same colours as the bars (achievement bands)
+          const extra = r0 && t == null && r0.quantity > 0 && nt < r0.quantity;
+          const lbl = r0?.label?.includes(':') ? `${r0.label}–${pad2(sel + 1)}:00` : `${pad2(sel)}:00–${pad2(sel + 1)}:00`;
+          const hiQ = Math.max(1, ...models.map((m) => m.qty));
+          return (
+            <div className={`absolute top-0 z-30 flex max-h-full flex-col rounded-xl border border-sky-400/40 bg-blue-950/95 p-2.5 shadow-2xl backdrop-blur ${popRight ? 'right-0' : 'left-0'}`} style={{ width: 'min(22rem, 94%)' }} data-testid="hour-pop">
+              <div className="mb-1.5 flex shrink-0 items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-fs-14 font-extrabold text-white">{lbl}</div>
+                  <div className="text-fs-12 font-semibold text-slate-300">{selQty} pcs made{extra ? ' · extra hour (outside the shift, no target)' : ''}</div>
                 </div>
-              )) : <div className="text-fs-13 text-slate-300">{selQty ? 'Model detail is not available in the line data.' : 'No scans in this hour.'}</div>}
-              {hourTargets && (() => {
-                const r = rows.find((x) => x.hour === sel); if (!r) return null;
-                const t = tg(sel), nt = ntOf(r), tq = r.quantity - nt;
-                if (t == null && !nt) return null;
-                return (
-                  <div className="mt-1 border-t border-white/15 pt-1 text-fs-12 font-semibold text-slate-200" data-testid="hour-split">
-                    {t != null ? <div>Target {t} · made {tq} with a target ({Math.round((tq / t) * 100)}%)</div> : <div>No target in this hour</div>}
-                    {nt > 0 && <div>{nt} pcs of a model without a cycle time — own bar, not counted</div>}
+                {p != null && <span className="rounded-md px-2 py-0.5 font-mono text-fs-15 font-extrabold" style={{ background: col, color: '#0B1020' }}>{Math.round(p)}%</span>}
+                {extra && <span className="rounded-md bg-violet-500 px-2 py-0.5 text-fs-12 font-extrabold text-white">EXTRA</span>}
+                <button type="button" onClick={() => setSel(null)} className="px-1 text-fs-14 font-bold leading-none text-slate-300 hover:text-white" aria-label="Close">✕</button>
+              </div>
+              {hourTargets && r0 && (t != null || nt > 0) && (
+                <div className="mb-2 grid shrink-0 grid-cols-3 gap-1.5 text-center" data-testid="hour-split">
+                  <div className="rounded-md bg-white/10 px-1 py-1"><div className="text-fs-11 font-bold uppercase tracking-wide text-slate-300">Target</div><div className="font-mono text-fs-16 font-extrabold text-white">{t ?? '—'}</div></div>
+                  <div className="rounded-md bg-white/10 px-1 py-1"><div className="text-fs-11 font-bold uppercase tracking-wide text-slate-300">Made</div><div className="font-mono text-fs-16 font-extrabold" style={{ color: col }}>{t != null ? tq : r0.quantity}</div></div>
+                  <div className="rounded-md bg-white/10 px-1 py-1"><div className="text-fs-11 font-bold uppercase tracking-wide text-slate-300">{t != null ? (tq >= t ? 'Excess' : 'Short') : 'No cycle'}</div><div className="font-mono text-fs-16 font-extrabold text-white">{t != null ? Math.abs(tq - t) : nt}</div></div>
+                  {nt > 0 && t != null && <div className="col-span-3 text-left text-fs-11 font-semibold text-sky-200">+ {nt} pcs of a model without a cycle time (own light-blue bar, not counted)</div>}
+                </div>
+              )}
+              <div className="mb-1 shrink-0 text-fs-11 font-bold uppercase tracking-wide text-slate-400">Models in this hour</div>
+              <div className="min-h-0 space-y-1.5 overflow-auto">
+                {models.length ? models.map((m) => (
+                  <div key={m.model} className="rounded-md bg-white/10 px-1.5 py-1">
+                    <div className="flex items-start gap-2 text-fs-13">
+                      <span className="min-w-0 flex-1 break-words font-semibold leading-tight text-slate-100">{m.company && <span className="mr-1 text-fs-11 font-extrabold uppercase text-sky-300">{m.company}</span>}{m.model}{(hourNoTarget?.[sel]?.models || []).includes(m.model) && <span className="ml-1 rounded bg-sky-400/20 px-1 text-fs-11 text-sky-200">no cycle time</span>}</span>
+                      <span className="font-mono font-extrabold tabular-nums text-white">{m.qty}</span>
+                      <span className="w-10 text-right font-mono text-fs-12 text-slate-300">{selQty ? Math.round((m.qty / selQty) * 100) : 0}%</span>
+                    </div>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-sky-400" style={{ width: `${(m.qty / hiQ) * 100}%` }} /></div>
                   </div>
-                );
-              })()}
+                )) : <div className="text-fs-13 text-slate-300">{selQty ? 'Model detail is not available in the line data.' : 'No scans in this hour.'}</div>}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {tgtPct != null && (
           <div className="pointer-events-none absolute left-0 right-0 z-20" style={{ bottom: `calc(13px + (100% - 13px) * ${tgtPct / 100})` }} aria-label={`Target ${Math.round(targetPph)} per hour`}>
@@ -809,7 +826,9 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
                   const split = splitOf(r);
                   const main = mainOf(r);
                   const p = t ? (tq / t) * 100 : null;
-                  const col = std ? achColor(tq, t, PERF.none) : p == null ? PERF.none : p >= 100 ? PERF.ok : p >= PERF_AMBER ? PERF.watch : PERF.bad;
+                  // 26-11-2026: an extra hour (made outside the shift, no target) in its own violet, so it reads at a glance
+                  const isExtra = t == null && !future && r.quantity > 0 && nt < r.quantity;
+                  const col = isExtra ? EXTRA_C : std ? achColor(tq, t, PERF.none) : p == null ? PERF.none : p >= 100 ? PERF.ok : p >= PERF_AMBER ? PERF.watch : PERF.bad;
                   const ntTop = std && nt > 0 && main > 0 ? (nt / main) * 100 : 0;   // std: share of the actual bar that has no cycle time (on top)
                   const mPct = main > 0 ? (main / max) * TOP : 0;
                   const nPct = split ? (nt / max) * TOP : 0;
@@ -888,6 +907,7 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
                 })()}
                 {hourTargets && (() => { const t = tg(r.hour); const p = t ? ((r.quantity - ntOf(r)) / t) * 100 : null; const col = p == null ? null : p >= 100 ? PERF.ok : p >= PERF_AMBER ? PERF.watch : PERF.bad;
                   const pc = std && p != null ? achText(achColor(r.quantity - ntOf(r), t)) : null;
+                  if (t == null && r.quantity > 0 && ntOf(r) < r.quantity && !(nowHour != null && r.hour > nowHour)) return <span className={`mx-auto mt-0.5 rounded px-1 font-extrabold leading-tight text-white ${small ? 'text-fs-11' : 'text-fs-10'}`} style={{ background: EXTRA_C }} title="Extra hour: made outside the shift (no target)">EXTRA</span>;
                   return <span className={`${small ? 'text-fs-14' : 'text-fs-12'} font-mono font-extrabold mt-0.5 leading-none text-center`} style={{ color: pc || (col ? 'var(--tv-pct, #CBD5E1)' : 'transparent') }} data-ach={pc || undefined}>{p != null ? `${p < 100 ? Math.floor(p) : Math.round(p)}%` : '·'}</span>; })()}
               </button>
             );

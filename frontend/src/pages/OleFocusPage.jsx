@@ -203,7 +203,8 @@ export function DeptOwners({ depts, byDept = {}, fmt = nf }) {
   return (
     <div className="mt-2 border-t border-[#E5E7EB] pt-2" data-testid="dept-owners">
       <div className="mb-1 text-[11.5px] font-extrabold uppercase tracking-wide text-[#1F3864]">What each department owns</div>
-      <div className="flex flex-col gap-1">
+      {/* 26-11-2026: a long list scrolls inside (the card stays as tall as the chart beside it — no empty space) */}
+      <div className="flex flex-col gap-1 overflow-y-auto" style={{ maxHeight: 150 }}>
         {list.map((d, i) => (
           <div key={d.label} className="rounded-md px-1.5 py-1 hover:bg-[#F5F8FC]" title={of(d).map((r) => `${r.label}: ${fmt(r.value)} · ${r.n} times`).join('\n')}>
             <div className="flex items-center gap-2 text-[12.5px]">

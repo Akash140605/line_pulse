@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ComposedChart, BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend, LabelList, Cell } from 'recharts';
 import { nf, dmy } from './OleParts';
 import { KPI_STAGES } from '../utils/kpiReport';
 import { summaryTable, dayTable, ftyTable, ftyPeriod, KPI_RTY_T } from '../utils/kpiSheets';
@@ -41,6 +42,67 @@ function Stat({ name, value, sub, cls = 'text-slate-900', testid }) {
   );
 }
 
+/** 26-11-2026: the Summary sheet as a dashboard — day by day: production plan vs actual, UPH, UPPH, RTY and OS&D (from the same rows as the table) */
+function SummaryCharts({ S }) {
+  const D = [...S].reverse().map((d) => ({ k: d.date.slice(8, 10), date: d.date, plan: d.total.plan, qty: d.total.qty, uphT: d.total.uphT, uphA: d.total.uphA, upphT: d.total.upphT, upphA: d.total.upphA,
+    rty: d.total.rty == null ? null : Math.round(d.total.rty * 100) / 100, osd: d.total.osd, mtd: d.total.mtd }));
+  if (D.length < 2) return null;   // one day: the table says it all
+  const G = '#E2E8F0', tk = { fontSize: 11, fill: '#334155' };
+  const lab = (p) => (p?.[0]?.payload?.date ? dmy(p[0].payload.date) : '');
+  const box = (title, sub, chart) => (
+    <div className="rounded-lg border border-slate-200 bg-white p-2">
+      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-1"><b className="text-fs-13 text-dixon-navy">{title}</b><span className="text-fs-11 text-slate-500">{sub}</span></div>
+      <div style={{ height: 190 }}><ResponsiveContainer width="100%" height="100%">{chart}</ResponsiveContainer></div>
+    </div>
+  );
+  const two = (a, b, an, bn, fmt) => (
+    <ComposedChart data={D} margin={{ top: 8, right: 6, left: 0, bottom: 0 }}>
+      <CartesianGrid stroke={G} vertical={false} /><XAxis dataKey="k" tick={tk} interval={0} /><YAxis tick={tk} width={40} domain={['auto', 'auto']} />
+      <Tooltip labelFormatter={(_, p) => lab(p)} formatter={(v, n) => [v == null ? '—' : fmt(v), n]} /><Legend wrapperStyle={{ fontSize: 11 }} />
+      <Line dataKey={a} name={an} stroke="#94A3B8" strokeWidth={2} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
+      <Line dataKey={b} name={bn} stroke="#1F3864" strokeWidth={2.5} dot={{ r: 2.5 }} isAnimationActive={false} />
+    </ComposedChart>
+  );
+  return (
+    <div className="mb-3 grid grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-3" data-testid="kpi-summary-charts">
+      {box('Production · plan vs actual', 'pieces a day, all lines shown', (
+        <BarChart data={D} margin={{ top: 14, right: 6, left: 0, bottom: 0 }} barGap={1}>
+          <CartesianGrid stroke={G} vertical={false} /><XAxis dataKey="k" tick={tk} interval={0} /><YAxis tick={tk} width={40} />
+          <Tooltip labelFormatter={(_, p) => lab(p)} formatter={(v, n) => [d0(v), n]} /><Legend wrapperStyle={{ fontSize: 11 }} />
+          <Bar dataKey="plan" name="Plan" fill="#CBD5E1" maxBarSize={18} isAnimationActive={false} />
+          <Bar dataKey="qty" name="Actual" fill="#16A34A" maxBarSize={18} isAnimationActive={false}>{D.map((d) => <Cell key={d.k} fill={d.plan && d.qty >= d.plan ? '#16A34A' : '#DC2626'} />)}</Bar>
+        </BarChart>
+      ))}
+      {box('UPH · target vs actual', 'units per hour (average of the lines)', two('uphT', 'uphA', 'Target', 'Actual', (v) => v.toFixed(0)))}
+      {box('UPPH · target vs actual', 'units per person per hour', two('upphT', 'upphA', 'Target', 'Actual', (v) => v.toFixed(2)))}
+      {box('RTY (%)', `target ${KPI_RTY_T}% · red line`, (
+        <ComposedChart data={D} margin={{ top: 14, right: 6, left: 0, bottom: 0 }}>
+          <CartesianGrid stroke={G} vertical={false} /><XAxis dataKey="k" tick={tk} interval={0} /><YAxis tick={tk} width={44} domain={[(m) => Math.min(KPI_RTY_T - 1, Math.floor(m)), 100]} unit="%" />
+          <Tooltip labelFormatter={(_, p) => lab(p)} formatter={(v) => [v == null ? '—' : `${v}%`, 'RTY']} />
+          <ReferenceLine y={KPI_RTY_T} stroke="#DC2626" strokeDasharray="5 4" />
+          <Bar dataKey="rty" name="RTY" maxBarSize={18} isAnimationActive={false}>{D.map((d) => <Cell key={d.k} fill={d.rty == null ? '#CBD5E1' : d.rty >= KPI_RTY_T ? '#16A34A' : '#DC2626'} />)}<LabelList dataKey="rty" position="top" style={{ fontSize: 9.5, fill: '#334155' }} formatter={(v) => (v == null ? '' : v.toFixed(1))} /></Bar>
+        </ComposedChart>
+      ))}
+      {box('OS&D (₹)', 'reported each day · month to date', (
+        <ComposedChart data={D} margin={{ top: 8, right: 6, left: 6, bottom: 0 }}>
+          <CartesianGrid stroke={G} vertical={false} /><XAxis dataKey="k" tick={tk} interval={0} /><YAxis tick={tk} width={50} />
+          <Tooltip labelFormatter={(_, p) => lab(p)} formatter={(v, n) => [rs(v), n]} /><Legend wrapperStyle={{ fontSize: 11 }} />
+          <Bar dataKey="osd" name="OS&D (day)" fill="#F59E0B" maxBarSize={18} isAnimationActive={false} />
+          <Line dataKey="mtd" name="OS&D MTD" stroke="#B91C1C" strokeWidth={2} dot={false} isAnimationActive={false} />
+        </ComposedChart>
+      ))}
+      {box('Achieved % a day', 'actual ÷ plan', (
+        <BarChart data={D.map((d) => ({ ...d, ach: d.plan ? Math.round((d.qty / d.plan) * 1000) / 10 : null }))} margin={{ top: 14, right: 6, left: 0, bottom: 0 }}>
+          <CartesianGrid stroke={G} vertical={false} /><XAxis dataKey="k" tick={tk} interval={0} /><YAxis tick={tk} width={40} unit="%" />
+          <Tooltip labelFormatter={(_, p) => lab(p)} formatter={(v) => [v == null ? '—' : `${v}%`, 'Achieved']} />
+          <ReferenceLine y={100} stroke="#16A34A" strokeDasharray="5 4" />
+          <Bar dataKey="ach" maxBarSize={18} isAnimationActive={false}>{D.map((d) => <Cell key={d.k} fill={d.plan && d.qty >= d.plan ? '#16A34A' : '#DC2626'} />)}</Bar>
+        </BarChart>
+      ))}
+    </div>
+  );
+}
+
 const Empty = ({ text = 'No production in this period.' }) => <p className="py-6 text-center text-fs-14 font-semibold text-slate-500">{text}</p>;
 
 // ── Summary ────────────────────────────────────────────────────────────────────
@@ -61,6 +123,7 @@ export function KpiSummarySheet({ K, ids }) {
           <Stat name="Achieved" value={P.ach == null ? '—' : `${P.ach.toFixed(1)}%`} cls={P.ach == null ? '' : P.ach >= 100 ? 'text-emerald-700' : 'text-red-700'} />
           <Stat name="RTY (avg)" value={P.rty == null ? '—' : `${P.rty.toFixed(2)}%`} sub={`target ${KPI_RTY_T}%`} cls={P.rty == null ? '' : P.rty >= KPI_RTY_T ? 'text-emerald-700' : 'text-red-700'} />
         </div>
+        <SummaryCharts S={S} />
         <div className="overflow-auto" style={{ maxHeight: 640 }}>
           <table className="w-full border-collapse text-fs-13 tabular-nums" aria-label="Summary">
             <thead className="sticky top-0 z-10">

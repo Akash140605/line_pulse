@@ -76,15 +76,20 @@ export function niceTop(max, time = false) {
   return m * e * 4;
 }
 const axisMin = (v) => (v >= 120 ? `${+(v / 60).toFixed(v % 60 ? 1 : 0)} h` : `${+v.toFixed(v < 10 && v % 1 ? 1 : 0)} min`);
-function Pareto({ rows, fmt = nf, unit = '', color = STEEL, empty, time = false }) {
+export function Pareto({ rows, fmt = nf, unit = '', color = STEEL, empty, time = false }) {
   const top = rows.filter((r) => r.value > 0).slice(0, 10);
   if (!top.length) return <Empty>{empty}</Empty>;
   const total = rows.reduce((a, r) => a + r.value, 0);
   let cum = 0;
   const u = top.map((r) => { cum += r.value; return { ...r, cum: (cum / total) * 100 }; });
-  const W = 720, H = 318, L = 48, Rr = 680, T = 18, B = 232;
+  const W = 720, L = 48, Rr = 680, T = 18, B = 232;
   const max = niceTop(Math.max(...u.map((r) => r.value)), time);
   const n = u.length, step = (Rr - L) / n, bw = Math.min(56, step * 0.62);
+  // 26-11-2026: the whole name under its bar, word by word on as many lines as it needs (never cut with …)
+  const per = Math.max(5, Math.floor(step / 7.2));   // letters that fit under one bar
+  const wrap = (t) => { const out = []; let cur = ''; for (const w0 of String(t).split(/\s+/)) { for (let w = w0; w.length;) { const room = per - (cur ? cur.length + 1 : 0); if (w.length <= room) { cur = cur ? `${cur} ${w}` : w; w = ''; } else if (!cur) { out.push(w.slice(0, per)); w = w.slice(per); } else { out.push(cur); cur = ''; } } } if (cur) out.push(cur); return out; };
+  const lab = u.map((r) => wrap(r.label));
+  const H = B + 22 + 12 * Math.max(1, ...lab.map((l) => l.length));
   const axisFmt = time ? axisMin : (v) => nf(Math.round(v * 100) / 100);
   const x = (i) => L + step * (i + 0.5), y = (v) => B - (v / max) * (B - T), yc = (p) => B - (p / 100) * (B - T);
   const i80 = u.findIndex((r) => r.cum >= 80);
@@ -105,7 +110,7 @@ function Pareto({ rows, fmt = nf, unit = '', color = STEEL, empty, time = false 
           <g key={r.label}>
             <rect x={x(i) - bw / 2} y={y(r.value)} width={bw} height={Math.max(1, B - y(r.value))} rx="2" fill={i < vital ? color : '#9DB7D5'}><title>{`${r.label}: ${fmt(r.value)}${unit}`}</title></rect>
             <text x={x(i)} y={y(r.value) - 5} textAnchor="middle" fontSize="11" fontWeight="700" fill="#222">{fmt(r.value)}</text>
-            <text x={x(i)} y={B + 12} textAnchor="end" fontSize="11" fill="#333" transform={`rotate(-30 ${x(i)} ${B + 12})`}>{r.label.length > 16 ? `${r.label.slice(0, 15)}…` : r.label}<title>{r.label}</title></text>
+            <text x={x(i)} y={B + 15} textAnchor="middle" fontSize="10.5" fill="#333">{lab[i].map((t, k) => <tspan key={k} x={x(i)} dy={k ? 12 : 0}>{t}</tspan>)}<title>{r.label}</title></text>
           </g>
         ))}
         <polyline points={u.map((r, i) => `${x(i)},${yc(r.cum)}`).join(' ')} fill="none" stroke={NAVY} strokeWidth="2" />
@@ -117,7 +122,7 @@ function Pareto({ rows, fmt = nf, unit = '', color = STEEL, empty, time = false 
 }
 
 /** Donut of shares with its legend (value · %) */
-function Donut({ rows, fmt = nf, unit = '', centre = 'Total', empty }) {
+export function Donut({ rows, fmt = nf, unit = '', centre = 'Total', empty }) {
   const list = rows.filter((r) => r.value > 0);
   if (!list.length) return <Empty>{empty}</Empty>;
   const top = list.slice(0, 7);
@@ -143,7 +148,7 @@ function Donut({ rows, fmt = nf, unit = '', centre = 'Total', empty }) {
         {seg.map((s) => (
           <li key={s.label} className="flex items-center gap-2 text-[14px]">
             <i className="h-3 w-3 shrink-0 rounded-[2px]" style={{ background: s.color }} />
-            <span className="min-w-0 flex-1 truncate text-[#333]" title={s.label}>{s.label}</span>
+            <span className="min-w-0 flex-1 break-words leading-tight text-[#333]" title={s.label}>{s.label}</span>
             <b className="tabular-nums text-[#111]">{fmt(s.value)}{unit}</b>
             <span className="w-12 text-right tabular-nums text-[#666]">{Math.round(s.pct)}%</span>
           </li>
@@ -157,12 +162,12 @@ function Donut({ rows, fmt = nf, unit = '', centre = 'Total', empty }) {
  * 25-11-2026: under the department donut — what each department owns: its share, its biggest reasons (time and how
  * often) and where to start (fills the card beside the Pareto)
  */
-function DeptOwners({ depts, byDept = {}, fmt = nf }) {
-  const list = depts.filter((d) => d.value > 0).slice(0, 4);
+export function DeptOwners({ depts, byDept = {}, fmt = nf }) {
+  const list = depts.filter((d) => d.value > 0);   // 26-11-2026: every department (was the first 4)
   if (!list.length) return null;
   const total = depts.reduce((a, d) => a + d.value, 0);
   const max = Math.max(...list.map((d) => d.value));
-  const of = (d) => (byDept[d.label] || []).slice(0, 2);
+  const of = (d) => byDept[d.label] || [];   // every reason (was 2)
   const first = list[0];
   return (
     <div className="mt-2 border-t border-[#E5E7EB] pt-2" data-testid="dept-owners">
@@ -172,11 +177,11 @@ function DeptOwners({ depts, byDept = {}, fmt = nf }) {
           <div key={d.label} className="rounded-md px-1.5 py-1 hover:bg-[#F5F8FC]" title={of(d).map((r) => `${r.label}: ${fmt(r.value)} · ${r.n} times`).join('\n')}>
             <div className="flex items-center gap-2 text-[12.5px]">
               <i className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: PALETTE[i % PALETTE.length] }} />
-              <b className="shrink-0 truncate text-[#111]" style={{ width: 96 }}>{d.label}</b>
+              <b className="shrink-0 break-words leading-tight text-[#111]" style={{ width: 110 }}>{d.label}</b>
               <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[#EEF2F7]"><span className="block h-full rounded-full" style={{ width: `${Math.max(4, (d.value / max) * 100)}%`, background: PALETTE[i % PALETTE.length] }} /></span>
               <b className="w-12 shrink-0 text-right tabular-nums text-[#C00000]">{fmt(d.value)}</b>
             </div>
-            <div className="truncate text-[11.5px] text-[#555]" style={{ paddingLeft: 18 }}>{of(d).map((r, k) => <span key={r.label}>{k > 0 && ' · '}{r.label} <b className="text-[#222]">{fmt(r.value)}</b> <span className="text-[#777]">×{r.n}</span></span>)}</div>
+            <div className="break-words text-[11.5px] leading-snug text-[#555]" style={{ paddingLeft: 18 }}>{of(d).map((r, k) => <span key={r.label}>{k > 0 && ' · '}{r.label} <b className="text-[#222]">{fmt(r.value)}</b> <span className="text-[#777]">×{r.n}</span></span>)}</div>
           </div>
         ))}
       </div>
@@ -390,7 +395,9 @@ export default function OleFocusPage({ factor = 'A' }) {
             { label: '#', get: (r, i) => i + 1 },
             { label: 'Reason', get: (r) => <b>{r.label}</b> },
             { label: 'Model', get: (r) => (!r.models?.length ? <span className="text-[#999]">—</span>
-              : <span title={r.models.map((m) => `${co(m.name) ? `${co(m.name)} ` : ''}${m.name} — ${hrs(m.value)}`).join('\n')}>{r.models.slice(0, 3).map((m, i) => <span key={m.name} className="whitespace-nowrap">{i > 0 && ' · '}{co(m.name) && <span className="mr-1 text-[11px] font-bold uppercase text-[#777]">{co(m.name)}</span>}<b className="font-mono font-semibold">{m.name}</b>{r.models.length > 1 && <span className="text-[12px] text-[#777]"> {hrs(m.value)}</span>}</span>)}{r.models.length > 3 && <span className="ml-1 text-[12px] font-bold text-[#1F3864]">+{r.models.length - 3}</span>}</span>) },
+              : r.models.length === 1 ? <span className="whitespace-nowrap">{co(r.models[0].name) && <span className="mr-1 text-[11px] font-bold uppercase text-[#777]">{co(r.models[0].name)}</span>}<b className="font-mono font-semibold">{r.models[0].name}</b></span>
+              // 26-11-2026: every model named (no "+2"), one under the other with its time
+              : <span className="flex flex-col gap-0.5">{r.models.map((m) => <span key={m.name} className="flex items-baseline justify-between gap-3 whitespace-nowrap"><span>{co(m.name) && <span className="mr-1 text-[11px] font-bold uppercase text-[#777]">{co(m.name)}</span>}<b className="font-mono font-semibold">{m.name}</b></span><span className="text-[12px] text-[#777]">{hrs(m.value)}</span></span>)}</span>) },
             { label: 'Department', get: (r) => r.dept },
             { label: 'Times', right: true, get: (r) => nf(r.n) },
             { label: 'Time lost', right: true, get: (r) => <b className="text-[#C00000]">{hrs(r.value)}</b> },

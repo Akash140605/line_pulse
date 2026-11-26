@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Cell } from 'recharts';
 import { FileSpreadsheet, Download } from 'lucide-react';
 import HeaderBar, { segGroup, segBtn } from '../components/HeaderBar';
 import { PageLoader } from '../components/Loader';
@@ -10,6 +10,8 @@ import { exportPanel } from '../utils/domExcel';
 import { buildXlsx, downloadXlsx } from '../utils/xlsxWriter';
 import { reworkSheet, reworkXlsxSheet, groupRows, hourCol, RWK_RATE } from '../utils/reworkReport';
 import { fs } from '../theme';
+import { datesBetween } from '../utils/factorDash';
+import { Pareto, Donut } from './OleFocusPage';
 
 /**
  * Rework dashboard (20-11-2026) — the plant's hourly rework sheet (Book1) as a dashboard: pieces, ₹ loss, dismantled,
@@ -27,8 +29,8 @@ function Tile({ name, value, sub, tone = 'text-slate-900', testid }) {
   return (
     <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" data-testid={testid}>
       <div className="text-fs-13 font-bold text-slate-600">{name}</div>
-      <div className={`lp-clamp2 mt-1 font-extrabold leading-tight tabular-nums ${typeof value === 'string' && !/\d/.test(value) && value.length > 9 ? 'text-fs-20' : 'font-mono text-fs-28'} ${tone}`} title={String(value)}>{value}</div>   {/* 25-11-2026: a name (top stage, category) in a smaller font */}
-      {sub && <div className="lp-clamp2 mt-1 text-fs-12 text-slate-600" title={typeof sub === 'string' ? sub : undefined}>{sub}</div>}
+      <div className={`mt-1 break-words font-extrabold leading-tight tabular-nums ${typeof value === 'string' && !/\d/.test(value) && value.length > 9 ? 'text-fs-18' : 'font-mono text-fs-28'} ${tone}`} title={String(value)}>{value}</div>   {/* 25-11-2026: a name (top stage, category) in a smaller font */}
+      {sub && <div className="mt-1 break-words text-fs-12 text-slate-600" title={typeof sub === 'string' ? sub : undefined}>{sub}</div>}
     </div>
   );
 }
@@ -45,7 +47,7 @@ function Ranked({ rows, total, onPick, active, label, max = 10 }) {
       {top.map((r) => (
         <button key={r.key} type="button" role="listitem" onClick={() => onPick?.(r.key)} aria-pressed={active === r.key}
           className={`grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_4.5rem] items-center gap-2 rounded px-1 py-0.5 text-left text-fs-13 hover:bg-slate-50 ${active === r.key ? 'bg-blue-50 ring-1 ring-blue-300' : ''}`}>
-          <span className="lp-clamp2 font-semibold text-slate-800" title={r.key}>{r.key}</span>
+          <span className="break-words font-semibold leading-tight text-slate-800" title={r.key}>{r.key}</span>
           <span className="h-3 overflow-hidden rounded bg-slate-100"><span className="block h-full rounded" style={{ width: `${(r.total / hi) * 100}%`, background: NAVY }} /></span>
           <span className="text-right font-mono font-bold text-slate-900">{nf(r.total)} <span className="text-fs-11 font-semibold text-slate-500">{total ? `${Math.round((r.total / total) * 100)}%` : ''}</span></span>
         </button>
@@ -77,7 +79,9 @@ export default function ReworkDashboardPage() {
   const by = (f) => groupRows(rows, f);
   const defects = by('defect'), stages = by('stage'), cats = by('cat'), models = by('model'), lines = by('lineName');
   const hours = (S?.hours || []).map((h) => ({ k: hourCol(h), n: rows.reduce((a, r) => a + (r.hours[h] || 0), 0) }));
-  const days = groupRows(rows, 'date').sort((a, b) => a.key.localeCompare(b.key)).map((d) => ({ k: d.key.slice(8), title: dmy(d.key), n: d.total }));
+  // 26-11-2026: every date of the period (up to today), a day with nothing shows 0 — a click on a day filters to it
+  const dayN = new Map(groupRows(rows, 'date').map((d) => [d.key, d.total]));
+  const days = datesBetween(range.start, range.end < today ? range.end : today).map((d) => ({ date: d, k: d.slice(8), title: dmy(d), n: dayN.get(d) || 0 }));
   const setP = (field) => (key) => setPick((p) => (p && p.field === field && p.key === key ? null : { field, key }));
   const act = (field) => (pick?.field === field ? pick.key : null);
   const bodyRef = useRef(null);
@@ -103,7 +107,7 @@ export default function ReworkDashboardPage() {
         <div ref={bodyRef} className="flex flex-col gap-3">
           {pick && (
             <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-fs-13 font-semibold text-blue-900">
-              Only {pick.field === 'lineName' ? 'line' : pick.field === 'cat' ? 'category' : pick.field}: <b>{pick.key}</b>
+              Only {pick.field === 'lineName' ? 'line' : pick.field === 'cat' ? 'category' : pick.field}: <b>{pick.field === 'date' ? dmy(pick.key) : pick.key}</b>
               <button type="button" onClick={() => setPick(null)} className="ml-auto rounded-md border border-blue-300 bg-white px-2 py-0.5 font-bold hover:bg-blue-100">Show all ✕</button>
             </div>
           )}
@@ -115,6 +119,18 @@ export default function ReworkDashboardPage() {
             <Tile testid="rw-stage" name="Top stage" value={stages[0]?.key || '—'} sub={stages[0] ? `${nf(stages[0].total)} pcs` : ''} />
             <Tile testid="rw-cat" name="Top category" value={cats[0]?.key || '—'} sub={cats[0] ? `${nf(cats[0].total)} pcs` : ''} />
           </section>
+
+          {/* 26-11-2026: as on OLE Quality — why parts are reworked (Pareto) and where they were caught */}
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+            <section className={`${card} xl:col-span-2`} aria-label="Why parts are reworked">
+              <Title right="Pareto of the defects">Why parts are reworked</Title>
+              <Pareto rows={defects.map((d) => ({ label: d.key, value: d.total }))} unit=" pcs" color="#C00000" empty="No rework in this period." />
+            </section>
+            <section className={card} aria-label="Rework by stage">
+              <Title right="where it was caught">By stage</Title>
+              <Donut rows={stages.map((d) => ({ label: d.key || 'No stage', value: d.total }))} unit=" pcs" centre="pcs reworked" empty="No rework in this period." />
+            </section>
+          </div>
 
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
             <section className={card} aria-label="By hour of the day">
@@ -132,16 +148,19 @@ export default function ReworkDashboardPage() {
               </div>
             </section>
             <section className={card} aria-label="Day by day">
-              <Title right="pieces">Day by day</Title>
+              <Title right="pieces · click a day to see only it">Day by day</Title>
               <div className="h-[220px]">
                 {!days.length ? <p className="grid h-full place-items-center text-fs-13 font-semibold text-slate-500">Nothing in this period.</p> : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={days} margin={{ top: 18, right: 8, left: 0, bottom: 0 }} barCategoryGap="22%">
+                    <BarChart data={days} margin={{ top: 18, right: 8, left: 0, bottom: 0 }} barCategoryGap="22%" onClick={(e) => { const d = e?.activePayload?.[0]?.payload?.date; if (d) setP('date')(d); }} style={{ cursor: 'pointer' }}>
                       <CartesianGrid stroke={GRID} strokeDasharray="3 4" vertical={false} />
-                      <XAxis dataKey="k" tick={tick()} tickLine={false} axisLine={{ stroke: '#CBD5E1' }} />
+                      <XAxis dataKey="k" tick={tick()} tickLine={false} axisLine={{ stroke: '#CBD5E1' }} interval={0} />
                       <YAxis tick={tick()} tickLine={false} axisLine={false} width={34} allowDecimals={false} />
                       <Tooltip cursor={{ fill: 'rgba(148,163,184,0.14)' }} isAnimationActive={false} labelFormatter={(_, p) => p?.[0]?.payload?.title || ''} formatter={(v) => [nf(v), 'Pieces']} />
-                      <Bar dataKey="n" fill="#5B8DC9" radius={[4, 4, 0, 0]} maxBarSize={28} isAnimationActive={false} />
+                      <Bar dataKey="n" fill="#5B8DC9" radius={[4, 4, 0, 0]} maxBarSize={28} isAnimationActive={false}>
+                        {days.map((d) => <Cell key={d.date} fill={act('date') === d.date ? '#1F3864' : '#5B8DC9'} />)}
+                        <LabelList dataKey="n" position="top" style={{ fontSize: fs(10.5), fill: '#334155', fontWeight: 700 }} formatter={(v) => (v ? v : '')} />
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 )}

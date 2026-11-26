@@ -11,6 +11,7 @@ import { oleRange } from '../utils/ole';
 import { buildXlsx, downloadXlsx } from '../utils/xlsxWriter';
 import { custData, custSheets, monthLabel } from '../utils/prodReports';
 import { fs } from '../theme';
+import MesDrawer from '../components/MesDrawer';
 
 /**
  * Customer wise production (23-11-2026) — the plant's "Customer_wise_production" workbook as a dashboard:
@@ -27,8 +28,8 @@ function Tile({ name, value, sub, testid }) {
   return (
     <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" data-testid={testid}>
       <div className="text-fs-13 font-bold text-slate-600">{name}</div>
-      <div className="lp-clamp2 mt-1 font-mono text-fs-28 font-extrabold leading-tight tabular-nums text-slate-900" title={String(value)}>{value}</div>
-      {sub && <div className="lp-clamp2 mt-1 text-fs-12 text-slate-600" title={typeof sub === 'string' ? sub : undefined}>{sub}</div>}
+      <div className="mt-1 break-words font-mono text-fs-28 font-extrabold leading-tight tabular-nums text-slate-900" title={String(value)}>{value}</div>
+      {sub && <div className="mt-1 break-words text-fs-12 text-slate-600" title={typeof sub === 'string' ? sub : undefined}>{sub}</div>}
     </div>
   );
 }
@@ -41,6 +42,7 @@ export default function CustomerProductionPage() {
   const [sel, setSel] = useState('all');
   const [open, setOpen] = useState(() => new Set());
   const [split, setSplit] = useState(false);
+  const [cust, setCust] = useState(null);   // 26-11-2026: a customer clicked → its models and days (drawer)
   const [allCust, setAllCust] = useState(false);   // 25-11-2026: every customer, not only the top 12   // pieces by day: total (false) or line by line (true)   // customers opened to their models
   const IDS = sel === 'all' ? ALL : [sel];
   const settings = useAllLineSettings(ALL);
@@ -54,7 +56,7 @@ export default function CustomerProductionPage() {
   const best = C ? C.dates.map((d) => ({ d, n: C.lines.reduce((a, l) => a + (l.byDate[d] || 0), 0) })).sort((a, b) => b.n - a.n)[0] : null;
   const models = C ? C.customers.reduce((a, c) => a + c.models.length, 0) : 0;
   // 23-11-2026: only the days with production; the total on top of each bar; the days without production in one line
-  const daily = C ? worked.map((d) => ({ d: d.slice(8), title: dmy(d), total: C.lines.reduce((a, l) => a + (l.byDate[d] || 0), 0), ...Object.fromEntries(C.lines.map((l) => [`L${l.line}`, l.byDate[d] || 0])) })) : [];
+  const daily = C ? worked.map((d) => ({ date: d, d: d.slice(8), title: dmy(d), total: C.lines.reduce((a, l) => a + (l.byDate[d] || 0), 0), ...Object.fromEntries(C.lines.map((l) => [`L${l.line}`, l.byDate[d] || 0])) })) : [];
   const idle = C ? C.dates.filter((d) => !worked.includes(d)) : [];
   const avg = worked.length ? Math.round(C.total / worked.length) : 0;
   const lbl = (v) => (daily.length > 16 && v >= 1000 ? `${(v / 1000).toFixed(1)}k` : nf(v));   // full number while it fits
@@ -88,13 +90,14 @@ export default function CustomerProductionPage() {
           </div>
 
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
-            <section className={card} aria-label="Pieces by customer">
+            <section className={card} aria-label="Pieces by customer" title="Click a customer for its models and days">
               <Title right={IDS.length > 1 ? <span className="inline-flex flex-wrap items-center gap-2">{IDS.map((l, i) => <span key={l} className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: (LINE_COLOR[l] || NAVY) }} />L{l}</span>)}</span> : `${C.customers.length} customers`}>Pieces by customer</Title>
               {!top.length ? <p className="py-4 text-center text-fs-13 font-semibold text-slate-500">Nothing made in this period.</p> : (
                 <div className="flex flex-col gap-1" role="list">
                   {top.map((c) => (
-                    <div key={c.name} role="listitem" className="grid items-center gap-2 px-1 py-0.5 text-fs-13" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.3fr) 5.5rem' }}>
-                      <span className="lp-clamp2 font-semibold text-slate-800" title={c.name}>{c.name}</span>
+                    <div key={c.name} role="listitem" tabIndex={0} onClick={() => setCust(c)} onKeyDown={(e) => { if (e.key === 'Enter') setCust(c); }} title={`${c.name} — click for its models and days`}
+                      className="grid cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-fs-13 hover:bg-blue-50" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.3fr) 5.5rem' }}>
+                      <span className="break-words font-semibold leading-tight text-slate-800" title={c.name}>{c.name}</span>
                       <span className="flex h-3 overflow-hidden rounded bg-slate-100" title={IDS.map((l) => `Line ${l}: ${nf(c.byLine?.[l] || 0)}`).join(' · ')}>
                         {IDS.map((l, i) => (c.byLine?.[l] ? <span key={l} className="block h-full" style={{ width: `${(c.byLine[l] / hiC) * 100}%`, background: (LINE_COLOR[l] || NAVY), marginRight: 1 }} /> : null))}
                       </span>
@@ -122,7 +125,8 @@ export default function CustomerProductionPage() {
               <div style={{ height: 250 }}>
                 {!daily.length ? <p className="grid h-full place-items-center text-fs-13 font-semibold text-slate-500">No production in this period.</p> : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={daily} margin={{ top: 20, right: 8, left: 0, bottom: 0 }} barCategoryGap="22%">
+                    <BarChart data={daily} margin={{ top: 20, right: 8, left: 0, bottom: 0 }} barCategoryGap="22%" style={{ cursor: 'pointer' }}
+                      onClick={(e) => { const d0 = e?.activePayload?.[0]?.payload?.date; if (d0 && range.start !== range.end) setRange({ start: d0, end: d0 }); }}>
                       <CartesianGrid stroke={GRID} vertical={false} />
                       <XAxis dataKey="d" tick={tick()} tickLine={false} axisLine={{ stroke: GRID }} interval={0} />
                       <YAxis tick={tick()} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => (v >= 1000 ? `${v / 1000}k` : v)} />
@@ -239,6 +243,54 @@ export default function CustomerProductionPage() {
               </div>
             )}
           </section>
+          {cust && (() => {
+            const ds = Object.keys(cust.byDate).sort();
+            const hi = Math.max(1, ...ds.map((d) => cust.byDate[d]));
+            return (
+              <MesDrawer title={cust.name} sub={`${groupNameOf(IDS)} · ${periodText}`} onClose={() => setCust(null)} label={`${cust.name} details`} width={60} fit bodyClass="p-3">
+                <div className="flex flex-col gap-3" data-testid="cp-cust-drawer">
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                    <Tile name="Pieces" value={nf(cust.total)} sub={C.total ? `${Math.round((cust.total / C.total) * 100)}% of all pieces` : ''} />
+                    <Tile name="Models" value={nf(cust.models.length)} sub={cust.models[0] ? `top ${cust.models[0].model}` : ''} />
+                    <Tile name="Days" value={nf(ds.length)} sub={ds.length ? `${dmy(ds[0])} – ${dmy(ds[ds.length - 1])}` : ''} />
+                    <Tile name="Lines" value={nf(IDS.filter((l) => cust.byLine?.[l]).length)} sub={IDS.filter((l) => cust.byLine?.[l]).map((l) => `L${l} ${nf(cust.byLine[l])}`).join(' · ')} />
+                  </div>
+                  <section>
+                    <Title right="pieces · days made · best day">Models</Title>
+                    <table className="w-full border-collapse text-fs-13 tabular-nums" aria-label={`${cust.name} models`}>
+                      <thead><tr>{['Model', 'Pieces', 'Share', 'Days', 'Best day'].map((h, i) => <th key={h} className={`${td} bg-slate-50 text-left font-extrabold ${i ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {cust.models.map((m) => {
+                          const md = Object.entries(m.byDate).sort((a, b) => b[1] - a[1])[0];
+                          return (
+                            <tr key={m.model}>
+                              <td className={`${td} font-mono font-semibold`}>{m.model}</td>
+                              <td className={`${td} text-right font-mono font-bold`}>{nf(m.total)}</td>
+                              <td className={`${td} text-right font-mono`}>{cust.total ? `${Math.round((m.total / cust.total) * 100)}%` : ''}</td>
+                              <td className={`${td} text-right font-mono`}>{Object.keys(m.byDate).length}</td>
+                              <td className={`${td} whitespace-nowrap text-right font-mono`}>{md ? `${nf(md[1])} · ${dmy(md[0])}` : '—'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </section>
+                  <section>
+                    <Title right="pieces made each day">Day by day</Title>
+                    <div className="flex flex-col gap-1">
+                      {ds.map((d) => (
+                        <div key={d} className="grid items-center gap-2 text-fs-13" style={{ gridTemplateColumns: '7rem minmax(0,1fr) 5rem' }}>
+                          <span className="font-semibold text-slate-700">{dmy(d)}</span>
+                          <span className="h-3 overflow-hidden rounded bg-slate-100"><span className="block h-full rounded" style={{ width: `${(cust.byDate[d] / hi) * 100}%`, background: NAVY }} /></span>
+                          <span className="text-right font-mono font-bold">{nf(cust.byDate[d])}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </div>
+              </MesDrawer>
+            );
+          })()}
         </>
       )}
     </div>

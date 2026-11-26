@@ -6400,3 +6400,10 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 @container (min-width: 210px) { .lp-fac .lp-fac-lf { display: inline; } .lp-fac .lp-fac-ls { display: none; } }
 .lp-fac-name { font-size: clamp(12px, 7.2cqw, 16px); }
 .lp-fac-val { font-size: clamp(15px, 10cqw, 22px); }
+
+/* 26-11-2026: no page or folder name is cut in the sidebar — a long one goes on a second line */
+.lp-mes .lp-side .lp-side-item > span, .lp-mes .lp-side .lp-side-item .truncate,
+.lp-mes .lp-side .lp-side-group > span.truncate, .lp-mes .lp-side .lp-side-group .truncate {
+  white-space: normal !important; overflow: visible !important; text-overflow: clip !important; overflow-wrap: normal !important; word-break: normal !important; line-height: 1.18;
+}
+.lp-mes .lp-side .lp-side-item { height: auto !important; min-height: 32px; padding-top: 4px; padding-bottom: 4px; }

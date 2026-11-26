@@ -5,7 +5,8 @@ import AchKey from '../components/AchKey';
 import { TARGET_GREY, ACH_GREEN, achColor } from '../utils/achieve';
 import { useAllLineSettings } from '../hooks/useLineSettings';
 import { serverToday } from '../utils/serverTime';
-import { oleRange, oleSum, lossSummary, qualityOf, hm, okFrom, watchFrom, oleConfig, modelPerf, planTargetOf } from '../utils/ole';
+import { modelHours } from '../utils/factorDash';
+import { oleRange, oleSum, lossSummary, qualityOf, hm, okFrom, watchFrom, oleConfig, modelPerf, planTargetOf, normEntry } from '../utils/ole';
 import { openOleDrill, openOleFocus } from '../utils/drillLink';
 import { LINE_COLOR, nf, dmy, p2, useOleLines, groupNameOf, useOleData, Gauge, band, plantOf, plantsText, companyOf, CompanyCell } from '../components/OleParts';
 import { createPortal } from 'react-dom';
@@ -43,16 +44,16 @@ const lossTone = (v) => (v == null ? 'text-slate-500' : v <= 1 - okFrom() ? 'tex
 // 19-11-2026: in words, not + / − — "Short 28" · "Excess 116" · "On target"
 const signed = (v) => (v > 0 ? `Excess ${nf(v)}` : v < 0 ? `Short ${nf(-v)}` : 'On target');
 /** 20-11-2026: the models a reason / defect was written on — the first `max` (with their own time or pieces when more than one), "+N" for the rest; all in the tooltip */
-const modelsCell = (ms, unit = 'min', max = 1, co = null, wrap = false) => {
+// 26-11-2026: EVERY model is named (no "+2"): one model inline; more models one under the other, each with its time / pieces
+const modelsCell = (ms, unit = 'min', _max = 0, co = null) => {
   if (!ms?.length) return <span className="text-[#999]" title="No model was written with it">—</span>;
   const val = (m) => (unit === 'min' ? hr2(m.value) : `${nf(m.value)} pcs`);
   const cOf = (m) => (co ? co(m.name) : '');
+  const name = (m) => <>{cOf(m) && <span className="mr-1 text-fs-11 font-bold uppercase text-[#777]">{cOf(m)}</span>}<span className="font-mono font-semibold">{m.name}</span></>;
+  if (ms.length === 1) return <span className="whitespace-nowrap">{name(ms[0])}</span>;
   return (
-    <span title={ms.map((m) => `${cOf(m) ? `${cOf(m)} ` : ''}${m.name} — ${val(m)}`).join('\n')}>
-      {ms.slice(0, max).map((m, i) => (
-        <span key={m.name} className={wrap ? '' : 'whitespace-nowrap'}>{i > 0 && <span className="text-[#999]"> · </span>}{cOf(m) && <span className="mr-1 text-fs-11 font-bold uppercase text-[#777]">{cOf(m)}</span>}<span className="font-mono font-semibold">{m.name}</span>{ms.length > 1 && !wrap && <span className="text-fs-12 text-[#777]"> {val(m)}</span>}</span>
-      ))}
-      {ms.length > max && <span className="ml-1 rounded bg-[#e3ecf8] px-1 text-fs-12 font-bold text-dixon-navy" aria-label={`${ms.length - max} more models`}>+{ms.length - max}</span>}
+    <span className="flex flex-col gap-0.5 py-0.5">
+      {ms.map((m) => <span key={m.name} className="flex items-baseline justify-between gap-3 whitespace-nowrap"><span>{name(m)}</span><span className="text-fs-12 text-[#666]">{val(m)}</span></span>)}
     </span>
   );
 };
@@ -197,23 +198,20 @@ function hourPerf(R, line) {
     return { key: h, hour: h, extra: rs.some((r) => r.extra), days: rs.length, t, target: target > 0 ? Math.round(target) : null, qty: t.qty, models };
   });
 }
-/** 26-11-2026: one model of one line, hour by hour in the period (a click on a model row): its pieces, its share of the hour's
- *  run time as its cycle (the same way as modelPerf), the std cycle, time lost and the other models made in that hour */
-function modelHours(R, line, model) {
+/** 26-11-2026: every entry behind a View All (not only the sum by reason): idle minutes ('min') or rework / rejection
+ *  pieces ('qty') of the lines shown, day by day and hour by hour, with all that was written on the row */
+function entriesOf(R, ids, unit, perfOnly = false) {
   const out = [];
-  for (const d of R?.days || []) for (const r of d.byLine[line]?.rows || []) {
-    if (r.future || !(r.qty > 0)) continue;
-    for (const x of r.models || []) {
-      const q = Number(x.quantity) || 0;
-      if (!q || (x.model || '—') !== model) continue;
-      const actSec = r.actualMin > 0 ? r.actualMin * 60 * (q / r.qty) : null;
-      const std = Number(x.std) > 0 ? Number(x.std) : null;
-      out.push({ key: `${d.date}|${r.hour}`, date: d.date, hour: r.hour, extra: !!r.extra, qty: q, hourQty: r.qty, actSec, std, act: actSec != null ? actSec / q : null,
-        var: std && actSec != null ? (actSec / q - std) / std : null, lostMin: std && actSec != null ? (actSec - q * std) / 60 : null,
-        others: (r.models || []).filter((y) => (y.model || '—') !== model && Number(y.quantity) > 0).map((y) => ({ name: y.model || '—', value: Number(y.quantity) })) });
-    }
+  // (every row, as the tables above count them — an entry is shown wherever its hour stands)
+  for (const d of R?.days || []) for (const l of ids) for (const r of d.byLine[l]?.rows || []) {
+    const e = r.e || normEntry(r.entry);
+    const list = unit === 'min' ? [...e.stops, ...e.losses.map((x) => ({ ...x, loss: true }))] : [...e.rejects.map((x) => ({ ...x, kind: 'Rejection' })), ...e.rework.map((x) => ({ ...x, kind: 'Rework' }))];
+    list.forEach((x, i) => {
+      if (perfOnly && !(x.loss && x.model && oleConfig().lossIn !== 'avail')) return;
+      out.push({ key: `${d.date}|${l}|${r.hour}|${i}`, date: d.date, line: String(l), hour: r.hour, note: e.note || '', ...x, n: unit === 'min' ? x.min : x.qty });
+    });
   }
-  return out;
+  return out.sort((a, b) => b.date.localeCompare(a.date) || Number(a.line) - Number(b.line) || a.hour - b.hour);
 }
 const secText = (s) => (s == null ? '—' : `${Math.round(s * 10) / 10}s`);
 const varCell = (v) => (v == null ? '—' : <span className={v > 0.005 ? 'font-bold text-red-700' : 'text-emerald-700'}>{v > 0 ? '+' : v < 0 ? '−' : ''}{Math.abs(Math.round(v * 1000) / 10)}%</span>);
@@ -577,14 +575,13 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
       // 23-11-2026: top 3 reasons one per row (name · bar · time), wraps inside the card — no side scroll; models in the tooltip
       { k: 'reasons', label: 'Top Reasons', render: (r) => (
         <div className="space-y-0.5 py-0.5" style={{ whiteSpace: 'normal', minWidth: 240 }}>
-          {r.reasons.slice(0, 3).map((x) => (
+          {r.reasons.map((x) => (
             <div key={x.name} className="flex items-center gap-2 text-fs-13" title={`${x.name}${x.models?.length ? ` — ${x.models.map((m) => `${m.name} ${hr2(m.value)}`).join(', ')}` : ''}`}>
               <span className="lp-caps truncate font-semibold text-[#222]" style={{ flex: '1 1 0', minWidth: 0 }}>{x.name}</span>
               <span className="shrink-0 rounded-sm bg-[#EEF2F7]" style={{ width: 56, height: 6 }}><span className="block rounded-sm bg-[#2E75B6]" style={{ width: `${Math.max(6, Math.round((x.value / (r.reasons[0].value || 1)) * 100))}%`, height: 6 }} /></span>
               <span className="shrink-0 text-right font-mono text-fs-12 font-semibold text-[#333]" style={{ width: 46 }}>{hr2(x.value)}</span>
             </div>
           ))}
-          {r.reasons.length > 3 && <div className="text-fs-12 text-[#777]">+{r.reasons.length - 3} more reasons</div>}
         </div>
       ) },
       { k: 'min', label: 'Duration', right: true, render: (r) => hr2(r.min) }, { k: 'share', label: 'Share', right: true, render: (r) => `${lineLossTotal ? Math.round((r.min / lineLossTotal) * 1000) / 10 : 0}%` }],
@@ -603,8 +600,11 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
       { k: 'std', label: 'Std CT', right: true, render: (r) => secText(r.std) }, { k: 'act', label: 'Actual CT', right: true, render: (r) => (r.few ? '—' : secText(r.act)) }, { k: 'var', label: 'Var.', right: true, render: (r) => (r.few ? '—' : varCell(r.var)) }, { k: 'lost', label: 'Time Lost', right: true, render: (r) => (r.few ? '—' : lostCell(r.lostMin)) }],
   };
   C.hours = [{ k: 'hour', label: 'Hour', render: (r) => <span className="whitespace-nowrap font-mono font-bold">{p2(r.hour)}:00–{p2((r.hour + 1) % 24)}:00{r.extra && <span className="ml-1 rounded bg-amber-100 px-1 text-fs-11 text-amber-800">extra</span>}</span> },
-    // 26-11-2026: the models of the hour (pieces of each on hover; +n = more models)
-    { k: 'models', label: 'Models', render: (r) => modelsCell(r.models, 'pcs', 2) },
+    // 26-11-2026: every model of the hour, one under the other, with its pieces (most first)
+    { k: 'models', label: 'Models', wrap: true, render: (r) => (!r.models?.length ? <span className="text-[#999]">—</span> : (
+      <span className="flex flex-col gap-0.5 py-0.5">{r.models.map((m) => (
+        <span key={m.name} className="flex items-baseline justify-between gap-3 whitespace-nowrap"><span className="font-mono font-semibold">{m.name}</span><span className="text-fs-12 text-[#666]">{nf(m.value)} pcs</span></span>
+      ))}</span>)) },
     { k: 'target', label: 'Target', right: true, render: (r) => (r.target == null ? '—' : nf(r.target)) }, { k: 'qty', label: 'Produced', right: true, render: (r) => nf(r.qty) },
     { k: 'short', label: 'Short / Excess', right: true, render: (r) => (r.target == null ? '—' : <b className={r.qty < r.target ? 'text-red-700' : 'text-emerald-700'}>{signed(r.qty - r.target)}</b>) },
     { k: 'ach', label: 'Achieved', right: true, render: (r) => (r.target ? achChip(r.qty / r.target) : '—') },
@@ -718,18 +718,19 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
 
           {/* 4 — per factor: its tables */}
           <FactorBanner name="Availability" value={T.A} sub={`Idle Time ${hrs(T.lossMin)} Of ${hrs(T.plannedMin)} Planned`} />
-          <div className="grid gap-3 xl:grid-cols-2">
+          {/* 26-11-2026: each table the full width — no text cut, no sideways scroll */}
+          <div className="grid gap-3">
             <QTable title="Idle Time Reasons" rows={downRows} cols={C.down} empty="No idle time entered for this period." onAll={() => setWin({ kind: 'down' })} />
             <QTable title="Line-Wise Idle Time" rows={lineLoss} cols={C.lineLoss} empty="No idle time entered for this period." onAll={() => setWin({ kind: 'lineLoss' })} />
           </div>
           <FactorBanner name="Performance" value={T.P} sub={`Performance Loss ${hrs(T.speedMin || 0)}${modelInP ? ` · Written ${hrs(T.perfLossMin || 0)}` : ''}`} />
-          <div className={modelInP ? 'grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]' : 'grid gap-3'}>
+          <div className="grid gap-3">
             {modelInP && <QTable title="Performance Loss Reasons" rows={perfRows} cols={C.down} empty="No performance loss written for this period." onAll={() => setWin({ kind: 'perfLoss' })} />}
             <QTable title="Cycle Time vs Standard" rows={perf} cols={C.perf} empty="No model with a std cycle in this period." onAll={() => setWin({ kind: 'perf' })} onRow={(r) => setWin({ kind: 'model', row: r })} />
           </div>
           <FactorBanner name="Quality" value={T.Q} sub={`${nf((T.rejects || 0) + (T.rework || 0))} Reworked Of ${nf(T.qty)}`} />
-          <div className="grid gap-3 xl:grid-cols-3">
-            <QTable title="Rework / Defect Reasons" rows={defects} cols={C.defects} empty="No rework entered for this period." onAll={() => setWin({ kind: 'defects' })} />
+          <QTable title="Rework / Defect Reasons" rows={defects} cols={C.defects} empty="No rework entered for this period." onAll={() => setWin({ kind: 'defects' })} />
+          <div className="grid gap-3 xl:grid-cols-2">
             <QTable title="Line-Wise Rework" rows={lineRej} cols={C.lineRej} empty="No rework entered for this period." onAll={() => setWin({ kind: 'lineRej' })} />
             <QTable title="Model-Wise Rework" rows={modelRej} cols={C.modelRej} empty="No rework entered for this period." onAll={() => setWin({ kind: 'modelRej' })} />
           </div>
@@ -803,9 +804,40 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
             );
           })()}
           {win && WIN[win.kind] && (
-            <Window title={WIN[win.kind][0]} sub={`${allView ? plantsText(IDS) : group} · ${periodText}`} onClose={() => setWin(null)}>
+            <Window title={WIN[win.kind][0]} sub={`${allView ? plantsText(IDS) : group} · ${periodText}`} onClose={() => setWin(null)} width={96}>
               {/* a list of many lines: Line 1 first, then Line 2 … (its own order kept inside a line) */}
               <Grid rows={win.kind === 'perf' ? WIN[win.kind][1].map((r, i) => [r, i]).sort((a, b) => Number(a[0].line) - Number(b[0].line) || a[1] - b[1]).map(([r]) => r) : WIN[win.kind][1]} cols={WIN[win.kind][2]} label={`${WIN[win.kind][0]} — all`} onRow={win.kind === 'perf' ? (r) => setWin({ kind: 'model', row: r, back: win }) : null} />
+              {/* 26-11-2026: …and every entry behind it, as written (date, hour, line, model, all its details) */}
+              {win.kind !== 'perf' && (() => {
+                const unit = ['defects', 'lineRej', 'modelRej'].includes(win.kind) ? 'qty' : 'min';
+                const E = entriesOf(R, IDS, unit, win.kind === 'perfLoss');
+                const has = (k) => E.some((x) => x[k]);
+                const cols = [
+                  { k: 'date', label: 'Date', render: (r) => <span className="whitespace-nowrap font-semibold">{dmy(r.date)}</span> },
+                  { k: 'hour', label: 'Hour', render: (r) => <span className="whitespace-nowrap font-mono">{p2(r.hour)}:00–{p2((r.hour + 1) % 24)}:00</span> },
+                  { k: 'line', label: 'Line', render: (r) => lineCell(r.line) },
+                  ...(unit === 'qty' ? [{ k: 'kind', label: 'Kind', render: (r) => r.kind }, ...(has('station') ? [{ k: 'station', label: 'Station', wrap: true, render: (r) => r.station || '—' }] : [])] : []),
+                  { k: 'reason', label: unit === 'qty' ? 'Defect' : 'Reason', wrap: true, render: (r) => <span className="lp-caps font-semibold">{r.reason || 'Not given'}</span> },
+                  { k: 'model', label: 'Model', wrap: true, render: (r) => (r.model ? <span>{co(r.model) && <span className="mr-1 text-fs-11 font-bold uppercase text-[#777]">{co(r.model)}</span>}<span className="font-mono font-semibold">{r.model}</span></span> : <span className="text-[#999]">—</span>) },
+                  { k: 'dept', label: 'Dept.', wrap: true, render: (r) => r.dept || '—' },
+                  ...(has('owner') ? [{ k: 'owner', label: 'Owner', render: (r) => r.owner || '—' }] : []),
+                  ...(has('part') ? [{ k: 'part', label: 'Part', wrap: true, render: (r) => r.part || '—' }] : []),
+                  ...(unit === 'qty' && has('cat') ? [{ k: 'cat', label: 'Category', wrap: true, render: (r) => r.cat || '—' }] : []),
+                  { k: 'n', label: unit === 'min' ? 'Minutes' : 'Pcs', right: true, render: (r) => <b className="text-red-700">{nf(r.n)}</b> },
+                  ...(unit === 'qty' && has('dismantle') ? [{ k: 'dismantle', label: 'Dismantled', right: true, render: (r) => (r.dismantle ? nf(r.dismantle) : '—') }] : []),
+                  ...(unit === 'qty' && has('cause') ? [{ k: 'cause', label: 'Root Cause', wrap: true, render: (r) => r.cause || '—' }] : []),
+                  ...(unit === 'qty' && has('action') ? [{ k: 'action', label: 'Action', wrap: true, render: (r) => r.action || '—' }] : []),
+                  ...(has('note') ? [{ k: 'note', label: 'Hour Note', wrap: true, render: (r) => r.note || '—' }] : []),
+                ];
+                const tot = E.reduce((a, x) => a + x.n, 0);
+                return (
+                  <>
+                    <h3 className="mt-3 border-y border-[#BFBFBF] bg-[#F7F9FC] px-2.5 py-1.5 text-mes-body font-bold text-[#1F3864]">Every entry <span className="font-normal text-[#777]">· {nf(E.length)} written · {unit === 'min' ? hr2(tot) : `${nf(tot)} pcs`} · newest day first</span></h3>
+                    {!E.length ? <p className="p-3 text-fs-14 text-slate-600">Nothing written in this period.</p>
+                      : <Grid rows={E} cols={cols} label={`${WIN[win.kind][0]} — every entry`} total={{ date: 'Total', n: <b>{nf(tot)}</b>, dismantle: unit === 'qty' ? nf(E.reduce((a, x) => a + (x.dismantle || 0), 0)) : undefined }} />}
+                  </>
+                );
+              })()}
             </Window>
           )}
           {/* 26-11-2026: one model of one line — its figures, then hour by hour (✕ / Esc goes back to the list it came from) */}

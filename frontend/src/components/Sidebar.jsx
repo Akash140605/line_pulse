@@ -9,6 +9,8 @@ export const PAGES = [
   { id: 'overview', label: 'Plant overview', icon: LayoutDashboard, color: 'text-sky-300' },
   { id: 'dash', label: 'Dashboard', icon: LayoutGrid, color: 'text-sky-300' },
   { id: 'oleview', label: 'Plant Efficiency', icon: Gauge, color: 'text-sky-300' },
+  { id: 'adash', label: 'Availability dashboard', icon: Timer, color: 'text-sky-300' },
+  { id: 'pdash', label: 'Performance dashboard', icon: TrendingUp, color: 'text-sky-300' },
   { id: 'olea', label: 'Availability', icon: Timer, color: 'text-sky-300' },
   { id: 'olep', label: 'Performance', icon: TrendingUp, color: 'text-sky-300' },
   { id: 'oleq', label: 'OLE quality', icon: ShieldCheck, color: 'text-sky-300' },
@@ -128,7 +130,8 @@ export default function Sidebar({ page, onChange, focusDate, loading, pages: pag
         className={`lp-side-item ${tree ? 'lp-side-leaf' : ''} ${collapsed ? 'justify-center' : ''} relative flex w-full items-center gap-2.5 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#2E75B6] ${active ? 'is-on' : ''}`}
       >
         <Icon size={15} strokeWidth={2} className="shrink-0" />
-        {!collapsed && <span className="min-w-0 truncate">{label}</span>}
+        {/* 26-11-2026: a long name on two lines, never cut */}
+        {!collapsed && <span className="min-w-0 break-words leading-tight">{label}</span>}
       </button>
     );
   };

@@ -53,6 +53,8 @@ export const MGMT_CATALOG = [
   { id: 'rwkan', label: 'Rework analysis', icon: RotateCcw, color: 'text-sky-300', kind: 'main', about: 'Rework written on the Loss entry page as a drill-down: defect Pareto, station, line, model, hour, heat map, every entry with its RCA — with the rework rate (% and PPM of the pieces made) and Excel.' },
   { id: 'kpientry', label: 'KPI entry', icon: ClipboardCheck, color: 'text-sky-300', kind: 'main', about: 'The SAWM KPI report numbers the scans cannot give: OS&D, BOM value, OT man-hours, open WO, TRC / WIP lying, dismantle.' },
   { id: 'daily', label: 'Morning entry', icon: Sunrise, color: 'text-sky-300', kind: 'main', about: 'Supervisor, every morning: manpower, start, lunch, tea breaks and close time of the line — that day\'s targets, OLE and HPR use it.' },
+  { id: 'adash', label: 'Availability dashboard', icon: Timer, color: 'text-sky-300', kind: 'main', about: 'One page for Availability: planned, run and idle time, stops, line × day, day by day against the target, line by line, idle reasons, departments, models and the hour of the day.' },
+  { id: 'pdash', label: 'Performance dashboard', icon: TrendingUp, color: 'text-sky-300', kind: 'main', about: 'One page for Performance: plan vs actual pieces, cycle time vs std, speed loss, line × day, day by day against the target, line by line, every model and the hour of the day.' },
   { id: 'olea', label: 'Availability', icon: Timer, color: 'text-sky-300', kind: 'main', about: 'Deep page of Availability (as the MES): idle time KPIs, reasons Pareto, share by department, when in the day, lines and every reason.' },
   { id: 'olep', label: 'Performance', icon: TrendingUp, color: 'text-sky-300', kind: 'main', about: 'Deep page of Performance (as the MES): lines vs target, Pareto of time lost by model, when it runs slow, models slower than standard.' },
   { id: 'oleq', label: 'OLE quality', icon: ShieldCheck, color: 'text-sky-300', kind: 'main', about: 'Deep page of Quality (as the MES): rejection KPIs, reasons Pareto and share, when it comes, by station, line and model.' },
@@ -63,10 +65,10 @@ export const MGMT_CATALOG = [
 ];
 // 23-11-2026: no separate rejection any more (a piece is reworked or dismantled) — these pages are left out everywhere
 export const RETIRED_PAGES = new Set(['rejan', 'rejection']);
-export const MGMT_DEFAULT_ON = ['dash', 'overview', 'live', 'summary', 'hourly', 'control', 'targets', 'losses', 'ole', 'oleentry', 'qentry', 'rca', 'lossan', 'rejan', 'rwkan', 'qdash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'oledrill', 'rwkdash', 'rcadash', 'kpidash', 'custprod', 'quality', 'entrydash', 'reports'];
+export const MGMT_DEFAULT_ON = ['dash', 'overview', 'live', 'summary', 'hourly', 'control', 'targets', 'losses', 'ole', 'oleentry', 'qentry', 'rca', 'lossan', 'rejan', 'rwkan', 'qdash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'oledrill', 'rwkdash', 'rcadash', 'kpidash', 'custprod', 'quality', 'entrydash', 'reports', 'adash', 'pdash'];
 /** 24-11-2026: the review pages of management, switched on once for a Setup saved before (mgmtV < 2) — mirrors UI_MGMT_REVIEW in ui.php */
-export const MGMT_REVIEW = ['dash', 'overview', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'oledrill', 'qdash', 'rwkdash', 'rcadash', 'kpidash', 'custprod', 'lossan', 'rejan', 'rwkan', 'quality', 'entrydash', 'reports'];
-export const ADMIN_IDS = ['overview', 'dash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'oledrill', 'ole', 'daily', 'oleentry', 'qentry', 'rca', 'entrydash', 'lossan', 'rejan', 'rwkan', 'quality', 'master', 'linetargets', 'targetcheck', 'ai', 'targets', 'methodplan', 'analysis', 'distribution', 'pareto', 'models', 'explorer', 'trends', 'control', 'stdcycle', 'hourly', 'rejection', 'lqentry', 'kpidash', 'rcadash', 'rwkdash', 'kpientry', 'reports', 'repcmp', 'formulas', 'serials', 'custprod', 'qdash', 'universe', 'capa'];
+export const MGMT_REVIEW = ['dash', 'overview', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'oledrill', 'qdash', 'rwkdash', 'rcadash', 'kpidash', 'custprod', 'lossan', 'rejan', 'rwkan', 'quality', 'entrydash', 'reports', 'adash', 'pdash'];
+export const ADMIN_IDS = ['overview', 'dash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'oledrill', 'ole', 'daily', 'oleentry', 'qentry', 'rca', 'entrydash', 'lossan', 'rejan', 'rwkan', 'quality', 'master', 'linetargets', 'targetcheck', 'ai', 'targets', 'methodplan', 'analysis', 'distribution', 'pareto', 'models', 'explorer', 'trends', 'control', 'stdcycle', 'hourly', 'rejection', 'lqentry', 'kpidash', 'rcadash', 'rwkdash', 'kpientry', 'reports', 'repcmp', 'formulas', 'serials', 'custprod', 'qdash', 'universe', 'capa', 'adash', 'pdash'];
 export const KPI_LIST = [
   ['produced', 'Produced'], ['plan', 'Plan so far'], ['achievement', 'Achievement %'], ['short', 'Short pieces'], ['lost', 'Lost time'], ['running', 'Lines running / ₹ loss'],
 ];
@@ -189,8 +191,8 @@ export const FOLDER_DEFAULT = [
   { name: 'Overview', ids: ['dash', 'overview', 'live', 'summary', 'oleview', 'olecal', 'olemonth', 'oledrill', 'ole'] },
   // 20-11-2026: the entry pages in their own folder "Entry" (not under Availability)
   { name: 'Entry', ids: ['daily', 'lqentry', 'oleentry', 'qentry', 'kpientry', 'entrydash'] },
-  { name: 'Availability', ids: ['olea', 'lossan', 'losses'] },
-  { name: 'Performance', ids: ['olep', 'hourly', 'analysis', 'distribution', 'stdcycle', 'control', 'trends'] },
+  { name: 'Availability', ids: ['adash', 'olea', 'lossan', 'losses'] },
+  { name: 'Performance', ids: ['pdash', 'olep', 'hourly', 'analysis', 'distribution', 'stdcycle', 'control', 'trends'] },
   { name: 'Quality', ids: ['qdash', 'oleq', 'rca', 'capa', 'rcadash', 'rwkdash', 'rejan', 'rwkan', 'quality', 'rejection'] },
   { name: 'Analysis', ids: ['ai', 'pareto', 'models', 'explorer', 'universe'] },
   { name: 'Targets', ids: ['master', 'linetargets', 'targetcheck', 'targets', 'methodplan'] },

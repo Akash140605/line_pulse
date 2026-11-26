@@ -42,10 +42,10 @@ export function Factor({ k = null, name, value, formula, rows, lossName, loss, w
         <div className={`${compact ? 'h-2' : 'h-2.5'} relative w-full overflow-hidden rounded-[2px] bg-[#E5E7EB] shadow-[inset_0_1px_1px_rgba(15,29,36,0.08)]`}><div className="h-full rounded-[2px] transition-[width] duration-1000 ease-out" style={{ width: `${Math.min(100, (value ?? 0) * 100)}%`, background: band(value, k) }} />{[25, 50, 75].map((x) => <i key={x} aria-hidden className="absolute inset-y-0 w-[2px] bg-white/90" style={{ left: `calc(${x}% - 1px)` }} />)}</div>
       </div>
       <div className={`flex min-w-0 flex-1 flex-col ${compact ? 'px-2.5 text-mes-body' : 'px-3 text-[calc(16px*var(--fs,1))] xl:px-3.5'} pb-1.5`}>
-        {rows.map(([k, v, cls, sub]) => (
+        {rows.map(([k, v, cls, sub, short]) => (
           <div key={k} className={`flex flex-1 items-center justify-between gap-3 ${sub ? 'border-t border-dashed border-[#E5E7EB]' : `border-t ${HAIR}`} ${compact ? 'min-h-[28px] py-[3px]' : 'min-h-[32px] py-[4px]'}`}>
             {/* a part of the row above (sub): set in, smaller, with ↳ */}
-            <span className={`min-w-0 break-words leading-tight ${sub ? 'pl-3 text-[0.88em] text-[#555]' : 'text-[#333]'}`}>{sub && <span aria-hidden className="mr-1 text-[#999]">↳</span>}{k}</span>
+            <span className={`min-w-0 break-words leading-tight ${sub ? 'pl-3 text-[0.88em] text-[#555]' : 'text-[#333]'}`}>{sub && <span aria-hidden className="mr-1 text-[#999]">↳</span>}{compact && short ? <span title={k}>{short}</span> : k}</span>
             <span className={`shrink-0 text-right font-semibold tabular-nums ${cls || 'text-[#111]'}`}>{v}</span>
           </div>
         ))}
@@ -74,10 +74,11 @@ export function factorsOf(t, zero = false) {
     { k: 'Q', name: 'Quality', value: t.Q, formula: 'Good Qty ÷ Actual Qty', lossName: 'Quality Loss', loss: t.Q == null ? null : 1 - t.Q,
       // 25-11-2026: Actual = Good + Rework (+ Rejected) — Good is what passed first time (the same "out" as the Q formula)
       rows: [['Actual Qty', nf(t.qty)], ['Good Qty', nf(Math.max(0, t.qty - t.rejects - (oleConfig().qMode === 'rej' ? 0 : (t.rework || 0))))],
-        ['Rework Qty', nf(t.rework || 0), t.rework ? 'text-[#C00000]' : ''],
-        // 26-11-2026: what became of the rework — repaired and passed, or dismantled (88 = 70 passed + 18 dismantled)
-        ['Reworked & passed', nf(Math.max(0, (t.rework || 0) - (t.dismantle || 0))), (t.rework || 0) > (t.dismantle || 0) ? 'text-[#0E6E2E]' : '', true],
-        ['Dismantled', nf(t.dismantle || 0), t.dismantle ? 'text-[#C00000]' : '', true], ...(t.rejects > 0 ? [['Rejected Qty', nf(t.rejects), 'text-[#C00000]']] : [])] },
+        // 26-11-2026: the rework and what became of it in ONE row — reworked / passed after rework / dismantled (88 / 70 / 18)
+        ['Rework / Passed / Dismantled', <span key="r" title={`${nf(t.rework || 0)} reworked: ${nf(Math.max(0, (t.rework || 0) - (t.dismantle || 0)))} passed after rework, ${nf(t.dismantle || 0)} dismantled`}>
+          <span className={t.rework ? 'text-[#C00000]' : ''}>{nf(t.rework || 0)}</span><span className="text-[#999]"> / </span>
+          <span className={(t.rework || 0) > (t.dismantle || 0) ? 'text-[#0E6E2E]' : ''}>{nf(Math.max(0, (t.rework || 0) - (t.dismantle || 0)))}</span><span className="text-[#999]"> / </span>
+          <span className={t.dismantle ? 'text-[#C00000]' : ''}>{nf(t.dismantle || 0)}</span></span>, '', false, 'R / P / D'], ...(t.rejects > 0 ? [['Rejected Qty', nf(t.rejects), 'text-[#C00000]']] : [])] },
   ];
 }
 

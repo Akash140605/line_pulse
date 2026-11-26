@@ -106,13 +106,22 @@ function FactorBanner({ name, value, sub }) {
  * A table of the MES look: title + "Top 5", "View All ›" (the full list in a window), blue head row, # column.
  * cols = [{ k, label, right, render(row) }]
  */
-function QTable({ title, top = 5, rows, cols, empty, label, onAll = null, onRow = null }) {
+function QTable({ title, top = 5, rows, cols, empty, label, onAll = null, onRow = null, tabs = null, tab = null, onTab = null }) {
   return (
     <section className={`${card} min-w-0 overflow-hidden`} aria-label={label || title}>
       <div className={`flex min-h-[40px] flex-wrap items-center gap-x-3 gap-y-1 border-b ${HAIR} bg-white px-3 py-1.5`}>
         <span aria-hidden className="h-4 w-[3px] shrink-0 rounded-[1px] bg-[#2E75B6]" />
         <h4 className={`whitespace-nowrap text-mes-title font-bold leading-tight ${NAVY}`}>{title}</h4>
         {top && rows.length > 0 && <span className="text-mes-label text-[#777]">Top {Math.min(top, rows.length)}</span>}
+        {tabs && (
+          <div className="flex flex-wrap overflow-hidden rounded-[3px] border border-[#BFBFBF]" role="tablist" aria-label={`${title}: line`}>
+            {tabs.map((x) => (
+              <button key={x.k} type="button" role="tab" aria-selected={tab === x.k} onClick={() => onTab && onTab(x.k)}
+                className={`whitespace-nowrap border-r border-[#BFBFBF] px-2.5 py-0.5 text-mes-body font-semibold last:border-r-0 ${tab === x.k ? 'bg-[#1F3864] text-white' : 'bg-white text-[#1F3864] hover:bg-[#EAF2FB]'}`}>
+                {x.label}{x.sub ? <span className={`ml-1 font-mono text-fs-12 ${tab === x.k ? 'text-sky-100' : 'text-[#777]'}`} style={{ textTransform: 'none' }}>{x.sub}</span> : null}
+              </button>))}
+          </div>
+        )}
         {onAll && rows.length > 0 && <button type="button" onClick={onAll} className="ml-auto whitespace-nowrap rounded-[2px] px-2 py-0.5 text-mes-body font-semibold text-[#2E75B6] hover:bg-[#EAF2FB]">View All ›</button>}
       </div>
       {!rows.length ? <p className="bg-white px-2 py-1 text-mes-body italic text-[#777]">{empty}</p> : <Grid rows={top ? rows.slice(0, top) : rows} cols={cols} label={`${title} table`} onRow={onRow} />}
@@ -126,15 +135,15 @@ function Grid({ rows, cols, label, total = null, onRow = null, rowTitle = 'Open 
         <thead>
           <tr className={`bg-[#DDEBF7] text-left ${NAVY}`}>
             <th className="w-10 border border-[#BFBFBF] !px-1 py-[3px] text-center font-bold">#</th>
-            {cols.map((c) => <th key={c.k} className={`whitespace-nowrap border border-[#BFBFBF] px-1.5 py-[3px] font-bold ${c.right ? 'text-right' : ''}`}>{c.label}</th>)}
+            {cols.map((c) => <th key={c.k} className={`whitespace-nowrap border border-[#BFBFBF] px-2 py-1 font-bold ${c.right ? 'text-right' : ''}`} style={c.right ? { width: '1%' } : undefined}>{c.label}</th>)}
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={r.key ?? i} className={`bg-white hover:bg-[#DDEBF7]/60 ${onRow ? 'cursor-pointer' : ''}`}
+            <tr key={r.key ?? i} className={`${i % 2 ? 'bg-[#F7F9FC]' : 'bg-white'} hover:bg-[#DDEBF7]/60 ${onRow ? 'cursor-pointer' : ''}`}
               {...(onRow ? { tabIndex: 0, title: rowTitle, onClick: (e) => { if (!e.target.closest('button,a')) onRow(r); }, onKeyDown: (e) => { if (e.key === 'Enter') onRow(r); } } : {})}>
-              <td className={`border ${HAIR} !px-1 py-[3px] text-center text-[#777]`}>{i + 1}</td>
-              {cols.map((c) => <td key={c.k} className={`${c.wrap ? '' : 'whitespace-nowrap'} border ${HAIR} px-1.5 py-[3px] ${c.right ? 'text-right tabular-nums' : ''} ${c.cls || ''}`} style={c.wrap ? { overflowWrap: 'break-word', minWidth: 90 } : undefined}>{c.render ? c.render(r) : r[c.k]}</td>)}
+              <td className={`border ${HAIR} !px-1 py-1 text-center text-[#777]`}>{i + 1}</td>
+              {cols.map((c) => <td key={c.k} className={`${c.wrap ? '' : 'whitespace-nowrap'} border ${HAIR} px-2 py-1 ${c.right ? 'text-right tabular-nums' : ''} ${c.cls || ''}`} style={c.wrap ? { overflowWrap: 'break-word', minWidth: 90 } : undefined}>{c.render ? c.render(r) : r[c.k]}</td>)}
             </tr>
           ))}
           {total && (
@@ -445,9 +454,13 @@ function OverviewSkeleton({ label, sub, lines = 4 }) {
   );
 }
 
+/** 26-11-2026: a share as a small bar with its % (reads at a glance down the column) */
+const shareCell = (f) => { const v = Math.max(0, Math.min(1, Number(f) || 0)); return (
+  <span className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap"><span className="inline-block overflow-hidden rounded-sm bg-[#EEF2F7]" style={{ width: 54, height: 7 }}><span className="block h-full rounded-sm bg-[#2E75B6]" style={{ width: `${Math.max(3, v * 100)}%` }} /></span><span className="inline-block text-right" style={{ minWidth: 44 }}>{Math.round(v * 1000) / 10}%</span></span>); };
 // 26-11-2026: a reason written in CAPITALS reads as Title Case ("MOTOR SHORTAGE" → "Motor Shortage"); short codes stay ("IR Fail", "EPS Shortage")
 const KEEP = new Set(['EPS', 'XML', 'PCB', 'SAP', 'FQC', 'LQC', 'OQC', 'IPQC', 'HV', 'IR', 'QA', 'QC', 'NG', 'OK', 'PU', 'ESD', 'BOM', 'WIP', 'MES', 'IT']);
-const nice = (t) => String(t || '').replace(/[A-Za-z][A-Za-z']*/g, (w) => (KEEP.has(w.toUpperCase()) || (w.length <= 2 && w === w.toUpperCase()) ? w.toUpperCase() : w === w.toUpperCase() ? w[0] + w.slice(1).toLowerCase() : w));
+const cap1 = (t) => t.replace(/^\s*[a-z]/, (c) => c.toUpperCase()).replace(/\s+\//g, ' / ').replace(/\/(?=\S)/g, '/ ').replace(/\/ /g, ' / ').replace(/\s{2,}/g, ' ');
+const nice = (t) => cap1(String(t || '').replace(/[A-Za-z][A-Za-z']*/g, (w) => (KEEP.has(w.toUpperCase()) || (w.length <= 2 && w === w.toUpperCase()) ? w.toUpperCase() : w === w.toUpperCase() ? w[0] + w.slice(1).toLowerCase() : w)));
 
 export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   const ALL = useOleLines();
@@ -467,6 +480,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   const [det, setDet] = useState(null);       // details drawer: { title, ids, line }
   const [pickDay, setPickDay] = useState(null); // a day of the drawer: hour-by-hour drill-down
   const [pickLine, setPickLine] = useState(null); // …of one line (the drawer's day-by-day is line by line)
+  const [idleLine, setIdleLine] = useState('all');   // 26-11-2026: Idle Time Reasons of all lines or one line (tabs above the table)
   const [win, setWin] = useState(null);       // a window: { kind, line }
   const settings = useAllLineSettings(IDS);
   const D = useOleData({ start: range.start, end: range.end, ids: IDS, pollEntries: mode !== 'year' });
@@ -475,6 +489,16 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   // 25-11-2026: the finished days end at the line's last scan, as in the HPR / SAWM KPI (same Plan Target Qty)
   const lastScans = useLastScans({ R: R0, ids: IDS, today });
   const R = useMemo(() => (R0 && Object.keys(lastScans).length ? oleRange({ lines: D.al.lines, settings, entries: D.ent.entries, days: D.ent.days, setups: D.ent.setup, start: range.start, end: range.end, today, nowMin: D.endMin, ids: IDS, lastScans }) : R0), [R0, lastScans]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 26-11-2026: the trend is always the month of the chosen date, day by day (a Day / Week / Range view still shows it);
+  // the rest of the page follows the chosen period
+  const mEnd0 = (() => { const [yy, mm] = range.end.split('-').map(Number); return `${range.end.slice(0, 8)}${p2(new Date(yy, mm, 0).getDate())}`; })();
+  const monthR = { start: `${range.end.slice(0, 8)}01`, end: mEnd0 > today ? today : mEnd0 };
+  const sameMonth = mode === 'year' || (range.start === monthR.start && range.end === monthR.end);
+  const DM = useOleData({ start: monthR.start, end: monthR.end, ids: IDS, prod: !sameMonth, paused: true });   // read once (Refresh reads it again), not every 20 s
+  const RM0 = useMemo(() => (!sameMonth && DM.al ? oleRange({ lines: DM.al.lines, settings, entries: DM.ent.entries, days: DM.ent.days, setups: DM.ent.setup, start: monthR.start, end: monthR.end, today, nowMin: DM.endMin, ids: IDS }) : null),
+    [sameMonth, DM.al, settings, DM.ent.entries, monthR.start, monthR.end, today, DM.endMin, IDS]); // eslint-disable-line react-hooks/exhaustive-deps
+  const lastScansM = useLastScans({ R: RM0, ids: IDS, today });
+  const RM = useMemo(() => (RM0 && Object.keys(lastScansM).length ? oleRange({ lines: DM.al.lines, settings, entries: DM.ent.entries, days: DM.ent.days, setups: DM.ent.setup, start: monthR.start, end: monthR.end, today, nowMin: DM.endMin, ids: IDS, lastScans: lastScansM }) : RM0), [RM0, lastScansM]); // eslint-disable-line react-hooks/exhaustive-deps
   // month by month (year view)
   const months = useMemo(() => {
     if (mode !== 'year' || !R) return [];
@@ -500,6 +524,13 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   const isPerf = (x) => x.kind === 'Performance loss';
   const minRows = (pick) => { const L = LS.reason.filter((x) => x.unit === 'min' && x.value > 0 && pick(x)); const tot = L.reduce((a, x) => a + x.value, 0); return L.map((x) => ({ key: `${x.kind}|${x.name}`, ...x, share: tot ? x.value / tot : 0 })); };
   const downRows = minRows((x) => !isPerf(x));
+  const idleL = idleLine !== 'all' && IDS.map(String).includes(String(idleLine)) ? String(idleLine) : 'all';
+  const idleRows = useMemo(() => {
+    if (idleL === 'all') return downRows;
+    const S = lossSummary(rowsOfLines([idleL]), D.ent.reasons.station);
+    const L = S.reason.filter((x) => x.unit === 'min' && x.value > 0 && x.kind !== 'Performance loss'); const tot = L.reduce((a, x) => a + x.value, 0);
+    return L.map((x) => ({ key: `${x.kind}|${x.name}`, ...x, share: tot ? x.value / tot : 0 }));
+  }, [idleL, R, D.ent.reasons, LS]); // eslint-disable-line react-hooks/exhaustive-deps
   const perfRows = minRows(isPerf);
   const modelInP = oleConfig().lossIn !== 'avail';   // admin choice (Setup → OLE formulas); standard: model loss is idle time
   const lineLoss = useMemo(() => IDS.map((l) => {
@@ -529,7 +560,9 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   // trend: per day (per month in the year view); a single day has no trend
   // the trend: OLE · A · P · Q (%) and target vs actual (pcs) per point; a month shows all its days, the days to come empty
   const trend = useMemo(() => {
-    if (!R || oneDay) return [];
+    const TR = sameMonth ? R : RM;   // the month of the chosen date (the page's own data when it is that month)
+    const range = sameMonth ? range0 : monthR;
+    if (!TR) return [];
     const r1 = (v) => (v == null ? null : Math.round(v * 1000) / 10);
     const pt = (k, t, future = false) => {
       const ran = !future && t && t.totalMin > 0;
@@ -539,7 +572,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
     if (mode === 'year') return months.map((x) => pt(x.n, x.t, x.future));
     const dLabel = (ds) => `${ds.slice(8, 10)} ${MONTHS[Number(ds.slice(5, 7)) - 1]}`;
     if (grain === 'day') {
-      const pts = R.days.map((d) => pt(dLabel(d.date), d.total));
+      const pts = TR.days.map((d) => pt(dLabel(d.date), d.total));
       // a month (1st … today): the rest of the month on the axis, empty
       if (range.start.slice(8) === '01' && range.start.slice(0, 7) === range.end.slice(0, 7)) {
         const [yy, mm] = range.start.split('-').map(Number), last = new Date(yy, mm, 0).getDate();
@@ -549,7 +582,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
     }
     // Trend: Week / Month (as the Dixon MES): the days summed per Monday-week or per month
     const groups = new Map();
-    for (const d of R.days) {
+    for (const d of TR.days) {
       const [yy, mm, dd] = d.date.split('-').map(Number);
       const mon = new Date(yy, mm - 1, dd - ((new Date(yy, mm - 1, dd).getDay() + 6) % 7));
       const key = grain === 'week' ? `${mon.getFullYear()}-${p2(mon.getMonth() + 1)}-${p2(mon.getDate())}` : d.date.slice(0, 7);
@@ -557,7 +590,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
       groups.get(key).push(d.total);
     }
     return [...groups.entries()].map(([key, ts]) => pt(grain === 'week' ? `Wk ${dLabel(key)}` : `${MONTHS[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`, oleSum(ts)));
-  }, [R, oneDay, months, mode, grain, range.start, range.end]);
+  }, [R, RM, sameMonth, months, mode, grain, range0.start, range0.end, monthR.start, monthR.end]); // eslint-disable-line react-hooks/exhaustive-deps
   // the sidebar's "Trend": this month, day by day, then the page goes to the trend
   useEffect(() => {
     const go = (e) => { if (e.detail !== 'ov-trend') return; setMode('period'); setGrain('day'); setRange({ start: `${today.slice(0, 8)}01`, end: today }); };
@@ -581,28 +614,28 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   // ── columns of the tables
   const lineCell = (l) => <span className="whitespace-nowrap font-bold">Line {l}{plantOf(l) && <span className="ml-1 text-fs-12 font-semibold text-slate-500">{plantOf(l)}</span>}</span>;
   const C = {
-    down: [{ k: 'name', label: 'Reason', wrap: true, render: (r) => <span className="font-semibold">{nice(r.name)}</span> }, { k: 'models', label: 'Model', wrap: true, render: (r) => modelsCell(r.models, 'min', 1, co, true) }, { k: 'dept', label: 'Dept.', render: (r) => (r.dept && r.dept !== 'Not set' ? r.dept : '—') }, { k: 'value', label: 'Time', right: true, render: (r) => hr2(r.value) }, { k: 'share', label: 'Share', right: true, render: (r) => `${Math.round(r.share * 1000) / 10}%` }],
+    down: [{ k: 'name', label: 'Reason', wrap: true, render: (r) => <span className="font-semibold">{nice(r.name)}</span> }, { k: 'models', label: 'Model', wrap: true, render: (r) => modelsCell(r.models, 'min', 1, co, true) }, { k: 'dept', label: 'Dept.', render: (r) => (r.dept && r.dept !== 'Not set' ? r.dept : '—') }, { k: 'value', label: 'Time', right: true, render: (r) => hr2(r.value) }, { k: 'share', label: 'Share', right: true, render: (r) => shareCell(r.share) }],
     lineLoss: [{ k: 'line', label: 'Line', render: (r) => lineCell(r.line) },
       // 23-11-2026: top 3 reasons one per row (name · bar · time), wraps inside the card — no side scroll; models in the tooltip
       { k: 'reasons', label: 'Top Reasons', render: (r) => (
         <div className="space-y-0.5 py-0.5" style={{ whiteSpace: 'normal', minWidth: 240 }}>
           {r.reasons.map((x) => (
-            <div key={x.name} className="flex items-center gap-2 text-fs-13" title={`${x.name}${x.models?.length ? ` — ${x.models.map((m) => `${m.name} ${hr2(m.value)}`).join(', ')}` : ''}`}>
-              <span className="truncate font-semibold text-[#222]" style={{ flex: '1 1 0', minWidth: 0 }}>{nice(x.name)}</span>
-              <span className="shrink-0 rounded-sm bg-[#EEF2F7]" style={{ width: 56, height: 6 }}><span className="block rounded-sm bg-[#2E75B6]" style={{ width: `${Math.max(6, Math.round((x.value / (r.reasons[0].value || 1)) * 100))}%`, height: 6 }} /></span>
+            <div key={x.name} className="grid items-center gap-2 text-fs-13" style={{ gridTemplateColumns: 'minmax(0, 300px) 90px 48px' }} title={`${x.name}${x.models?.length ? ` — ${x.models.map((m) => `${m.name} ${hr2(m.value)}`).join(', ')}` : ''}`}>
+              <span className="truncate font-semibold text-[#222]">{nice(x.name)}</span>
+              <span className="rounded-sm bg-[#EEF2F7]" style={{ width: 90, height: 6 }}><span className="block rounded-sm bg-[#2E75B6]" style={{ width: `${Math.max(6, Math.round((x.value / (r.reasons[0].value || 1)) * 100))}%`, height: 6 }} /></span>
               <span className="shrink-0 text-right font-mono text-fs-12 font-semibold text-[#333]" style={{ width: 46 }}>{hr2(x.value)}</span>
             </div>
           ))}
         </div>
       ) },
-      { k: 'min', label: 'Duration', right: true, render: (r) => hr2(r.min) }, { k: 'share', label: 'Share', right: true, render: (r) => `${lineLossTotal ? Math.round((r.min / lineLossTotal) * 1000) / 10 : 0}%` }],
+      { k: 'min', label: 'Duration', right: true, render: (r) => hr2(r.min) }, { k: 'share', label: 'Share', right: true, render: (r) => shareCell(lineLossTotal ? r.min / lineLossTotal : 0) }],
     perf: [{ k: 'line', label: 'Line', render: (r) => lineCell(r.line) }, { k: 'company', label: 'Company', render: (r) => <CompanyCell name={co(r.model)} /> }, { k: 'model', label: 'Model', render: (r) => <span className="font-mono font-semibold">{r.model}</span> },
       { k: 'std', label: 'Std', right: true, render: (r) => secText(r.std) }, { k: 'act', label: 'Actual', right: true, render: (r) => (r.few ? '—' : secText(r.act)) }, { k: 'var', label: 'Var.', right: true, render: (r) => (r.few ? '—' : varCell(r.var)) },
       // target · actual · achieved each in its own column (19-11-2026)
       { k: 'target', label: 'Target Qty', right: true, render: (r) => (r.few ? fewNote(r.qty) : r.target == null ? '—' : nf(r.target)) },
       { k: 'qty', label: 'Actual Qty', right: true, render: (r) => nf(r.qty) },
       { k: 'ach', label: 'Achieved', right: true, render: (r) => (r.few || r.target == null ? '—' : achChip(r.ach)) }, { k: 'lost', label: 'Time Lost', right: true, render: (r) => (r.few ? '—' : lostCell(r.lostMin)) }],
-    defects: [{ k: 'name', label: 'Reason', wrap: true, render: (r) => <span className="font-semibold">{nice(r.name)}</span> }, { k: 'models', label: 'Model', wrap: true, render: (r) => modelsCell(r.models, 'pcs', 1, co, true) }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'dis', label: 'Dismantle', right: true, render: (r) => (r.dis ? <b className="text-red-700">{nf(r.dis)}</b> : <span className="text-slate-400">0</span>) }, { k: 'share', label: 'Share', right: true, render: (r) => `${Math.round(r.share * 1000) / 10}%` }],
+    defects: [{ k: 'name', label: 'Reason', wrap: true, render: (r) => <span className="font-semibold">{nice(r.name)}</span> }, { k: 'models', label: 'Model', wrap: true, render: (r) => modelsCell(r.models, 'pcs', 1, co, true) }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'dis', label: 'Dismantle', right: true, render: (r) => (r.dis ? <b className="text-red-700">{nf(r.dis)}</b> : <span className="text-slate-400">0</span>) }, { k: 'share', label: 'Share', right: true, render: (r) => shareCell(r.share) }],
     lineRej: [{ k: 'line', label: 'Line', render: (r) => lineCell(r.line) }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'r', label: 'Rework %', right: true, render: (r) => <span className={`rounded px-1.5 py-0.5 font-bold ${rejChip(r.r)}`}>{pc(r.r, 2)}</span> }],
     modelRej: [{ k: 'company', label: 'Company', render: (r) => <CompanyCell name={co(r.name)} /> }, { k: 'name', label: 'Model', wrap: true, render: (r) => <span className="font-mono font-semibold">{r.name}</span> }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'r', label: 'Rework %', right: true, render: (r) => <span className={`rounded px-1.5 py-0.5 font-bold ${rejChip(r.r)}`}>{pc(r.r, 2)}</span> }],
     linePerf: [{ k: 'company', label: 'Company', render: (r) => <CompanyCell name={co(r.model)} /> }, { k: 'model', label: 'Model', render: (r) => <span className="font-mono font-semibold">{r.model}</span> }, { k: 'target', label: 'Target', right: true, render: (r) => (r.few ? '—' : r.target == null ? '—' : nf(r.target)) }, { k: 'qty', label: 'Produced', right: true, render: (r) => nf(r.qty) },
@@ -731,14 +764,15 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
             </section>
           )}
 
-          {!oneDay && <div id="ov-trend" className="lp-anchor"><Trend data={trend} title={`${mode === 'year' || grain === 'month' ? 'Month-Wise' : grain === 'week' ? 'Week-Wise' : 'Day-Wise'} Trend`} label="OLE trend" gid="oleFill" /></div>}
+          {trend.length > 0 && <div id="ov-trend" className="lp-anchor"><Trend data={trend} title={`${mode === 'year' || grain === 'month' ? 'Month-Wise' : grain === 'week' ? 'Week-Wise' : 'Day-Wise'} Trend${mode !== 'year' ? ` · ${MONTH_FULL[Number(monthR.start.slice(5, 7)) - 1]} ${monthR.start.slice(0, 4)}` : ''}`} label="OLE trend" gid="oleFill" /></div>}
 
           {/* 4 — per factor: its tables */}
           <FactorBanner name="Availability" value={T.A} sub={`idle time ${hrs(T.lossMin)} of ${hrs(T.plannedMin)} planned`} />
           {/* 26-11-2026: each table the full width — no text cut, no sideways scroll */}
           <div className="grid gap-3">
-            <QTable title="Idle Time Reasons" rows={downRows} cols={C.down} empty="No idle time entered for this period." onAll={() => setWin({ kind: 'down' })} onRow={drill('down')} />
-            <QTable title="Line-Wise Idle Time" rows={lineLoss} cols={C.lineLoss} empty="No idle time entered for this period." onAll={() => setWin({ kind: 'lineLoss' })} onRow={drill('lineLoss')} />
+            {/* 26-11-2026: one table — the lines as tabs above it (the Line-Wise Idle Time table is gone) */}
+            <QTable title="Idle Time Reasons" rows={idleRows} cols={C.down} empty={idleL === 'all' ? 'No idle time entered for this period.' : `No idle time entered for Line ${idleL} in this period.`} onAll={() => setWin({ kind: 'down' })} onRow={drill('down')}
+              tabs={IDS.length > 1 ? [{ k: 'all', label: 'All lines', sub: hr2(lineLossTotal) }, ...IDS.map((l) => ({ k: String(l), label: `Line ${l}`, sub: hr2((lineLoss.find((x) => String(x.line) === String(l)) || {}).min || 0) }))] : null} tab={idleL} onTab={setIdleLine} />
           </div>
           <FactorBanner name="Performance" value={T.P} sub={`speed loss ${hrs(T.speedMin || 0)}${modelInP ? ` · written ${hrs(T.perfLossMin || 0)}` : ''}`} />
           <div className="grid gap-3">
@@ -795,7 +829,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
                       { k: 'dept', label: 'Department', render: (r) => (r.dept && r.dept !== 'Not set' ? r.dept : '—') },
                       { k: 'kind', label: 'Kind', render: (r) => (r.unit === 'min' ? 'Time' : 'Pieces') },
                       { k: 'value', label: 'Lost', right: true, render: (r) => (r.unit === 'min' ? <b className="text-red-700">{hr2(r.value)}</b> : `${nf(r.value)} pcs`) },
-                      { k: 'share', label: 'Share', right: true, render: (r) => (r.unit === 'min' && tot ? `${Math.round((r.value / tot) * 1000) / 10}%` : '—') }]} />;
+                      { k: 'share', label: 'Share', right: true, render: (r) => (r.unit === 'min' && tot ? shareCell(r.value / tot) : '—') }]} />;
                 })() : view === 'models' ? (!list.length ? <p className="p-4 text-fs-14 text-slate-600">No production in this period.</p>
                   : <Grid rows={list} cols={C.linePerf} label={`Line ${win.line} models`} onRow={(r) => setWin({ kind: 'model', row: r, back: win })} total={{ model: 'Total', target: nf(tot.target), qty: nf(tot.qty), short: <b className={tot.qty < tot.target ? 'text-red-700' : 'text-emerald-700'}>{signed(tot.qty - tot.target)}</b>, ach: tot.target ? `${Math.round((tot.qty / tot.target) * 1000) / 10}%` : '—', lost: lostCell(tot.lost) }} />)
                   : (!hrsL.length ? <p className="p-4 text-fs-14 text-slate-600">No production in this period.</p>

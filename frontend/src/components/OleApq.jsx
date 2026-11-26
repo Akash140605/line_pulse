@@ -44,10 +44,10 @@ export function Factor({ k = null, name, value, formula, rows, lossName, loss, w
       </div>
       <div className={`flex min-w-0 flex-1 flex-col ${compact ? 'px-2.5 text-mes-body' : 'px-3 text-[calc(16px*var(--fs,1))] xl:px-3.5'} pb-1.5`}>
         {rows.map(([k, v, cls, sub, short]) => (
-          <div key={k} className={`flex flex-1 items-center justify-between ${compact ? 'gap-2' : 'gap-3'} ${sub ? 'border-t border-dashed border-[#E5E7EB]' : `border-t ${HAIR}`} ${compact ? 'min-h-[28px] py-[3px]' : 'min-h-[32px] py-[4px]'}`}>
+          <div key={k} className={`flex flex-1 items-center justify-between ${compact ? 'flex-wrap gap-x-2' : 'gap-3'} ${sub ? 'border-t border-dashed border-[#E5E7EB]' : `border-t ${HAIR}`} ${compact ? 'min-h-[28px] py-[3px]' : 'min-h-[32px] py-[4px]'}`}>
             {/* a part of the row above (sub): set in, smaller, with ↳ */}
             <span className={`min-w-0 break-words leading-tight ${sub ? 'pl-3 text-[0.88em] text-[#555]' : 'text-[#333]'}`}>{sub && <span aria-hidden className="mr-1 text-[#999]">↳</span>}{compact && short ? <span title={k} className="whitespace-nowrap">{short}</span> : k}</span>
-            <span className={`shrink-0 text-right font-semibold tabular-nums ${cls || 'text-[#111]'}`}>{v}</span>
+            <span className={`ml-auto shrink-0 text-right font-semibold tabular-nums ${cls || 'text-[#111]'}`}>{v}</span>
           </div>
         ))}
       </div>

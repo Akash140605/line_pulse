@@ -124,7 +124,7 @@ export default function ReworkDashboardPage() {
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
             <section className={`${card} xl:col-span-2`} aria-label="Why parts are reworked">
               <Title right="Pareto of the defects">Why parts are reworked</Title>
-              <Pareto rows={defects.map((d) => ({ label: d.key, value: d.total }))} unit=" pcs" color="#C00000" empty="No rework in this period." />
+              <Pareto rows={defects.map((d) => ({ label: d.key, value: d.total }))} unit=" pcs" color="#EB5757" empty="No rework in this period." />
             </section>
             <section className={card} aria-label="Rework by stage">
               <Title right="where it was caught">By stage</Title>

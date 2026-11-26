@@ -91,7 +91,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
   const openLine = (l) => setSel((s0) => (s0 === String(l) ? 'all' : String(l)));
   const ok = okFrom(factor), watch = watchFrom(factor);
   const tone = (v) => (v == null ? 'text-slate-500' : v >= ok ? 'text-emerald-700' : v >= watch ? 'text-amber-700' : 'text-red-700');
-  const fill = (v) => (v == null ? '#CBD5E1' : v >= ok ? '#16A34A' : v >= watch ? '#D97706' : '#DC2626');
+  const fill = (v) => (v == null ? '#CBD5E1' : v >= ok ? '#16A34A' : v >= watch ? '#D97706' : '#EB5757');
   const cellBg = (v) => (v == null ? '' : v >= ok ? 'bg-emerald-50 text-emerald-800' : v >= watch ? 'bg-amber-50 text-amber-800' : 'bg-red-50 text-red-800');
   const periodText = oneDay ? dmy(range.start) : `${dmy(range.start)} – ${dmy(range.end)}`;
   const group = sel === 'all' ? groupNameOf(ALL) : `Line ${sel}`;
@@ -137,7 +137,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
               <Tile name="Short / excess" value={t.short == null ? '—' : nf(Math.abs(t.short))} sub={t.short == null ? '—' : t.short < 0 ? 'pieces short of the plan' : 'pieces over the plan'} tone={t.short == null ? 'text-slate-900' : t.short < 0 ? 'text-red-700' : 'text-emerald-700'} />
               <Tile name="Cycle time" value={sec(t.act)} sub={`actual · std ${sec(t.std)}`} tone={t.act != null && t.std != null && t.act > t.std * 1.005 ? 'text-red-700' : 'text-emerald-700'} />
               <Tile name="Speed loss" value={hh(t.speed)} sub="run time beyond the std cycle" tone={t.speed >= 3 ? 'text-red-700' : 'text-slate-900'} />
-              <Tile name="Slow models" value={`${nf(t.slow)} of ${nf(t.judged)}`} sub={X.slow[0] ? `worst ${X.slow[0].model} (L${X.slow[0].line}) · ${dur(X.slow[0].lostMin)} lost` : 'none slower than std'} tone={t.slow ? 'text-red-700' : 'text-emerald-700'} />
+              <Tile name="Slow models" value={`${nf(t.slow)} of ${nf(t.judged)}`} sub={X.slow[0] ? `most time lost: ${X.slow[0].model} (L${X.slow[0].line}) · ${dur(X.slow[0].lostMin)}${X.variation[0] && X.variation[0].key !== X.slow[0].key ? ` · highest variation: ${X.variation[0].model} +${(X.variation[0].var * 100).toFixed(1)}%` : ''}` : 'none slower than std'} tone={t.slow ? 'text-red-700' : 'text-emerald-700'} />
             </section>
           )}
 
@@ -151,7 +151,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
               <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
                 <section className={`${card} xl:col-span-2`} aria-label="Idle time reasons Pareto">
                   <Title right="Pareto by time lost">Idle time reasons</Title>
-                  <Pareto rows={X.reasons.map((r) => ({ label: r.name, value: r.min }))} fmt={hrs} time color="#C00000" empty="No idle time in this period." />
+                  <Pareto rows={X.reasons.map((r) => ({ label: r.name, value: r.min }))} fmt={hrs} time color="#EB5757" empty="No idle time in this period." />
                 </section>
                 <section className={card} aria-label="Share by department">
                   <Title right="who owns the lost time">Share by department</Title>
@@ -169,7 +169,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
               <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
                 <section className={`${card} xl:col-span-2`} aria-label="Where the speed is lost">
                   <Title right="Pareto of time lost against the std cycle, by model">Where the speed is lost</Title>
-                  <Pareto rows={X.slow.map((m) => ({ label: `${m.model} (L${m.line})`, value: m.lostMin }))} fmt={(m) => dur(Math.max(0, m))} time color="#C00000" empty="No model ran slower than its std." />
+                  <Pareto rows={X.slow.map((m) => ({ label: `${m.model} (L${m.line})`, value: m.lostMin }))} fmt={(m) => dur(Math.max(0, m))} time color="#EB5757" empty="No model ran slower than its std." />
                 </section>
                 <section className={card} aria-label="Speed loss by line">
                   <Title right="run time beyond std">Speed loss by line</Title>
@@ -195,7 +195,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                     <YAxis tick={tick()} width={40} unit="s" domain={[0, 'auto']} />
                     <Tooltip formatter={ctTip} labelFormatter={(l, p) => (p?.[0]?.payload?.date ? dmy(p[0].payload.date) : `${l}:00`)} />
                     <Bar dataKey="act" name="act" maxBarSize={30} radius={[3, 3, 0, 0]} isAnimationActive={false}>
-                      {data.map((d) => <Cell key={d.k} fill={d.std != null && d.act > d.std * 1.005 ? '#DC2626' : '#16A34A'} />)}
+                      {data.map((d) => <Cell key={d.k} fill={d.std != null && d.act > d.std * 1.005 ? '#EB5757' : '#16A34A'} />)}
                       <LabelList dataKey="act" position="top" style={{ fontSize: fs(10.5), fill: '#334155', fontWeight: 700 }} />
                     </Bar>
                     <Line dataKey="std" name="std" stroke={NAVY} strokeWidth={2} strokeDasharray="6 4" dot={false} isAnimationActive={false} />
@@ -208,7 +208,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
               <>
                 <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                   <section className={card} aria-label="Cycle time variation by model">
-                    <Title right="actual cycle against std · most time lost first · click a model for its hours">Cycle time variation · by model</Title>
+                    <Title right="actual cycle against std · highest variation first · click a model for its hours">Cycle time variation · by model</Title>
                     {!V.length ? <Empty text="No model with enough pieces and a std cycle." /> : (
                       <div className="flex max-h-[300px] flex-col gap-1 overflow-y-auto pr-1" role="list" aria-label="Cycle time variation by model">
                         {V.map((m) => (
@@ -216,7 +216,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                             className="grid cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-fs-13 hover:bg-blue-50" style={{ gridTemplateColumns: 'minmax(0,1.2fr) minmax(0,1fr) 9.5rem' }}>
                             <span className="break-words font-semibold leading-tight text-slate-800"><span className="font-mono">{m.model}</span> <span className="text-fs-12 text-slate-500">L{m.line}</span></span>
                             <span className="relative h-3 rounded bg-slate-100"><span className="absolute top-0 h-full w-px bg-slate-400" style={{ left: '50%' }} />
-                              <span className="absolute top-0 h-full rounded" style={m.var > 0 ? { left: '50%', width: `${(m.var / hiV) * 50}%`, background: '#DC2626' } : { right: '50%', width: `${(-m.var / hiV) * 50}%`, background: '#16A34A' }} /></span>
+                              <span className="absolute top-0 h-full rounded" style={m.var > 0 ? { left: '50%', width: `${(m.var / hiV) * 50}%`, background: '#EB5757' } : { right: '50%', width: `${(-m.var / hiV) * 50}%`, background: '#16A34A' }} /></span>
                             <span className={`text-right font-mono font-bold ${m.var > 0.005 ? 'text-red-700' : 'text-emerald-700'}`}>{m.var > 0 ? '+' : ''}{(m.var * 100).toFixed(1)}% <span className="text-fs-12 font-semibold text-slate-500">{sec(m.act)}/{sec(m.std)}</span></span>
                           </div>
                         ))}
@@ -236,7 +236,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                 )}
                 <section className={card} aria-label="Performance loss reasons">
                   <Title right="minutes written against a model (Loss entry)">Performance loss reasons</Title>
-                  {X.reasons.length ? <Pareto rows={X.reasons.map((r) => ({ label: r.name, value: r.min }))} fmt={(m) => dur(m)} time color="#C00000" />
+                  {X.reasons.length ? <Pareto rows={X.reasons.map((r) => ({ label: r.name, value: r.min }))} fmt={(m) => dur(m)} time color="#EB5757" />
                     : <p className="text-fs-13 text-slate-600">No performance loss reason written in this period. A loss written on Loss entry counts in Availability (idle time) — see the Availability dashboard; set "loss with a model → Performance" in Setup → OLE formulas to see such reasons here. The speed loss of every model is above.</p>}
                 </section>
               </>

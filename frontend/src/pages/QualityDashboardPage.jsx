@@ -25,7 +25,7 @@ import { Pareto, Donut } from './OleFocusPage';
  * stations, models and the hour of the day. Excel of all of it. (utils/qualityDash.js)
  */
 const card = 'rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4';
-const NAVY = '#1F3864', GRID = '#E2E8F0', RED = '#B91C1C';
+const NAVY = '#1F3864', GRID = '#E2E8F0', RED = '#EB5757';
 const tick = () => ({ fontSize: fs(12), fill: '#334155' });
 const pc = (v, d = 2) => (v == null ? '—' : `${v.toFixed(d)}%`);
 const yp = (v) => (v == null ? '—' : `${(v * 100).toFixed(v >= 0.9995 && v < 1 ? 2 : 1)}%`);
@@ -340,7 +340,7 @@ function StageFlow({ S, fpyT, rtyT, qs, onPick }) {
   const a = S.all;
   const stT = Math.max(fpyT, 0.995);   // a single gate is expected to pass at least the FPY target (99.5 % floor)
   const tone = (v, t) => (v == null ? 'text-slate-500' : v >= t ? 'text-emerald-700' : 'text-red-700');
-  const bar = (v, t) => (v == null ? '#CBD5E1' : v >= t ? '#16A34A' : '#DC2626');
+  const bar = (v, t) => (v == null ? '#CBD5E1' : v >= t ? '#16A34A' : '#EB5757');
   const worst = a.fpy.map((v, i) => [v, i]).filter(([v]) => v != null && v < 1).sort((p, q) => p[0] - q[0])[0];
   return (
     <section className={card} aria-label="Assembly stages">

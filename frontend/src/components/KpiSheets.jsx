@@ -77,7 +77,7 @@ function SummaryCharts({ S }) {
           <CartesianGrid stroke={G} vertical={false} /><XAxis dataKey="k" tick={tk} interval={0} /><YAxis tick={tk} width={40} />
           <Tooltip labelFormatter={(_, p) => lab(p)} formatter={(v, n) => [d0(v), n]} /><Legend wrapperStyle={{ fontSize: 11 }} />
           <Bar dataKey="plan" name="Plan" fill="#CBD5E1" maxBarSize={18} isAnimationActive={false} />
-          <Bar dataKey="qty" name="Actual" fill="#16A34A" maxBarSize={18} isAnimationActive={false}>{D.map((d) => <Cell key={d.k} fill={d.plan && d.qty >= d.plan ? '#16A34A' : '#DC2626'} />)}</Bar>
+          <Bar dataKey="qty" name="Actual" fill="#16A34A" maxBarSize={18} isAnimationActive={false}>{D.map((d) => <Cell key={d.k} fill={d.plan && d.qty >= d.plan ? '#16A34A' : '#EB5757'} />)}</Bar>
         </BarChart>
       ))}
       {box('UPH · target vs actual', 'units per hour (average of the lines)', two('uphT', 'uphA', 'Target', 'Actual', (v) => v.toFixed(0)))}
@@ -86,8 +86,8 @@ function SummaryCharts({ S }) {
         <ComposedChart data={D} margin={{ top: 14, right: 6, left: 0, bottom: 0 }}>
           <CartesianGrid stroke={G} vertical={false} /><XAxis dataKey="k" tick={tk} interval={0} /><YAxis tick={tk} width={44} domain={[(m) => Math.min(KPI_RTY_T - 1, Math.floor(m)), 100]} unit="%" />
           <Tooltip labelFormatter={(_, p) => lab(p)} formatter={(v) => [v == null ? '—' : `${v}%`, 'RTY']} />
-          <ReferenceLine y={KPI_RTY_T} stroke="#DC2626" strokeDasharray="5 4" />
-          <Bar dataKey="rty" name="RTY" maxBarSize={18} isAnimationActive={false}>{D.map((d) => <Cell key={d.k} fill={d.rty == null ? '#CBD5E1' : d.rty >= KPI_RTY_T ? '#16A34A' : '#DC2626'} />)}<LabelList dataKey="rty" content={rtyLabel} /></Bar>
+          <ReferenceLine y={KPI_RTY_T} stroke="#EB5757" strokeDasharray="5 4" />
+          <Bar dataKey="rty" name="RTY" maxBarSize={18} isAnimationActive={false}>{D.map((d) => <Cell key={d.k} fill={d.rty == null ? '#CBD5E1' : d.rty >= KPI_RTY_T ? '#16A34A' : '#EB5757'} />)}<LabelList dataKey="rty" content={rtyLabel} /></Bar>
         </ComposedChart>
       ))}
       {box('OS&D (₹)', 'reported each day · month to date', (
@@ -103,7 +103,7 @@ function SummaryCharts({ S }) {
           <CartesianGrid stroke={G} vertical={false} /><XAxis dataKey="k" tick={tk} interval={0} /><YAxis tick={tk} width={40} unit="%" />
           <Tooltip labelFormatter={(_, p) => lab(p)} formatter={(v) => [v == null ? '—' : `${v}%`, 'Achieved']} />
           <ReferenceLine y={100} stroke="#16A34A" strokeDasharray="5 4" />
-          <Bar dataKey="ach" maxBarSize={18} isAnimationActive={false}>{D.map((d) => <Cell key={d.k} fill={d.plan && d.qty >= d.plan ? '#16A34A' : '#DC2626'} />)}</Bar>
+          <Bar dataKey="ach" maxBarSize={18} isAnimationActive={false}>{D.map((d) => <Cell key={d.k} fill={d.plan && d.qty >= d.plan ? '#16A34A' : '#EB5757'} />)}</Bar>
         </BarChart>
       ))}
     </div>

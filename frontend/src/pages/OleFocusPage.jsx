@@ -17,12 +17,12 @@ import { takeOleFocus } from '../utils/drillLink';
  *   Quality      — why pieces are rejected: reasons Pareto, share, when, rejection by line and by model
  * Each: a navy band, five KPI tiles, then cards. Same data and maths as OLE Overview (utils/ole.js oleRange).
  */
-const NAVY = '#1F3864', RED = '#C00000', GREEN = '#138A36', AMBER = '#D98E04', STEEL = '#2E75B6', HAIR = '#D4D4D4';
+const NAVY = '#1F3864', RED = '#EB5757', GREEN = '#138A36', AMBER = '#D98E04', STEEL = '#2E75B6', HAIR = '#D4D4D4';
 const card = 'rounded-[2px] border border-[#BFBFBF] bg-white shadow-[0_1px_3px_rgba(15,29,36,0.10)]';
 const pc = (v, d = 1) => (v == null || !Number.isFinite(v) ? '—' : `${Math.round(v * 100 * 10 ** d) / 10 ** d}%`);
 const hrs = (min) => hm(Math.max(0, Number(min) || 0));
 const toneOf = (v, k = null) => (v == null ? '#777' : v >= okFrom(k) ? GREEN : v >= watchFrom(k) ? AMBER : RED);
-const PALETTE = ['#1F3864', '#2E75B6', '#C00000', '#ED7D31', '#70AD47', '#FFC000', '#7030A0', '#5B9BD5', '#A5A5A5', '#264478'];
+const PALETTE = ['#1F3864', '#2E75B6', '#EB5757', '#ED7D31', '#70AD47', '#FFC000', '#7030A0', '#5B9BD5', '#A5A5A5', '#264478'];
 const MONTH_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 /* ───────────── pieces ───────────── */

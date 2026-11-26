@@ -516,3 +516,18 @@ describe('performance = actual ÷ plan target (default)', () => {
     expect(d.total.P).toBeCloseTo(d.total.qty / d.total.planQty, 6);
   });
 });
+
+// 26-11-2026 (plant): the target of an hour is for its run time — idle minutes out of the target, only in Availability
+describe('target for the run time', () => {
+  it('an hour stopped 15 of 60 min: target × 45/60; on std speed P = 100 %, A = 75 %', () => {
+    setCfg0({ ...DEF0, pCap: true });
+    const hrs = [{ hour: 10, quantity: 135, models: [{ mmId: 7, model: 'WT70', quantity: 135 }] }];
+    const d = oleLineDay({ hours: hrs, targets: { 7: { cycle: 20 } }, entries: { 10: { stops: [{ reason: 'No material', min: 15 }] } } });
+    const r = d.rows.find((x) => x.hour === 10);
+    expect(r.shiftPlanQty).toBe(180);
+    expect(r.planQty).toBe(135);
+    expect(r.A).toBeCloseTo(45 / 60, 6);
+    expect(r.P).toBeCloseTo(1, 6);
+    expect(d.total.planQty).toBe(135);
+  });
+});

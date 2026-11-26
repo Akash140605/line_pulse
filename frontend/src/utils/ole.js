@@ -286,7 +286,10 @@ export function oleLineDay({ hours = [], targets = {}, entries = {}, nowMin = nu
   let out = closed ? rows.map((r) => ({ ...r, closed: true, ...oleOf({ ...ZERO(), rejects: 0 }) })) : rows;
   // 25-11-2026: Plan Target Qty = the plan of the HPR / SAWM KPI (utils/dayPlan.js) — the same number on every screen
   const plan = closed ? null : dayPlanOf({ rows: out, targets, shift: shift || SHIFT_PLANT, endMin: nowMin != null ? nowMin : endMin });
-  if (plan) out = out.map((r) => (plan.byHour[r.hour] ? oleOf({ ...r, planQty: plan.byHour[r.hour] }) : r));   // the hour's P from its plan too
+  // 26-11-2026 (plant): the target of an hour is for its RUN time — the plan of the working minutes × run ÷ planned (idle
+  // minutes out): a stopped line is Availability loss only, Performance = pieces ÷ the pieces the run time could make
+  const runPlan = (r, hp) => (r.plannedMin > 0 ? Math.round((hp * Math.max(0, r.actualMin)) / r.plannedMin) : hp);
+  if (plan) out = out.map((r) => (plan.byHour[r.hour] ? oleOf({ ...r, planQty: runPlan(r, plan.byHour[r.hour]), shiftPlanQty: plan.byHour[r.hour] }) : r));   // the hour's P from its plan too
   return {
     rows: out, total: oleSum(out), closed, shift: sh, dayOff: dayOff || null, dayOffIgnored: !!dayOff && !closed, plan,
     outsideQty: 0, extraHours: extraRows.map((r) => r.hour), extraQty: extraRows.reduce((a, r) => a + r.qty, 0),
@@ -626,8 +629,14 @@ export function modelPerf(R, ids) {
   // 25-11-2026: a model's target = its share of the day plan (HPR / SAWM KPI, utils/dayPlan.js), so the model-wise
   // targets add up to the line's Plan Target Qty
   const planOf = new Map();
-  for (const d of R?.days || []) for (const l of ids) for (const [name, x] of Object.entries(d.byLine[l]?.plan?.byModel || {})) {
-    const k = `${l}|${name}`; planOf.set(k, (planOf.get(k) || 0) + (x.plan || 0));
+  for (const d of R?.days || []) for (const l of ids) {
+    // 26-11-2026: targets for the run time — each model's share of the day plan × (run-time plan ÷ shift plan) of the line-day
+    const rs = d.byLine[l]?.rows || [];
+    const shiftP = rs.reduce((a, r) => a + (r.shiftPlanQty || 0), 0), runP = rs.reduce((a, r) => a + (r.shiftPlanQty ? r.planQty || 0 : 0), 0);
+    const f = shiftP > 0 ? runP / shiftP : 1;
+    for (const [name, x] of Object.entries(d.byLine[l]?.plan?.byModel || {})) {
+      const k = `${l}|${name}`; planOf.set(k, (planOf.get(k) || 0) + (x.plan || 0) * f);
+    }
   }
   for (const d of R?.days || []) for (const l of ids) for (const r of d.byLine[l]?.rows || []) {
     if (!(r.qty > 0) || !(r.actualMin > 0)) continue;

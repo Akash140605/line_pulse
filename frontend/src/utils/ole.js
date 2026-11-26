@@ -191,7 +191,7 @@ export function oleOf(t) {
   return { ...t, A, P, Q, ole, speedMin, Praw };
 }
 
-const ZERO = () => ({ totalMin: 0, stopMin: 0, plannedMin: 0, lossMin: 0, perfLossMin: 0, idleAuto: 0, actualMin: 0, qty: 0, stdSec: 0, noStdQty: 0, rejects: 0, rework: 0, planQty: 0 });
+const ZERO = () => ({ totalMin: 0, stopMin: 0, plannedMin: 0, lossMin: 0, perfLossMin: 0, idleAuto: 0, actualMin: 0, qty: 0, stdSec: 0, noStdQty: 0, rejects: 0, rework: 0, dismantle: 0, planQty: 0 });
 /** 25-11-2026: Plan Target Qty of a total (a line-day, a period, an hour): the HPR / SAWM KPI plan (planQty); a total
  *  without it (no target on any hour) falls back to the pieces ÷ performance as before. → whole pieces | null */
 export const planTargetOf = (t) => (!t ? null : t.planQty > 0 ? Math.round(t.planQty) : (t.Praw ?? t.P) > 0 ? Math.round(t.qty / (t.Praw ?? t.P)) : null);
@@ -259,9 +259,11 @@ export function oleLineDay({ hours = [], targets = {}, entries = {}, nowMin = nu
     const rejQ = fin ? e.rejects.filter(fin).reduce((a, x) => a + x.qty, 0) : e.rejQty;
     const rwQ = fin ? e.rework.filter(fin).reduce((a, x) => a + x.qty, 0) : e.rwQty;
     const rejects = Math.min(qty, rejQ);
+    // 26-11-2026: pieces dismantled (written on the rework / rejection rows) — shown with the rework in Quality
+    const disQ = [...e.rejects, ...e.rework].filter(fin || (() => true)).reduce((a, x) => a + (Number(x.dismantle) || 0), 0);
     const lunch = !isExtra && sh.lunchStart != null && overlap(h * 60, h * 60 + 60, sh.lunchStart, sh.lunchEnd) > 0;
     const breakMin = isExtra ? 0 : Math.round(offMinOf(sh, Math.max(h * 60, sh.start), Math.min(h * 60 + 60, sh.end)));   // lunch + tea breaks
-    return { hour: h, extra: isExtra, afterLast, fullMin: full, future, lunch, breakMin, models, entry: raw, e, ...oleOf({ totalMin, stopMin, plannedMin, lossMin, perfLossMin: Math.min(perfLossMin, plannedMin - lossMin), actualMin: plannedMin - lossMin, qty, stdSec, noStdQty, rejects, rework: rwQ, idleAuto: lossMin !== lossW ? lossMin : 0 }) };
+    return { hour: h, extra: isExtra, afterLast, fullMin: full, future, lunch, breakMin, models, entry: raw, e, ...oleOf({ totalMin, stopMin, plannedMin, lossMin, perfLossMin: Math.min(perfLossMin, plannedMin - lossMin), actualMin: plannedMin - lossMin, qty, stdSec, noStdQty, rejects, rework: rwQ, dismantle: disQ, idleAuto: lossMin !== lossW ? lossMin : 0 }) };
   });
   // extra hours: time = std time of their pieces, so they never move OLE up or down
   const shiftRows = rows.filter((r) => !r.extra);
@@ -271,7 +273,7 @@ export function oleLineDay({ hours = [], targets = {}, entries = {}, nowMin = nu
     if (!r.extra) return r;
     const cov = r.qty - r.noStdQty;
     const t = cov > 0 ? (r.stdSec / 60) * (r.qty / cov) : avgSec ? (r.qty * avgSec) / 60 : 0;
-    return { ...r, fullMin: t, future: false, ...oleOf({ totalMin: t, stopMin: 0, plannedMin: t, lossMin: 0, actualMin: t, qty: r.qty, stdSec: r.stdSec, noStdQty: r.noStdQty, rejects: r.rejects, rework: r.rework }) };
+    return { ...r, fullMin: t, future: false, ...oleOf({ totalMin: t, stopMin: 0, plannedMin: t, lossMin: 0, actualMin: t, qty: r.qty, stdSec: r.stdSec, noStdQty: r.noStdQty, rejects: r.rejects, rework: r.rework, dismantle: r.dismantle || 0 }) };
   });
   const extraRows = rows.filter((r) => r.extra);
   const t0 = oleSum(rows);

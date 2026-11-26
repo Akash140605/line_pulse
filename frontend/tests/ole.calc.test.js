@@ -455,3 +455,17 @@ describe('quality counts the rework (25-11-2026)', () => {
     expect(nUi25({ ole: { qMode: 'rej', qV: 2, bench: 2 } }).ole.qMode).toBe('rej');
   });
 });
+
+// 26-11-2026: Quality shows the dismantled pieces with the rework (written on the rework rows), summed over hours
+describe('dismantled pieces', () => {
+  it('an hour counts the dismantle of its rework rows; a total adds the hours', () => {
+    setCfg0({ ...DEF0 });
+    const ent = { 9: { rework: [{ model: 'WT70', reason: 'Leak', qty: 5, dismantle: 2 }, { model: 'WT70', reason: 'Noise', qty: 3, dismantle: 1 }] }, 10: { rework: [{ model: 'WT70', reason: 'Leak', qty: 2, dismantle: 9 }] } };
+    const hours = [9, 10].map((h) => ({ hour: h, quantity: 100, models: [{ mmId: 7, model: 'WT70', quantity: 100 }] }));
+    const { rows } = oleLineDay({ hours, targets, entries: ent });
+    const r9 = rows.find((r) => r.hour === 9), r10 = rows.find((r) => r.hour === 10);
+    expect([r9.dismantle, r10.dismantle]).toEqual([3, 2]);   // never more than the pieces of its row
+    expect(oleSum([r9, r10]).dismantle).toBe(5);
+    expect(oleSum([r9, r10]).rework).toBe(10);
+  });
+});

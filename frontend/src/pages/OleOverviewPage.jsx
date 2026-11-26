@@ -104,7 +104,7 @@ function FactorBanner({ name, value, sub }) {
  * A table of the MES look: title + "Top 5", "View All ›" (the full list in a window), blue head row, # column.
  * cols = [{ k, label, right, render(row) }]
  */
-function QTable({ title, top = 5, rows, cols, empty, label, onAll = null }) {
+function QTable({ title, top = 5, rows, cols, empty, label, onAll = null, onRow = null }) {
   return (
     <section className={`${card} min-w-0 overflow-hidden`} aria-label={label || title}>
       <div className={`flex min-h-[40px] flex-wrap items-center gap-x-3 gap-y-1 border-b ${HAIR} bg-white px-3 py-1.5`}>
@@ -113,11 +113,11 @@ function QTable({ title, top = 5, rows, cols, empty, label, onAll = null }) {
         {top && rows.length > 0 && <span className="text-mes-label text-[#777]">Top {Math.min(top, rows.length)}</span>}
         {onAll && rows.length > 0 && <button type="button" onClick={onAll} className="ml-auto whitespace-nowrap rounded-[2px] px-2 py-0.5 text-mes-body font-semibold text-[#2E75B6] hover:bg-[#EAF2FB]">View All ›</button>}
       </div>
-      {!rows.length ? <p className="bg-white px-2 py-1 text-mes-body italic text-[#777]">{empty}</p> : <Grid rows={top ? rows.slice(0, top) : rows} cols={cols} label={`${title} table`} />}
+      {!rows.length ? <p className="bg-white px-2 py-1 text-mes-body italic text-[#777]">{empty}</p> : <Grid rows={top ? rows.slice(0, top) : rows} cols={cols} label={`${title} table`} onRow={onRow} />}
     </section>
   );
 }
-function Grid({ rows, cols, label, total = null }) {
+function Grid({ rows, cols, label, total = null, onRow = null, rowTitle = 'Open the details' }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-mes-body tabular-nums" aria-label={label}>
@@ -129,7 +129,8 @@ function Grid({ rows, cols, label, total = null }) {
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={r.key ?? i} className="bg-white hover:bg-[#DDEBF7]/60">
+            <tr key={r.key ?? i} className={`bg-white hover:bg-[#DDEBF7]/60 ${onRow ? 'cursor-pointer' : ''}`}
+              {...(onRow ? { tabIndex: 0, title: rowTitle, onClick: (e) => { if (!e.target.closest('button,a')) onRow(r); }, onKeyDown: (e) => { if (e.key === 'Enter') onRow(r); } } : {})}>
               <td className={`border ${HAIR} !px-1 py-[3px] text-center text-[#777]`}>{i + 1}</td>
               {cols.map((c) => <td key={c.k} className={`${c.wrap ? '' : 'whitespace-nowrap'} border ${HAIR} px-1.5 py-[3px] ${c.right ? 'text-right tabular-nums' : ''} ${c.cls || ''}`} style={c.wrap ? { overflowWrap: 'break-word', minWidth: 90 } : undefined}>{c.render ? c.render(r) : r[c.k]}</td>)}
             </tr>
@@ -189,8 +190,30 @@ function hourPerf(R, line) {
   return [...m.entries()].sort((a, b) => a[0] - b[0]).map(([h, rs]) => {
     const t = oleSum(rs);
     const target = rs.reduce((a, r) => a + (r.planQty > 0 ? r.planQty : 0), 0);   // 25-11-2026: the hour plan of the HPR / SAWM KPI (extra hours: none)
-    return { key: h, hour: h, extra: rs.some((r) => r.extra), days: rs.length, t, target: target > 0 ? Math.round(target) : null, qty: t.qty };
+    // 26-11-2026: the models made in the hour (all days of the period together), most pieces first
+    const mm = new Map();
+    for (const r of rs) for (const x of r.models || []) { const q = Number(x.quantity) || 0; if (q > 0) mm.set(x.model || '—', (mm.get(x.model || '—') || 0) + q); }
+    const models = [...mm.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    return { key: h, hour: h, extra: rs.some((r) => r.extra), days: rs.length, t, target: target > 0 ? Math.round(target) : null, qty: t.qty, models };
   });
+}
+/** 26-11-2026: one model of one line, hour by hour in the period (a click on a model row): its pieces, its share of the hour's
+ *  run time as its cycle (the same way as modelPerf), the std cycle, time lost and the other models made in that hour */
+function modelHours(R, line, model) {
+  const out = [];
+  for (const d of R?.days || []) for (const r of d.byLine[line]?.rows || []) {
+    if (r.future || !(r.qty > 0)) continue;
+    for (const x of r.models || []) {
+      const q = Number(x.quantity) || 0;
+      if (!q || (x.model || '—') !== model) continue;
+      const actSec = r.actualMin > 0 ? r.actualMin * 60 * (q / r.qty) : null;
+      const std = Number(x.std) > 0 ? Number(x.std) : null;
+      out.push({ key: `${d.date}|${r.hour}`, date: d.date, hour: r.hour, extra: !!r.extra, qty: q, hourQty: r.qty, actSec, std, act: actSec != null ? actSec / q : null,
+        var: std && actSec != null ? (actSec / q - std) / std : null, lostMin: std && actSec != null ? (actSec - q * std) / 60 : null,
+        others: (r.models || []).filter((y) => (y.model || '—') !== model && Number(y.quantity) > 0).map((y) => ({ name: y.model || '—', value: Number(y.quantity) })) });
+    }
+  }
+  return out;
 }
 const secText = (s) => (s == null ? '—' : `${Math.round(s * 10) / 10}s`);
 const varCell = (v) => (v == null ? '—' : <span className={v > 0.005 ? 'font-bold text-red-700' : 'text-emerald-700'}>{v > 0 ? '+' : v < 0 ? '−' : ''}{Math.abs(Math.round(v * 1000) / 10)}%</span>);
@@ -580,6 +603,8 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
       { k: 'std', label: 'Std CT', right: true, render: (r) => secText(r.std) }, { k: 'act', label: 'Actual CT', right: true, render: (r) => (r.few ? '—' : secText(r.act)) }, { k: 'var', label: 'Var.', right: true, render: (r) => (r.few ? '—' : varCell(r.var)) }, { k: 'lost', label: 'Time Lost', right: true, render: (r) => (r.few ? '—' : lostCell(r.lostMin)) }],
   };
   C.hours = [{ k: 'hour', label: 'Hour', render: (r) => <span className="whitespace-nowrap font-mono font-bold">{p2(r.hour)}:00–{p2((r.hour + 1) % 24)}:00{r.extra && <span className="ml-1 rounded bg-amber-100 px-1 text-fs-11 text-amber-800">extra</span>}</span> },
+    // 26-11-2026: the models of the hour (pieces of each on hover; +n = more models)
+    { k: 'models', label: 'Models', render: (r) => modelsCell(r.models, 'pcs', 2) },
     { k: 'target', label: 'Target', right: true, render: (r) => (r.target == null ? '—' : nf(r.target)) }, { k: 'qty', label: 'Produced', right: true, render: (r) => nf(r.qty) },
     { k: 'short', label: 'Short / Excess', right: true, render: (r) => (r.target == null ? '—' : <b className={r.qty < r.target ? 'text-red-700' : 'text-emerald-700'}>{signed(r.qty - r.target)}</b>) },
     { k: 'ach', label: 'Achieved', right: true, render: (r) => (r.target ? achChip(r.qty / r.target) : '—') },
@@ -700,7 +725,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
           <FactorBanner name="Performance" value={T.P} sub={`Performance Loss ${hrs(T.speedMin || 0)}${modelInP ? ` · Written ${hrs(T.perfLossMin || 0)}` : ''}`} />
           <div className={modelInP ? 'grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]' : 'grid gap-3'}>
             {modelInP && <QTable title="Performance Loss Reasons" rows={perfRows} cols={C.down} empty="No performance loss written for this period." onAll={() => setWin({ kind: 'perfLoss' })} />}
-            <QTable title="Cycle Time vs Standard" rows={perf} cols={C.perf} empty="No model with a std cycle in this period." onAll={() => setWin({ kind: 'perf' })} />
+            <QTable title="Cycle Time vs Standard" rows={perf} cols={C.perf} empty="No model with a std cycle in this period." onAll={() => setWin({ kind: 'perf' })} onRow={(r) => setWin({ kind: 'model', row: r })} />
           </div>
           <FactorBanner name="Quality" value={T.Q} sub={`${nf((T.rejects || 0) + (T.rework || 0))} Reworked Of ${nf(T.qty)}`} />
           <div className="grid gap-3 xl:grid-cols-3">
@@ -754,7 +779,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
                       { k: 'value', label: 'Lost', right: true, render: (r) => (r.unit === 'min' ? <b className="text-red-700">{hr2(r.value)}</b> : `${nf(r.value)} pcs`) },
                       { k: 'share', label: 'Share', right: true, render: (r) => (r.unit === 'min' && tot ? `${Math.round((r.value / tot) * 1000) / 10}%` : '—') }]} />;
                 })() : view === 'models' ? (!list.length ? <p className="p-4 text-fs-14 text-slate-600">No production in this period.</p>
-                  : <Grid rows={list} cols={C.linePerf} label={`Line ${win.line} models`} total={{ model: 'Total', target: nf(tot.target), qty: nf(tot.qty), short: <b className={tot.qty < tot.target ? 'text-red-700' : 'text-emerald-700'}>{signed(tot.qty - tot.target)}</b>, ach: tot.target ? `${Math.round((tot.qty / tot.target) * 1000) / 10}%` : '—', lost: lostCell(tot.lost) }} />)
+                  : <Grid rows={list} cols={C.linePerf} label={`Line ${win.line} models`} onRow={(r) => setWin({ kind: 'model', row: r, back: win })} total={{ model: 'Total', target: nf(tot.target), qty: nf(tot.qty), short: <b className={tot.qty < tot.target ? 'text-red-700' : 'text-emerald-700'}>{signed(tot.qty - tot.target)}</b>, ach: tot.target ? `${Math.round((tot.qty / tot.target) * 1000) / 10}%` : '—', lost: lostCell(tot.lost) }} />)
                   : (!hrsL.length ? <p className="p-4 text-fs-14 text-slate-600">No production in this period.</p>
                   : <Grid rows={hrsL} cols={C.hours} label={`Line ${win.line} hours`} total={{ hour: 'Total', target: tt ? nf(Math.round(tt)) : '—', qty: nf(th.qty), short: tt ? <b className={th.qty < tt ? 'text-red-700' : 'text-emerald-700'}>{signed(Math.round(th.qty - tt))}</b> : '—', ach: tt ? achChip(th.qty / tt) : '—', std: secText(stdCt(th)), act: secText(th.qty > 0 && th.actualMin > 0 ? (th.actualMin * 60) / th.qty : null), run: hr2(th.actualMin), loss: hr2(th.stopMin + th.lossMin), slow: th.speedMin == null ? '—' : hr2(th.speedMin), A: pc1(th.A), P: pc1(th.P), Q: pc1(th.Q ?? (th.qty > 0 ? 1 : null)), ole: pc1(th.ole) }} />)}
               </Window>
@@ -770,7 +795,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
                   {F[2].map(([k, t]) => (
                     <section key={k} className="rounded-[2px] border border-[#BFBFBF] bg-white">
                       <h3 className="border-b border-[#BFBFBF] bg-[#F7F9FC] px-2.5 py-1.5 text-mes-body font-bold text-[#1F3864]">{t}</h3>
-                      {WIN[k][1].length ? <Grid rows={k === 'perf' ? WIN[k][1].map((r, i) => [r, i]).sort((a, b) => Number(a[0].line) - Number(b[0].line) || a[1] - b[1]).map(([r]) => r) : WIN[k][1]} cols={WIN[k][2]} label={t} /> : <p className="p-3 text-fs-14 text-slate-600">Nothing entered for this period.</p>}
+                      {WIN[k][1].length ? <Grid rows={k === 'perf' ? WIN[k][1].map((r, i) => [r, i]).sort((a, b) => Number(a[0].line) - Number(b[0].line) || a[1] - b[1]).map(([r]) => r) : WIN[k][1]} cols={WIN[k][2]} label={t} onRow={k === 'perf' ? (r) => setWin({ kind: 'model', row: r, back: win }) : null} /> : <p className="p-3 text-fs-14 text-slate-600">Nothing entered for this period.</p>}
                     </section>
                   ))}
                 </div>
@@ -780,9 +805,34 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
           {win && WIN[win.kind] && (
             <Window title={WIN[win.kind][0]} sub={`${allView ? plantsText(IDS) : group} · ${periodText}`} onClose={() => setWin(null)}>
               {/* a list of many lines: Line 1 first, then Line 2 … (its own order kept inside a line) */}
-              <Grid rows={win.kind === 'perf' ? WIN[win.kind][1].map((r, i) => [r, i]).sort((a, b) => Number(a[0].line) - Number(b[0].line) || a[1] - b[1]).map(([r]) => r) : WIN[win.kind][1]} cols={WIN[win.kind][2]} label={`${WIN[win.kind][0]} — all`} />
+              <Grid rows={win.kind === 'perf' ? WIN[win.kind][1].map((r, i) => [r, i]).sort((a, b) => Number(a[0].line) - Number(b[0].line) || a[1] - b[1]).map(([r]) => r) : WIN[win.kind][1]} cols={WIN[win.kind][2]} label={`${WIN[win.kind][0]} — all`} onRow={win.kind === 'perf' ? (r) => setWin({ kind: 'model', row: r, back: win }) : null} />
             </Window>
           )}
+          {/* 26-11-2026: one model of one line — its figures, then hour by hour (✕ / Esc goes back to the list it came from) */}
+          {win && win.kind === 'model' && (() => {
+            const m = win.row, hs = modelHours(R, m.line, m.model);
+            const q = hs.reduce((a, h) => a + h.qty, 0), aS = hs.reduce((a, h) => a + (h.actSec || 0), 0);
+            const sQ = hs.filter((h) => h.std).reduce((a, h) => a + h.qty, 0), sS = hs.filter((h) => h.std).reduce((a, h) => a + h.qty * h.std, 0);
+            const lost = hs.reduce((a, h) => a + (h.lostMin || 0), 0);
+            return (
+              <Window title={`Line ${m.line} — ${m.model}`} sub={`${co(m.model) ? `${co(m.model)} · ` : ''}${periodText}`} onClose={() => setWin(win.back || null)} width={70} minWidth={760}>
+                <div className="border-b border-[#BFBFBF]"><Grid rows={[m]} cols={C.perf.filter((c) => !['line', 'company', 'model'].includes(c.k))} label={`${m.model} figures`} /></div>
+                <h3 className="border-b border-[#BFBFBF] bg-[#F7F9FC] px-2.5 py-1.5 text-mes-body font-bold text-[#1F3864]">Hour by hour <span className="font-normal text-[#777]">· {hs.length} hour{hs.length === 1 ? '' : 's'} with this model</span></h3>
+                {!hs.length ? <p className="p-4 text-fs-14 text-slate-600">No pieces of this model in this period.</p>
+                  : <Grid rows={hs} label={`${m.model} hour by hour`} cols={[
+                    { k: 'date', label: 'Date', render: (r) => <span className="whitespace-nowrap font-semibold">{dmy(r.date)}</span> },
+                    { k: 'hour', label: 'Hour', render: (r) => <span className="whitespace-nowrap font-mono font-bold">{p2(r.hour)}:00–{p2((r.hour + 1) % 24)}:00{r.extra && <span className="ml-1 rounded bg-amber-100 px-1 text-fs-11 text-amber-800">extra</span>}</span> },
+                    { k: 'qty', label: 'Pieces', right: true, render: (r) => <b>{nf(r.qty)}</b> },
+                    { k: 'hourQty', label: 'Hour Total', right: true, render: (r) => nf(r.hourQty) },
+                    { k: 'std', label: 'Std CT', right: true, render: (r) => secText(r.std) },
+                    { k: 'act', label: 'Actual CT', right: true, render: (r) => secText(r.act) },
+                    { k: 'var', label: 'Var.', right: true, render: (r) => varCell(r.var) },
+                    { k: 'lost', label: 'Time Lost', right: true, render: (r) => lostCell(r.lostMin) },
+                    { k: 'others', label: 'Other Models In The Hour', render: (r) => modelsCell(r.others, 'pcs', 2, co) }]}
+                    total={{ date: 'Total', qty: nf(q), std: secText(sQ ? sS / sQ : null), act: secText(q ? aS / q : null), lost: lostCell(lost) }} />}
+              </Window>
+            );
+          })()}
           {det && <PeriodDrawer title={det.title} ids={det.ids} R={R} reasons={D.ent.reasons.station} co={co} onClose={() => { setDet(null); setPickDay(null); }} onPickDay={(d, l = null) => { setPickLine(l); setPickDay(d); }} covered={!!pickDay}
             onLine={(l) => setWin({ kind: 'linePerf', line: l })}
             onOpenLine={det.line ? () => { const l = det.line; setDet(null); setOnly(l); } : null} />}

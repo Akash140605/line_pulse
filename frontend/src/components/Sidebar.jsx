@@ -24,7 +24,7 @@ export const PAGES = [
   { id: 'rwkdash', label: 'Rework dashboard', icon: RotateCcw, color: 'text-sky-300' },
   { id: 'oleentry', label: 'Loss entry', icon: ClipboardList, color: 'text-sky-300' },
   { id: 'qentry', label: 'Quality entry', icon: ClipboardList, color: 'text-amber-300' },
-  { id: 'rca', label: 'RCA (root cause)', icon: Wrench, color: 'text-sky-300' },
+  { id: 'rca', label: 'RCA Entry', icon: Wrench, color: 'text-sky-300' },
   { id: 'entrydash', label: 'Entry dashboard', icon: ListChecks, color: 'text-sky-300' },
   { id: 'lossan', label: 'Loss analysis', icon: BarChart3, color: 'text-sky-300' },
   { id: 'rejan', label: 'Rejection analysis', icon: PackageX, color: 'text-sky-300' },
@@ -143,8 +143,8 @@ export default function Sidebar({ page, onChange, focusDate, loading, pages: pag
     <>
       {/* Desktop / tablet sidebar — the C8 MES menu: logo, search, folder groups with a count, pages on a tree line */}
       <aside
-        // 25-11-2026 (admin): slimmer — 180 px open, 56 px folded (a long name ends in … and shows whole on hover)
-        style={{ width: collapsed ? 56 : 180 }}
+        // 26-11-2026: 200 px open (every page name whole) · 25-11-2026 (admin): slimmer — 180 px open, 56 px folded (a long name ends in … and shows whole on hover)
+        style={{ width: collapsed ? 56 : 200 }}
         className="lp-side hidden md:flex shrink-0 flex-col sticky top-0 h-screen z-40 transition-all duration-200"
       >
         <div className={`lp-side-logo flex shrink-0 items-center ${collapsed ? 'justify-center px-2' : 'px-4'}`}>

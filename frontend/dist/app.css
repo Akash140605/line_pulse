@@ -6393,3 +6393,10 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 /* 26-11-2026 test pass: legend words in ink, the square carries the colour */
 .recharts-legend-item-text { color: #374151 !important; }
 .bg-amber-500.text-white { background-color: #B45309 !important; }   /* white words on amber: the darker amber (5 : 1) */
+
+/* 26-11-2026: line tiles of OLE: "Performance Loss" never breaks — "Loss" in a narrow tile, the whole name when it fits */
+.lp-fac .lp-fac-lf { display: none; }
+.lp-fac .lp-fac-ls { display: inline; }
+@container (min-width: 210px) { .lp-fac .lp-fac-lf { display: inline; } .lp-fac .lp-fac-ls { display: none; } }
+.lp-fac-name { font-size: clamp(12px, 7.2cqw, 16px); }
+.lp-fac-val { font-size: clamp(15px, 10cqw, 22px); }

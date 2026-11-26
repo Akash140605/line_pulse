@@ -20,7 +20,7 @@ const signed = (v) => (v > 0 ? `Excess ${nf(v)}` : v < 0 ? `Short ${nf(-v)}` : '
 export function zeroed(t) {
   const z = { ...(t || {}) };
   for (const k of ['A', 'P', 'Q', 'ole']) if (z[k] == null || !Number.isFinite(z[k])) z[k] = 0;
-  for (const k of ['plannedMin', 'actualMin', 'lossMin', 'speedMin', 'qty', 'rejects', 'rework', 'stdSec']) z[k] = Number(z[k]) || 0;
+  for (const k of ['plannedMin', 'actualMin', 'lossMin', 'speedMin', 'qty', 'rejects', 'rework', 'dismantle', 'stdSec']) z[k] = Number(z[k]) || 0;
   return z;
 }
 
@@ -32,11 +32,11 @@ export function Factor({ k = null, name, value, formula, rows, lossName, loss, w
     <div className={`group lp-fac flex min-w-0 flex-col border-t-[3px] ${weak ? 'bg-[#F3F3F3]' : 'bg-white'} ${onOpen ? 'cursor-pointer transition-colors hover:bg-[#F5F9FE]' : ''}`} style={{ borderTopColor: value == null ? '#BFBFBF' : band(value, k) }}
       onClick={onOpen ? (e) => { if (!e.target.closest('button')) onOpen(); } : undefined} title={onOpen ? `${name} — open details` : undefined}>
       <div className={`flex min-w-0 flex-col ${compact ? 'gap-1.5 px-2.5 pt-2' : 'gap-2 px-3 pt-2.5 xl:px-3.5'} pb-2`}>
-        <div className="flex items-center justify-between gap-1.5">
-          <button type="button" onClick={onOpen || undefined} disabled={!onOpen} className={`min-w-0 truncate text-left font-bold ${NAVY} ${compact ? 'lp-fac-name' : 'text-[calc(17px*var(--fs,1))]'} ${onOpen ? 'hover:underline' : ''}`} title={onOpen ? `${name} — details` : name}>
+        <div className={`flex items-center justify-between ${compact ? 'flex-wrap gap-x-1.5 gap-y-0.5' : 'gap-1.5'}`}>
+          <button type="button" onClick={onOpen || undefined} disabled={!onOpen} className={`min-w-0 ${compact ? 'whitespace-nowrap' : 'truncate'} text-left font-bold ${NAVY} ${compact ? 'lp-fac-name' : 'text-[calc(17px*var(--fs,1))]'} ${onOpen ? 'hover:underline' : ''}`} title={onOpen ? `${name} — details` : name}>
             {name} {onOpen && <span className="text-[#777] transition-transform group-hover:text-[#2E75B6]">›</span>}
           </button>
-          <span className={`shrink-0 font-bold leading-none tabular-nums ${tone(value, k)} ${compact ? 'lp-fac-val' : 'text-[calc(27px*var(--fs,1))]'}`}>{pc1(value)}</span>
+          <span className={`ml-auto shrink-0 font-bold leading-none tabular-nums ${tone(value, k)} ${compact ? 'lp-fac-val' : 'text-[calc(27px*var(--fs,1))]'}`}>{pc1(value)}</span>
         </div>
         {formula && !compact && <div className="flex min-w-0 items-baseline gap-1.5 text-mes-body text-[#444]"><i className="shrink-0 font-serif font-bold italic text-[#2E75B6]">ƒ</i><span className="min-w-0 truncate">{formula}</span></div>}
         <div className={`${compact ? 'h-2' : 'h-2.5'} relative w-full overflow-hidden rounded-[2px] bg-[#E5E7EB] shadow-[inset_0_1px_1px_rgba(15,29,36,0.08)]`}><div className="h-full rounded-[2px] transition-[width] duration-1000 ease-out" style={{ width: `${Math.min(100, (value ?? 0) * 100)}%`, background: band(value, k) }} />{[25, 50, 75].map((x) => <i key={x} aria-hidden className="absolute inset-y-0 w-[2px] bg-white/90" style={{ left: `calc(${x}% - 1px)` }} />)}</div>
@@ -50,7 +50,10 @@ export function Factor({ k = null, name, value, formula, rows, lossName, loss, w
         ))}
       </div>
       <div className={`mt-auto flex items-center justify-between gap-3 border-t ${HAIR} ${STRIP} ${compact ? 'px-2.5 py-1.5 text-mes-body' : 'lp-apq-foot px-3 text-[calc(16px*var(--fs,1))] xl:px-3.5'}`}>
-        <span className="min-w-0 break-words font-semibold leading-tight text-[#111]">{lossName}</span>
+        {compact
+          // 26-11-2026: a narrow line tile says "Loss" (the tile is already named) — the whole name from 210 px (index.css)
+          ? <span className="min-w-0 whitespace-nowrap font-semibold leading-tight text-[#111]"><span className="lp-fac-lf">{lossName}</span><span className="lp-fac-ls">Loss</span></span>
+          : <span className="min-w-0 break-words font-semibold leading-tight text-[#111]">{lossName}</span>}
         <span className="shrink-0 font-bold tabular-nums text-[#111]">{pc1(loss)}</span>
       </div>
     </div>
@@ -70,7 +73,7 @@ export function factorsOf(t, zero = false) {
     { k: 'Q', name: 'Quality', value: t.Q, formula: 'Good Qty ÷ Actual Qty', lossName: 'Quality Loss', loss: t.Q == null ? null : 1 - t.Q,
       // 25-11-2026: Actual = Good + Rework (+ Rejected) — Good is what passed first time (the same "out" as the Q formula)
       rows: [['Actual Qty', nf(t.qty)], ['Good Qty', nf(Math.max(0, t.qty - t.rejects - (oleConfig().qMode === 'rej' ? 0 : (t.rework || 0))))],
-        ['Rework Qty', nf(t.rework || 0), t.rework ? 'text-[#C00000]' : ''], ...(t.rejects > 0 ? [['Rejected Qty', nf(t.rejects), 'text-[#C00000]']] : [])] },
+        ['Rework Qty', nf(t.rework || 0), t.rework ? 'text-[#C00000]' : ''], ['Dismantled Qty', nf(t.dismantle || 0), t.dismantle ? 'text-[#C00000]' : ''], ...(t.rejects > 0 ? [['Rejected Qty', nf(t.rejects), 'text-[#C00000]']] : [])] },
   ];
 }
 

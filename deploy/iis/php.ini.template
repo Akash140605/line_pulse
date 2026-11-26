@@ -1,4 +1,4 @@
-; Line Pulse — PHP for IIS (FastCGI) on the second server. Made 26-11-2026 from the settings of the Apache server
+; Line Pulse - PHP for IIS (FastCGI) on the second server. Made 26-11-2026 from the settings of the Apache server
 ; (192.168.2.111, XAMPP PHP 8.2.12 x64): same extensions, same limits, same OPcache. __ROOT__ is filled in by setup.ps1.
 [PHP]
 engine = On

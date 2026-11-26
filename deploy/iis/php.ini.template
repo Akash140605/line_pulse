@@ -1,0 +1,77 @@
+; Line Pulse — PHP for IIS (FastCGI) on the second server. Made 26-11-2026 from the settings of the Apache server
+; (192.168.2.111, XAMPP PHP 8.2.12 x64): same extensions, same limits, same OPcache. __ROOT__ is filled in by setup.ps1.
+[PHP]
+engine = On
+short_open_tag = Off
+precision = 14
+output_buffering = 0
+zlib.output_compression = Off
+expose_php = Off
+max_execution_time = 120
+max_input_time = 60
+memory_limit = 512M
+error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT
+display_errors = Off
+display_startup_errors = Off
+log_errors = On
+error_log = "__ROOT__\logs\php_error.log"
+post_max_size = 40M
+upload_max_filesize = 40M
+max_file_uploads = 20
+max_input_vars = 1000
+default_socket_timeout = 60
+realpath_cache_size = 4096k
+realpath_cache_ttl = 600
+file_uploads = On
+allow_url_fopen = On
+allow_url_include = Off
+variables_order = "GPCS"
+request_order = "GP"
+default_charset = "UTF-8"
+
+; IIS FastCGI
+cgi.force_redirect = 0
+cgi.fix_pathinfo = 1
+fastcgi.impersonate = 1
+fastcgi.logging = 0
+
+extension_dir = "__ROOT__\php\ext"
+upload_tmp_dir = "__ROOT__\tmp"
+sys_temp_dir = "__ROOT__\tmp"
+session.save_path = "__ROOT__\tmp"
+session.use_strict_mode = 1
+session.cookie_httponly = 1
+
+; the software sets Asia/Kolkata itself (lib/clock.php); the same here for anything before it
+date.timezone = Asia/Kolkata
+
+extension=bz2
+extension=curl
+extension=fileinfo
+extension=gettext
+extension=mbstring
+extension=exif
+extension=mysqli
+extension=pdo_mysql
+extension=pdo_sqlite
+extension=openssl
+extension=ftp
+extension=php_sqlsrv_82_ts_x64.dll
+extension=php_pdo_sqlsrv_82_ts_x64.dll
+
+[opcache]
+zend_extension = opcache
+opcache.enable = 1
+opcache.enable_cli = 0
+opcache.memory_consumption = 128
+opcache.interned_strings_buffer = 8
+opcache.max_accelerated_files = 10000
+opcache.validate_timestamps = 1
+opcache.revalidate_freq = 2
+opcache.jit = disable
+opcache.jit_buffer_size = 0
+
+[sqlsrv]
+sqlsrv.ClientBufferMaxKBSize = 10240
+[pdo_sqlsrv]
+pdo_sqlsrv.client_buffer_max_kb_size = 10240

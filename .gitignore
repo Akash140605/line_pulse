@@ -13,7 +13,8 @@ backend/data/
 *.lock
 *.log
 node_modules/
-frontend/dist/
+# the built app IS kept (26-11-2026): the IIS server (192.168.2.162) runs it straight from git — only its .gz copies are not
+frontend/dist/**/*.gz
 frontend/dist0/
 _to_delete/
 *.zip

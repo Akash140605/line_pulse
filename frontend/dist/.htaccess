@@ -1,0 +1,42 @@
+# Line Pulse (18-11-2026): quick opening on every PC of the plant network.
+# 1) Compressed copies: the build keeps every .js / .css also as .js.gz / .css.gz (about 4 times smaller).
+#    A browser that accepts gzip gets the small copy; the file it unpacks is exactly the same.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP:Accept-Encoding} gzip
+  RewriteCond %{REQUEST_FILENAME}.gz -f
+  RewriteRule ^(.+)\.(js|css)$ $1.$2.gz [L]
+</IfModule>
+<FilesMatch "\.js\.gz$">
+  ForceType application/javascript
+</FilesMatch>
+<FilesMatch "\.css\.gz$">
+  ForceType text/css
+</FilesMatch>
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css)\.gz$">
+    Header set Content-Encoding gzip
+  </FilesMatch>
+  # 2) Keep in the browser: app.js / app.css / vendor carry ?v=<build>, chunks carry a hash in their name — a new build
+  #    has new addresses, so the old copy is never used again. The page itself and version.json are always asked fresh.
+  <FilesMatch "\.(js|css)(\.gz)?$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+    Header merge Vary Accept-Encoding
+  </FilesMatch>
+  <FilesMatch "\.(woff2?|png|svg|ico)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+  <FilesMatch "^(index\.html|version\.json)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+
+# 25-11-2026 security: the page may load and send data only to this server (no outside script, no data sent
+# elsewhere, no other site framing it); Google Fonts only for the themes that use them
+<IfModule mod_headers.c>
+  <FilesMatch "^(index\.html)?$">
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+  </FilesMatch>
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+</IfModule>

@@ -1,0 +1,1 @@
+import{d as r}from"./chunk-AEKX7TD2.js";r();function p(t){let e=n=>String(n).padStart(2,"0");return`${t.getFullYear()}-${e(t.getMonth()+1)}-${e(t.getDate())}`}function u(t,e){let[n,o,g]=String(t).split("-").map(Number),a=new Date(n,o-1-e,1),i=new Date(a.getFullYear(),a.getMonth()+1,0).getDate();return a.setDate(Math.min(g,i)+1),p(a)}export{p as a,u as b};

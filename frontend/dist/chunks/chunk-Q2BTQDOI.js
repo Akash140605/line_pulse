@@ -1,0 +1,1 @@
+import{d as r}from"./chunk-AEKX7TD2.js";r();var n="ems.entryJump";function s(t){try{sessionStorage.setItem(n,JSON.stringify({...t,at:Date.now()}))}catch{}}function a(){try{let t=sessionStorage.getItem(n),e=t?JSON.parse(t):null;return e&&Date.now()-(e.at||0)<6e4?e:null}catch{return null}}function c(){try{sessionStorage.removeItem(n)}catch{}}export{s as a,a as b,c};

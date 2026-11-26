@@ -1,0 +1,39 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dixon Line Pulse</title>
+<!-- production build (13-11-2026): one bundled file instead of the Vite development server, fast on every PC -->
+<style>
+/* start screen until the app has drawn itself (React replaces everything inside #root) */
+.boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0F2554;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff}
+.boot-in{width:min(420px,86vw);text-align:center}
+.boot-name{font-size:40px;font-weight:900;letter-spacing:.06em}
+.boot-sub{margin-top:2px;font-size:15px;font-weight:600;color:#BAE6FD}
+.boot-belt{position:relative;height:56px;margin:26px 0 14px;overflow:hidden}
+.boot-belt:before{content:"";position:absolute;left:0;right:54px;bottom:10px;height:7px;border-radius:4px;background:repeating-linear-gradient(90deg,#64748B 0 12px,#94A3B8 12px 24px);background-size:24px 7px;animation:bBelt .6s linear infinite}
+.boot-box{position:absolute;bottom:17px;width:26px;height:21px;border-radius:3px;background:#D6A86B;opacity:0;animation:bRide 2.4s linear infinite}
+.boot-box.b2{animation-delay:.8s}.boot-box.b3{animation-delay:1.6s}
+.boot-truck{position:absolute;right:0;bottom:7px;width:50px;height:36px;border-radius:5px 10px 5px 5px;background:#E2E8F0}
+.boot-truck:after{content:"";position:absolute;left:7px;bottom:-6px;width:11px;height:11px;border-radius:50%;background:#0B1730;box-shadow:26px 0 0 #0B1730}
+.boot-bar{height:6px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden}
+.boot-bar i{display:block;height:100%;width:35%;border-radius:3px;background:linear-gradient(90deg,#38BDF8,#2563EB,#EF4444);animation:bBar 1.3s ease-in-out infinite}
+.boot-msg{margin-top:12px;font-size:15px;font-weight:700;color:#E0F2FE}
+.boot-steps{list-style:none;margin:16px auto 0;padding:0;display:inline-flex;flex-direction:column;gap:8px;text-align:left}
+.boot-steps li{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;color:#93A4BF}
+.boot-steps i{width:18px;height:18px;border-radius:50%;border:2px solid #5B6B82;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:800;color:transparent;flex:none}
+.boot-steps li.s1{animation:bOn 0s .6s forwards}.boot-steps li.s1 i{animation:bTick 0s .6s forwards}
+.boot-steps li.s2{animation:bOn 0s 1.5s forwards}.boot-steps li.s2 i{animation:bTick 0s 1.5s forwards}
+.boot-steps li.s3 i{border-color:#38BDF8;border-top-color:transparent;animation:bSpin .8s linear infinite}
+.boot-steps li.s3{color:#E0F2FE}
+@keyframes bOn{to{color:#86EFAC}}@keyframes bTick{to{background:#2E9E5B;border-color:#2E9E5B;color:#fff}}@keyframes bSpin{to{transform:rotate(360deg)}}
+@keyframes bBelt{to{background-position:-24px 0}}
+@keyframes bRide{0%{left:-28px;opacity:0}8%{opacity:1}88%{opacity:1}100%{left:calc(100% - 62px);opacity:0}}
+@keyframes bBar{0%{transform:translateX(-110%)}100%{transform:translateX(310%)}}
+@media (prefers-reduced-motion:reduce){.boot-belt:before,.boot-box,.boot-bar i{animation:none}.boot-box{opacity:1;left:40%}}
+</style>
+<link rel="stylesheet" href="app.css?v=20261126-071000" />
+</head><body><div id="root"><div class="boot" role="status" aria-label="Loading Line Pulse"><div class="boot-in">
+<div class="boot-name">DIXON</div><div class="boot-sub">Line Pulse — EMS</div>
+<div class="boot-belt" aria-hidden="true"><span class="boot-box"></span><span class="boot-box b2"></span><span class="boot-box b3"></span><span class="boot-truck"></span></div>
+<div class="boot-bar" aria-hidden="true"><i></i></div>
+<div class="boot-msg">Starting the dashboard…</div>
+<ol class="boot-steps"><li class="s1"><i>✓</i>Loading the application</li><li class="s2"><i>✓</i>Checking your session</li><li class="s3"><i></i>Preparing your workspace</li></ol>
+</div></div></div><script src="vendor/prop-types-shim.js?v=20261126-071000"></script><script src="vendor/react.production.min.js?v=20261126-071000"></script><script src="vendor/react-dom.production.min.js?v=20261126-071000"></script><script src="vendor/Recharts.js?v=20261126-071000"></script><script>window.react=window.React;</script><script>window.__LP_BUILD__="20261126-071000";</script><script type="module" src="app.js?v=20261126-071000"></script></body></html>

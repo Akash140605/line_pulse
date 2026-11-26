@@ -39,13 +39,34 @@ function LoginPage() {
   ];
   // 26-11-2026: the hour bars of the animated line on the left (heights in %, the last one is "this hour")
   const BARS = [62, 78, 70, 88, 54, 92, 80, 96];
+  // 26-11-2026: the hero follows the mouse a little (3D tilt); counters count up once
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const onMove = (e) => { const r = e.currentTarget.getBoundingClientRect(); setTilt({ x: ((e.clientX - r.left) / r.width - 0.5) * 2, y: ((e.clientY - r.top) / r.height - 0.5) * 2 }); };
+  const [cnt, setCnt] = useState(0);
+  useEffect(() => { let f = 0; const id = setInterval(() => { f += 1; setCnt(Math.min(1, f / 40)); if (f >= 40) clearInterval(id); }, 30); return () => clearInterval(id); }, []);
+  const ease = (v) => 1 - (1 - v) ** 3;
+  const STATS = [[ALL_LINE_IDS.length, '', 'Lines live'], [50, '+', 'Screens & reports'], [24, '×7', 'Always on']];
+  const DOTS = useState(() => Array.from({ length: 22 }, () => ({ l: Math.random() * 100, d: 6 + Math.random() * 9, s: 2 + Math.random() * 4, w: Math.random() * 8 })))[0];
   return (
     <div className="lp-login min-h-screen grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] bg-[#F3F6FB]">
       {/* left: what the system is — animated (moving gradient, a running line, rising hour bars); phones show only the form */}
-      <aside className="lp-login-hero relative hidden overflow-hidden px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between">
+      <aside onMouseMove={onMove} onMouseLeave={() => setTilt({ x: 0, y: 0 })} className="lp-login-hero relative hidden overflow-hidden px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between" style={{ '--tx': tilt.x, '--ty': tilt.y }}>
         <span aria-hidden className="lp-login-grid" />
         <span aria-hidden className="lp-login-orb lp-login-orb1" />
         <span aria-hidden className="lp-login-orb lp-login-orb2" />
+        {DOTS.map((d, k) => <span key={k} aria-hidden className="lp-login-dot" style={{ left: `${d.l}%`, width: d.s, height: d.s, animationDuration: `${d.d}s`, animationDelay: `-${d.w}s` }} />)}
+        {/* a 3D washing machine: the drum turns, the machine floats and turns with the mouse */}
+        <div aria-hidden className="lp-wm-wrap">
+          <div className="lp-wm">
+            <div className="lp-wm-side" />
+            <div className="lp-wm-top" />
+            <div className="lp-wm-front">
+              <div className="lp-wm-panel"><span className="lp-wm-led" /><span className="lp-wm-knob" /><span className="lp-wm-screen">104%</span></div>
+              <div className="lp-wm-door"><div className="lp-wm-drum"><span /><span /><span /></div><div className="lp-wm-glass" /></div>
+            </div>
+          </div>
+          <div className="lp-wm-shadow" />
+        </div>
         <div className="relative z-10 flex items-center gap-3">
           <DixonLogo white className="h-8" />
           <span className="rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 text-fs-12 font-bold tracking-wide text-sky-100 backdrop-blur">Line Pulse</span>
@@ -56,6 +77,13 @@ function LoginPage() {
           </div>
           <h2 className="mt-4 text-fs-40 font-extrabold leading-[1.1]">Every line.<br /><span className="lp-login-shine">Every hour. Every piece.</span></h2>
           <p className="mt-3 max-w-xl text-fs-16 text-sky-100/90">Live output, OLE, losses and root cause of every line — one screen for supervisors and management.</p>
+          <div className="mt-5 flex max-w-xl gap-3">
+            {STATS.map(([n, suf, lab]) => (
+              <div key={lab} className="lp-login-stat flex-1 rounded-xl border border-white/15 bg-white/[.07] px-3 py-2">
+                <div className="font-mono text-fs-24 font-extrabold leading-none text-white">{Math.round(ease(cnt) * n)}{suf}</div>
+                <div className="mt-1 text-fs-12 font-semibold text-sky-100/80">{lab}</div>
+              </div>))}
+          </div>
           {/* the running line: hour bars rising against the target, boxes moving on the conveyor */}
           <div className="lp-login-card mt-7 max-w-xl rounded-2xl border border-white/15 bg-white/[.06] p-4 backdrop-blur" aria-hidden>
             <div className="mb-2 flex items-center justify-between text-fs-12 font-bold uppercase tracking-wider text-sky-100/80"><span>Output by hour</span><span className="text-emerald-300">104%</span></div>
@@ -81,6 +109,7 @@ function LoginPage() {
         <span aria-hidden className="lp-login-soft" />
         <div className="relative w-full max-w-md">
           <DixonLogo className="mb-6 h-8 lg:hidden" />
+          <div className="lp-login-glow">
           <form onSubmit={submit} aria-label="Login" className="lp-login-form rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-[0_20px_60px_-20px_rgba(31,56,100,.35)] backdrop-blur sm:p-8">
             <div className="mb-5 flex items-center gap-3">
               <span className="grid h-11 w-11 place-items-center text-white shadow-md" style={{ borderRadius: 12, background: 'linear-gradient(135deg,#1F3864,#2E75B6)' }}><ShieldCheck size={22} aria-hidden /></span>
@@ -104,6 +133,7 @@ function LoginPage() {
             </button>
             <p className="mt-4 text-center text-fs-13 text-slate-500">You stay signed in on this device for 7 days. Forgot your password? Ask the administrator.</p>
           </form>
+          </div>
           <p className="mt-4 text-center text-fs-12 text-slate-400">Line Pulse · Dixon EMS</p>
         </div>
       </div>

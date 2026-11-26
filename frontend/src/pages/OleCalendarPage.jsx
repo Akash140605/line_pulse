@@ -7,7 +7,7 @@ import { KpiPanel } from '../components/OleApq';
 import { PageLoader } from '../components/Loader';
 import { useAllLineSettings } from '../hooks/useLineSettings';
 import { serverToday } from '../utils/serverTime';
-import { oleRange, oleSum, lossSummary, normEntry, modelTimeOfHour, okFrom, watchFrom, hm, oleConfig, planTargetOf } from '../utils/ole';
+import { oleRange, oleSum, lossSummary, normEntry, modelTimeOfHour, okFrom, watchFrom, hm, oleConfig, planTargetOf, goodOf } from '../utils/ole';
 import { api } from '../api';
 import { LINE_COLOR, nf, dmy, useOleLines, groupNameOf, useOleData, band, bandInk, inkOf, companyOf } from '../components/OleParts';
 import { useHeaderSlot } from './CleanDashboardPage';
@@ -411,7 +411,7 @@ export default function OleCalendarPage() {
                   ['Production', nf(T.qty), target ? `${Math.round((T.qty / target) * 1000) / 10}% of target` : 'qty made', T.qty >= target ? '#006100' : '#C00000'],
                   T.rejects > 0 ? ['Rejected', nf(T.rejects), T.qty ? `${Math.round((T.rejects / T.qty) * 1000) / 10}% of production` : '0% of production', '#C00000']
                     : ['Rework', nf(T.rework || 0), T.qty ? `${Math.round(((T.rework || 0) / T.qty) * 1000) / 10}% of production` : '0% of production', '#C00000'],
-                  ['Good', nf(T.qty - T.rejects), 'qty OK', '#006100'],
+                  ['Good', nf(goodOf(T)), 'qty OK', '#006100'],
                   ['Available', hms(T.plannedMin), 'planned time', '#1F3864'],
                   ['Down time', hms(T.lossMin), T.plannedMin ? `${Math.round((T.lossMin / T.plannedMin) * 1000) / 10}% of planned` : '0% of planned', '#C00000'],
                 ].map(([k, v, sub, c]) => (

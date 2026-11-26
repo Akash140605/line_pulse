@@ -3,7 +3,7 @@ import { PencilLine, ChevronRight, Building2, RefreshCw } from 'lucide-react';
 import { api, LINE_IDS } from '../api';
 import { getAuth } from '../auth';
 import { serverNow, serverToday } from '../utils/serverTime';
-import { OLE_LINES, lossSummary, groupIssues, splitText, rcaStatus, KIND_TEXT, pct, hm, normStation, stationLabel, offLabels, okFrom, watchFrom, setOleStations } from '../utils/ole';
+import { OLE_LINES, lossSummary, groupIssues, splitText, rcaStatus, KIND_TEXT, pct, hm, normStation, stationLabel, offLabels, okFrom, watchFrom, setOleStations, oleConfig } from '../utils/ole';
 
 /** Shared pieces of the OLE dashboard, the Loss entry page and the RCA page. */
 import { LINE_COLOR, fmtDate, BAND } from '../theme';
@@ -247,6 +247,14 @@ export function CMeter({ name, value, sub, compact = false, lg = false }) {
   );
 }
 
+// 26-11-2026: the Quality line under the meter counts the same pieces as Q: Good = Actual − Rejection (− Rework when the
+// OLE setup counts rework too — the default). It read "N good of N · rejection 0" beside a Q of 99.9 %.
+const qSub = (t) => {
+  const rw = oleConfig().qMode === 'rejRework' ? (t.rework || 0) : 0;
+  const good = Math.max(0, (t.qty || 0) - (t.rejects || 0) - rw);
+  return `${nf(good)} good of ${nf(t.qty)} · rejection ${nf(t.rejects || 0)}${oleConfig().qMode === 'rejRework' ? ` · rework ${nf(t.rework || 0)}` : ''}`;
+};
+
 export function CardBody({ t }) {
   return (
     // gauge beside the three factors; on a narrow card (4 lines in a row) the factors go under the gauge, so nothing overlaps
@@ -255,7 +263,7 @@ export function CardBody({ t }) {
       <div className="flex min-w-[170px] flex-1 flex-col gap-1.5">
         <CMeter name="Availability" value={t.A} sub={`Run ${hm(t.actualMin)} of ${hm(t.plannedMin ?? t.totalMin)} · idle ${hm(t.lossMin)}`} />
         <CMeter name="Performance" value={t.P} sub={`Std time ${hm(t.stdSec / 60)} in ${hm(t.actualMin)}`} />
-        <CMeter name="Quality" value={t.Q} sub={`${nf(t.qty - t.rejects)} good of ${nf(t.qty)} · rejection ${nf(t.rejects)}`} />
+        <CMeter name="Quality" value={t.Q} sub={qSub(t)} />
       </div>
     </div>
   );
@@ -270,7 +278,7 @@ export function GroupBand({ name, t }) {
         <div className="grid flex-1 min-w-0 gap-3 sm:grid-cols-3">
           <CMeter name="Availability" value={t.A} sub={`Run ${hm(t.actualMin)} of ${hm(t.plannedMin ?? t.totalMin)} · idle ${hm(t.lossMin)}`} />
           <CMeter name="Performance" value={t.P} sub={`Std time ${hm(t.stdSec / 60)} in ${hm(t.actualMin)}`} />
-          <CMeter name="Quality" value={t.Q} sub={`${nf(t.qty - t.rejects)} good of ${nf(t.qty)} · rejection ${nf(t.rejects)}`} />
+          <CMeter name="Quality" value={t.Q} sub={qSub(t)} />
         </div>
       </div>
     </section>

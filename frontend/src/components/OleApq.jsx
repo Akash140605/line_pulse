@@ -1,5 +1,5 @@
 import React from 'react';
-import { oleConfig, hm, okFrom, watchFrom, planTargetOf } from '../utils/ole';
+import { hm, okFrom, watchFrom, planTargetOf, goodOf } from '../utils/ole';
 import { nf, Gauge, band } from './OleParts';
 
 /*
@@ -73,7 +73,7 @@ export function factorsOf(t, zero = false) {
     // rejection still shows in its place when the period has one
     { k: 'Q', name: 'Quality', value: t.Q, formula: 'Good Qty ÷ Actual Qty', lossName: 'Quality Loss', loss: t.Q == null ? null : 1 - t.Q,
       // 25-11-2026: Actual = Good + Rework (+ Rejected) — Good is what passed first time (the same "out" as the Q formula)
-      rows: [['Actual Qty', nf(t.qty)], ['Good Qty', nf(Math.max(0, t.qty - t.rejects - (oleConfig().qMode === 'rej' ? 0 : (t.rework || 0))))],
+      rows: [['Actual Qty', nf(t.qty)], ['Good Qty', nf(goodOf(t))],
         // 26-11-2026: the rework and what became of it in ONE row — reworked / passed after rework / dismantled (88 / 70 / 18)
         ['Rework / Passed / Dismantled', <span key="r" title={`${nf(t.rework || 0)} reworked: ${nf(Math.max(0, (t.rework || 0) - (t.dismantle || 0)))} passed after rework, ${nf(t.dismantle || 0)} dismantled`}>
           <span className={t.rework ? 'text-[#C00000]' : ''}>{nf(t.rework || 0)}</span><span className="text-[#999]"> / </span>

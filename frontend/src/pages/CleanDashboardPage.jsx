@@ -6,7 +6,7 @@ import { ChevronRight, X } from 'lucide-react';
 import { PageLoader } from '../components/Loader';
 import { useAllLineSettings } from '../hooks/useLineSettings';
 import { serverToday } from '../utils/serverTime';
-import { oleRange, oleSum, issuesOf, groupIssues, rcaStatus, needsRca, lossSummary, hoursOf, okFrom, watchFrom, hm } from '../utils/ole';
+import { oleRange, oleSum, issuesOf, groupIssues, rcaStatus, needsRca, lossSummary, hoursOf, okFrom, watchFrom, hm, goodOf } from '../utils/ole';
 import { LINE_COLOR, nf, dmy, p2, useOleLines, groupNameOf, useOleData, Gauge, band } from '../components/OleParts';
 import { PeriodBar, periodKind } from '../components/PeriodBar';
 import { openLossAnalysis } from '../utils/drillLink';
@@ -34,7 +34,7 @@ const MEASURES = {
   ole: { name: 'OLE', what: 'Overall line effectiveness', how: (t) => `A × P × Q = ${pc(t.A)} × ${pc(t.P)} × ${pc(t.Q ?? 1)}` },
   A: { name: 'Availability', what: 'Share of the planned time the line ran', how: (t) => `Run time ÷ Planned time = ${hms(t.actualMin)} ÷ ${hms(t.plannedMin)}` },
   P: { name: 'Performance', what: 'Std time of the pieces made ÷ the time they took', how: (t) => `Std time ÷ Run time = ${hms(t.stdSec / 60)} ÷ ${hms(t.actualMin)}` },
-  Q: { name: 'Quality', what: 'Good pieces ÷ pieces made', how: (t) => `Good ÷ Made = ${nf(t.qty - t.rejects)} ÷ ${nf(t.qty)}` },
+  Q: { name: 'Quality', what: 'Good pieces ÷ pieces made', how: (t) => `Good ÷ Made = ${nf(goodOf(t))} ÷ ${nf(t.qty)}` },
 };
 
 /** Overall: one panel — OLE gauge with its formula on the left, A / P / Q beside it (loss strip removed; losses are on each line card). */
@@ -124,7 +124,7 @@ const COLS = {
   ole: [['Availability', (t) => pc(t.A), (t) => tone(t.A)], ['Performance', (t) => pc(t.P), (t) => tone(t.P)], ['Quality', (t) => pc(t.Q), (t) => tone(t.Q)], ['OLE', (t) => pc(t.ole), (t) => `font-extrabold ${tone(t.ole)}`]],
   A: [['Planned time', (t) => hms(t.plannedMin)], ['Down time', (t) => hms(t.lossMin), (t) => (t.lossMin ? 'text-red-700' : '')], ['Run time', (t) => hms(t.actualMin)], ['Availability', (t) => pc(t.A), (t) => `font-extrabold ${tone(t.A)}`]],
   P: [['Qty', (t) => nf(t.qty)], ['Std time', (t) => hms(t.stdSec / 60)], ['Run time', (t) => hms(t.actualMin)], ['Slow running', (t) => hms(t.speedMin), (t) => (t.speedMin ? 'text-red-700' : '')], ['Performance', (t) => pc(t.P), (t) => `font-extrabold ${tone(t.P)}`]],
-  Q: [['Made', (t) => nf(t.qty)], ['Rejected', (t) => nf(t.rejects), (t) => (t.rejects ? 'text-red-700' : '')], ['Good', (t) => nf(t.qty - t.rejects)], ['Quality', (t) => pc(t.Q), (t) => `font-extrabold ${tone(t.Q)}`]],
+  Q: [['Made', (t) => nf(t.qty)], ['Rejected', (t) => nf(t.rejects), (t) => (t.rejects ? 'text-red-700' : '')], ['Reworked', (t) => nf(t.rework || 0)], ['Good', (t) => nf(goodOf(t))], ['Quality', (t) => pc(t.Q), (t) => `font-extrabold ${tone(t.Q)}`]],
   lost: [['Idle time', (t) => hms(t.lossMin)], ['Slow running', (t) => hms(t.speedMin)], ['Lost time', (t) => hms(lost(t)), () => 'font-extrabold text-red-700']],
   loss: [['Idle time', (t) => hms(t.lossMin), (t) => (t.lossMin ? 'font-extrabold text-red-700' : '')], ['Planned time', (t) => hms(t.plannedMin)]],
   stop: [['Planned stop', (t) => hms(t.stopMin), () => 'font-extrabold'], ['Shift time', (t) => hms(t.totalMin)]],

@@ -149,6 +149,8 @@ let CFG = { ...OLE_CFG_DEFAULT };
 let STATIONS = [];
 export function setOleStations(list) { STATIONS = Array.isArray(list) ? list : []; }
 export const oleConfig = () => CFG;
+/** 26-11-2026: good pieces as Quality counts them: made − rejected (− reworked when rework counts, the default) */
+export const goodOf = (t) => Math.max(0, (t?.qty || 0) - (t?.rejects || 0) - (CFG.qMode === 'rejRework' ? (t?.rework || 0) : 0));
 export function setOleConfig(c) { if (c && typeof c === 'object') CFG = { ...CFG, ...c }; }
 /** OLE colour limits of the admin (fractions): good from, watch from */
 /** benchmarks (Setup → OLE formulas → Display): OLE good from 85 %; A · P · Q each their own (default 95 %), watch below it */

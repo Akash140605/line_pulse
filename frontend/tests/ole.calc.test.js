@@ -469,3 +469,20 @@ describe('dismantled pieces', () => {
     expect(oleSum([r9, r10]).rework).toBe(10);
   });
 });
+
+// 26-11-2026: the good pieces shown beside Quality are the same pieces Q counts
+import { goodOf as goodOf0, oleSum as oleSum0 } from '../src/utils/ole';
+describe('good pieces = what Quality counts', () => {
+  it('rework counts (default): good = made − rejected − reworked, and Q = good ÷ made', () => {
+    setCfg0({ ...DEF0, qMode: 'rejRework' });
+    const t = { qty: 1000, rejects: 0, rework: 1 };
+    expect(goodOf0(t)).toBe(999);
+    const s = oleSum0([{ totalMin: 60, plannedMin: 60, actualMin: 60, lossMin: 0, qty: 1000, stdSec: 3000, rejects: 0, rework: 1 }]);
+    expect(Math.round(s.Q * 10000) / 10000).toBe(Math.round((goodOf0(s) / s.qty) * 10000) / 10000);
+  });
+  it('rejections only: rework is not taken out', () => {
+    setCfg0({ ...DEF0, qMode: 'rej' });
+    expect(goodOf0({ qty: 1000, rejects: 2, rework: 5 })).toBe(998);
+    setCfg0({ ...DEF0 });
+  });
+});

@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { Clock, Timer, AlertTriangle, Gauge as GaugeIcon, Target, Package, PackageX, CheckCircle2, RotateCcw, TrendingDown, Activity, Hash } from 'lucide-react';
 import { useAllLineSettings } from '../hooks/useLineSettings';
 import { serverToday } from '../utils/serverTime';
-import { oleRange, oleSum, hm, okFrom, watchFrom, normEntry, planTargetOf } from '../utils/ole';
+import { oleRange, oleSum, hm, okFrom, watchFrom, normEntry, planTargetOf, goodOf } from '../utils/ole';
 import { LINE_COLOR, nf, dmy, useOleLines, groupNameOf, useOleData, band, inkOf, plantOf, plantsText, companyOf, CompanyCell } from '../components/OleParts';
 import { PeriodBar, periodKind } from '../components/PeriodBar';
 import { useHeaderSlot } from './CleanDashboardPage';
@@ -489,7 +489,7 @@ export default function OleFocusPage({ factor = 'A' }) {
       <>
         <div className={`${card} grid grid-cols-2 gap-px overflow-hidden bg-[#D4D4D4] md:grid-cols-3 xl:grid-cols-5`}>
           <Kpi icon={GaugeIcon} label="Quality" value={pc(T.Q ?? (T.qty > 0 ? 1 : 0))} note="good qty ÷ actual qty" color={toneOf(T.Q ?? 1, 'Q')} />
-          <Kpi icon={CheckCircle2} label="Good qty" value={nf((T.qty || 0) - (T.rejects || 0))} note={`of ${nf(T.qty)} made`} color={GREEN} />
+          <Kpi icon={CheckCircle2} label="Good qty" value={nf(goodOf(T))} note={`of ${nf(T.qty)} made`} color={GREEN} />
           <Kpi icon={RotateCcw} label="Rework" value={nf(lineList.reduce((a, r) => a + r.rwk, 0))} note={T.qty ? `${pc(lineList.reduce((a, r) => a + r.rwk, 0) / T.qty, 2)} of production` : 'pcs reworked'} color={AMBER} />
           <Kpi icon={PackageX} label="Dismantled" value={nf(lineList.reduce((a, r) => a + r.dis, 0))} note="pcs dismantled" color={RED} />
           <Kpi icon={Activity} label="Worst line" value={worst && worst.rej ? `Line ${worst.line}` : '—'} note={worst && worst.rej ? `${pc(worst.rate, 2)} defects · ${nf(worst.rej)} pcs` : 'no rejection'} color={RED} />

@@ -780,3 +780,8 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 .lp-mes .lp-side .lp-side-solo { padding-top: 6px; }
 .lp-mes .lp-side .lp-side-cap { padding: 0 10px 2px; font-size: 10.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: #8A94A3; }
 .lp-mes .lp-side .lp-side-solo .lp-side-item { margin-left: 2px; width: calc(100% - 2px); }
+
+/* 26-11-2026: folder names in full ("PERFORMANCE" was cut): tighter letters, never an ellipsis */
+.lp-mes .lp-side .lp-side-group .lp-side-gname { letter-spacing: .03em; white-space: nowrap; overflow: visible; font-size: 11px; }
+.lp-mes .lp-side-group { gap: 6px; }
+.lp-mes .lp-side-group .lp-side-count { flex: none; }

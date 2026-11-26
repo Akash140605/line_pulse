@@ -119,14 +119,16 @@ function Skeleton({ label, lines }) {
 export default function OleMonthlyPage() {
   const ALL = useOleLines();
   const today = serverToday();
-  const thisYear = Number(today.slice(0, 4));
+  // 26-11-2026: financial year (April → March): FY 2026-27 = Apr 2026 … Mar 2027; `year` = the year it starts in
+  const thisYear = Number(today.slice(5, 7)) >= 4 ? Number(today.slice(0, 4)) : Number(today.slice(0, 4)) - 1;
   const [only, setOnly] = useState('all');
   const [pick, setPick] = useState(null);   // a month picked: its models in a drawer (19-11-2026)
   const IDS = useMemo(() => (only !== 'all' && ALL.includes(only) ? [only] : ALL), [only, ALL.join()]); // eslint-disable-line react-hooks/exhaustive-deps
   const [year, setYear] = useState(thisYear);
   const years = Array.from({ length: 4 }, (_, i) => thisYear - i);
-  const start = `${year}-01-01`;
-  const end = `${year}-12-31` > today ? today : `${year}-12-31`;
+  const fy = `FY ${year}-${String(year + 1).slice(2)}`;
+  const start = `${year}-04-01`;
+  const end = `${year + 1}-03-31` > today ? today : `${year + 1}-03-31`;
   const settings = useAllLineSettings(IDS);
   // a whole year: read once (no 20-second refresh of twelve months)
   const D = useOleData({ start, end, ids: IDS, paused: true });
@@ -141,14 +143,15 @@ export default function OleMonthlyPage() {
     if (!R) return [];
     const out = [];
     for (let i = 0; i < 12; i += 1) {
-      const ym = `${year}-${String(i + 1).padStart(2, '0')}`;
+      const mi = (i + 3) % 12, cy = i >= 9 ? year + 1 : year;   // Apr … Dec of the start year, Jan … Mar of the next
+      const ym = `${cy}-${String(mi + 1).padStart(2, '0')}`;
       if (`${ym}-01` > today) break;
       const ds = R.days.filter((d) => d.date.startsWith(ym));
       const t = oleSum(ds.map((d) => d.total));
       const run = ds.filter((d) => d.total.qty > 0).length;
       const on = run > 0 && t.ole != null;
       const row = {
-        k: MONTHS[i], ym, full: `${MONTHS[i]} ${year}`, run, on, t,
+        k: MONTHS[mi], ym, full: `${MONTHS[mi]} ${cy}`, run, on, t,
         ole: on ? pct(t.ole) : null, A: on ? pct(t.A) : null, P: on ? pct(t.P) : null, Q: on ? pct(t.Q) : null,
         qty: run ? t.qty : null, rejects: run ? t.rejects : null,
         // target pieces = what the run time could make at the std cycle (same as "Plan Target Qty" of Overall OLE)
@@ -196,17 +199,17 @@ export default function OleMonthlyPage() {
           </div>
         )}
         <div className="flex items-center gap-1" role="group" aria-label="Year">
-          <button type="button" className={arrowBtn} onClick={() => setYear(year - 1)} disabled={year <= years[years.length - 1]} aria-label="Earlier year" title="Earlier year"><ChevronLeft size={15} aria-hidden /></button>
-          <select aria-label="Year" value={year} onChange={(e) => setYear(Number(e.target.value))} className={fieldCls}>
-            {years.map((v) => <option key={v} value={v}>{v}</option>)}
+          <button type="button" className={arrowBtn} onClick={() => setYear(year - 1)} disabled={year <= years[years.length - 1]} aria-label="Earlier financial year" title="Earlier financial year"><ChevronLeft size={15} aria-hidden /></button>
+          <select aria-label="Financial year" value={year} onChange={(e) => setYear(Number(e.target.value))} className={fieldCls}>
+            {years.map((v) => <option key={v} value={v}>{`FY ${v}-${String(v + 1).slice(2)}`}</option>)}
           </select>
-          <button type="button" className={arrowBtn} onClick={() => setYear(year + 1)} disabled={year >= thisYear} aria-label="Later year" title="Later year"><ChevronRight size={15} aria-hidden /></button>
+          <button type="button" className={arrowBtn} onClick={() => setYear(year + 1)} disabled={year >= thisYear} aria-label="Later financial year" title="Later financial year"><ChevronRight size={15} aria-hidden /></button>
         </div>
         {busy && <span className="text-fs-12 font-semibold text-slate-500">Updating …</span>}
       </HeaderBar>
 
       {D.err && <div role="alert" className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-fs-13 font-semibold text-slate-700">{D.err}</div>}
-      {!R && !D.err && <Skeleton label={`Reading ${group} · ${year}`} lines={IDS.length} />}
+      {!R && !D.err && <Skeleton label={`Reading ${group} · ${fy}`} lines={IDS.length} />}
 
       {R && (
         <>
@@ -214,11 +217,11 @@ export default function OleMonthlyPage() {
           <section className={`${card} overflow-hidden`} aria-label="Year OLE">
             <div className="flex flex-wrap items-center gap-2 bg-dixon-navy px-4 py-2.5 text-white">
               <h2 className="lp-caps min-w-0 flex-1 text-fs-18 font-extrabold tracking-wide sm:text-fs-22">{title}</h2>
-              <span aria-label="Year" className="inline-flex items-center gap-1.5 rounded border border-white/40 bg-white/10 px-3 py-1 text-fs-15 font-bold"><CalendarDays size={15} aria-hidden />{year}</span>
+              <span aria-label="Year" className="inline-flex items-center gap-1.5 rounded border border-white/40 bg-white/10 px-3 py-1 text-fs-15 font-bold"><CalendarDays size={15} aria-hidden />{fy}</span>
               <span aria-label="Lines" className="inline-flex items-center gap-1.5 rounded border border-white/40 bg-white/10 px-3 py-1 text-fs-15 font-bold"><Factory size={15} aria-hidden />{IDS.length === 1 ? `Line ${IDS[0]}` : <>Lines <b className="ml-1 rounded bg-white px-1.5 text-dixon-navy">{IDS.length}</b></>}</span>
             </div>
             <div className="grid grid-cols-2 gap-px bg-slate-200 lg:grid-cols-5">
-              <Tile label={`OLE ${year}`} value={pc(T.ole)} cls={tone(T.ole)} sub={`A ${pc(T.A)} · P ${pc(T.P)} · Q ${pc(T.Q)}`} />
+              <Tile label={`OLE ${fy}`} value={pc(T.ole)} cls={tone(T.ole)} sub={`A ${pc(T.A)} · P ${pc(T.P)} · Q ${pc(T.Q)}`} />
               <Tile label="Best month" value={best ? best.full : '—'} sub={best ? `OLE ${pc(best.t.ole)}` : ''} cls={best ? tone(best.t.ole) : 'text-slate-500'} />
               <Tile label="Lowest month" value={worst ? worst.full : '—'} sub={worst ? `OLE ${pc(worst.t.ole)}` : ''} cls={worst ? tone(worst.t.ole) : 'text-slate-500'} />
               <Tile label={`Months at ${good}%+`} value={ran.length ? `${atGood} of ${ran.length}` : '—'} cls={ran.length && atGood === ran.length ? 'text-emerald-700' : 'text-slate-900'} />
@@ -227,11 +230,11 @@ export default function OleMonthlyPage() {
           </section>
 
           {!ran.length ? (
-            <p className={`${card} px-4 py-10 text-center text-fs-14 font-semibold text-slate-500`}>No production in {year}.</p>
+            <p className={`${card} px-4 py-10 text-center text-fs-14 font-semibold text-slate-500`}>No production in {fy}.</p>
           ) : (
             <>
               {/* OLE per month: bars in the band colours, the benchmark dashed */}
-              <ChartCard title="Month-Wise OLE" label={`OLE per month ${year}: ${said('ole')}`} height={300}
+              <ChartCard title="Month-Wise OLE" label={`OLE per month ${fy}: ${said('ole')}`} height={300}
                 keys={<><Key color={BAND.ok}>{good}% & above</Key><Key color={BAND.mid}>{watch}–{good}%</Key><Key color={BAND.bad}>Below {watch}%</Key><Key color={BENCH} line dash>{good}% benchmark</Key></>}>
                 <BarChart data={rows} margin={{ top: 24, right: 12, left: 0, bottom: 0 }} barCategoryGap="26%">
                   <CartesianGrid stroke={GRID} strokeDasharray="3 4" vertical={false} />
@@ -247,7 +250,7 @@ export default function OleMonthlyPage() {
               </ChartCard>
 
               {/* OLE with its three factors: one line each */}
-              <ChartCard title="OLE · A · P · Q Trend" label={`OLE, availability, performance and quality per month ${year}`} height={300}
+              <ChartCard title="OLE · A · P · Q Trend" label={`OLE, availability, performance and quality per month ${fy}`} height={300}
                 keys={<>{SERIES.map(([k, n, c]) => <Key key={k} color={c} line>{n}</Key>)}<Key color={BENCH} line dash>{good}%</Key></>}>
                 <LineChart data={rows} margin={{ top: 14, right: 18, left: 0, bottom: 0 }}>
                   <CartesianGrid stroke={GRID} strokeDasharray="3 4" vertical={false} />
@@ -265,7 +268,7 @@ export default function OleMonthlyPage() {
               {/* analysis */}
               <div className="grid gap-3 xl:grid-cols-2">
                 {allView && (
-                  <ChartCard title="Line-Wise OLE" label={`OLE of every line per month ${year}`} wide
+                  <ChartCard title="Line-Wise OLE" label={`OLE of every line per month ${fy}`} wide
                     keys={IDS.map((l) => <Key key={l} color={LINE_COLOR[l]}>Line {l}{plantOf(l) ? ` · ${plantOf(l)}` : ''}</Key>)}>
                     <BarChart data={rows} margin={{ top: 14, right: 12, left: 0, bottom: 0 }} barCategoryGap="20%" barGap={2}>
                       <CartesianGrid stroke={GRID} strokeDasharray="3 4" vertical={false} />
@@ -277,7 +280,7 @@ export default function OleMonthlyPage() {
                     </BarChart>
                   </ChartCard>
                 )}
-                <ChartCard title="Lost Time" label={`Idle time and slow running per month ${year}, in hours`}
+                <ChartCard title="Lost Time" label={`Idle time and slow running per month ${fy}, in hours`}
                   keys={<><Key color={COL.A}>Idle time</Key><Key color={COL.P}>Slow running</Key></>}>
                   <BarChart data={rows} margin={{ top: 14, right: 12, left: 0, bottom: 0 }} barCategoryGap="30%">
                     <CartesianGrid stroke={GRID} strokeDasharray="3 4" vertical={false} />
@@ -288,7 +291,7 @@ export default function OleMonthlyPage() {
                     <Bar dataKey="slowH" name="Slow running" stackId="t" fill={COL.P} stroke="#fff" strokeWidth={1} radius={[4, 4, 0, 0]} maxBarSize={48} isAnimationActive={false} />
                   </BarChart>
                 </ChartCard>
-                <ChartCard title="Target vs Actual Qty" label={`Target and actual qty per month ${year}`}
+                <ChartCard title="Target vs Actual Qty" label={`Target and actual qty per month ${fy}`}
                   keys={<AchKey />}>
                   <BarChart data={rows} margin={{ top: 22, right: 12, left: 0, bottom: 0 }} barCategoryGap="30%">
                     <CartesianGrid stroke={GRID} strokeDasharray="3 4" vertical={false} />
@@ -303,7 +306,7 @@ export default function OleMonthlyPage() {
                     </Bar>
                   </BarChart>
                 </ChartCard>
-                <ChartCard title="Rejection %" label={`Rejected pieces as % of the pieces made, per month ${year}`}>
+                <ChartCard title="Rejection %" label={`Rejected pieces as % of the pieces made, per month ${fy}`}>
                   <LineChart data={rows} margin={{ top: 14, right: 18, left: 0, bottom: 0 }}>
                     <CartesianGrid stroke={GRID} strokeDasharray="3 4" vertical={false} />
                     <XAxis dataKey="k" tick={tick()} tickLine={false} axisLine={{ stroke: '#CBD5E1' }} padding={{ left: 18, right: 18 }} />
@@ -317,9 +320,9 @@ export default function OleMonthlyPage() {
 
               {/* the numbers behind the charts */}
               <section className={`${card} overflow-hidden`} aria-label="Monthly OLE table">
-                <Head title={`${year} Month by Month`} />
+                <Head title={`${fy} Month by Month`} />
                 <div className="overflow-x-auto">
-                  <table className="w-full text-fs-14" aria-label={`OLE month by month ${year}`}>
+                  <table className="w-full text-fs-14" aria-label={`OLE month by month ${fy}`}>
                     <thead>
                       <tr className="bg-[#e3ecf8] text-left text-fs-12 text-dixon-navy">
                         {['Month', 'Days run', 'Target', 'Qty', 'Achieved', 'Availability', 'Performance', 'Quality', 'OLE', 'vs last month', 'Idle time', 'Slow running', 'Rejection %'].map((h, i) => (
@@ -348,8 +351,8 @@ export default function OleMonthlyPage() {
                       })}
                     </tbody>
                     <tfoot>
-                      <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold" aria-label={`Year ${year}`}>
-                        <td className="px-3 py-2">Year {year}</td>
+                      <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold" aria-label={fy}>
+                        <td className="px-3 py-2">{fy}</td>
                         <td className="px-3 text-right font-mono">{rows.reduce((a, r) => a + r.run, 0)}</td>
                         <td className="px-3 text-right font-mono">{planTargetOf(T) != null ? nf(planTargetOf(T)) : '—'}</td>
                         <td className="px-3 text-right font-mono">{nf(T.qty)}</td>

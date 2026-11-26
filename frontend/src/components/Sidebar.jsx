@@ -197,7 +197,7 @@ export default function Sidebar({ page, onChange, focusDate, loading, pages: pag
               <section key={g} className="lp-side-sec" aria-label={`Pages: ${g}`}>
                 <button type="button" onClick={() => !hasOn && toggle(g)} aria-expanded={open} className={`lp-side-group ${open ? 'is-open' : ''}`} aria-label={hasOn ? g : open ? `Fold ${g}` : `Open ${g}`}>
                   <span className="lp-side-folder" aria-hidden>{open ? <FolderOpen size={13} /> : <Folder size={13} />}</span>
-                  <span className="min-w-0 flex-1 truncate text-left">{g}</span>
+                  <span className="lp-side-gname min-w-0 flex-1 text-left" title={g}>{g}</span>
                   <span className="lp-side-count">{items.length}</span>
                   {open ? <ChevronDown size={13} className="shrink-0 text-[#777]" /> : <ChevronRight size={13} className="shrink-0 text-[#777]" />}
                 </button>

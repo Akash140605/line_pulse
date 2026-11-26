@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, LINE_IDS } from '../api';
+import { AUTH_EVENT } from '../auth';
 import { lineTargets, lineCfg, linePeriods, sameCfg, setMasterRows, masterLoadedAt, masterReady, setFallbackRule } from '../utils/targetMethods';
 import { normalizeRule, normalizeUi, ruleKeyOf, ruleStart, ruleEnd } from '../utils/uiSettings';
 import { serverToday, syncServerTime, isServerTimeSynced } from '../utils/serverTime';
@@ -40,6 +41,10 @@ const keepGood = (byLine, dLines) => {
   for (const l of dLines) if (Object.keys(byLine[l] || {}).length) { g[String(l)] = byLine[l]; changed = true; }
   if (changed) { goodMem = g; try { localStorage.setItem(GOOD_KEY, JSON.stringify(g)); } catch { /* storage blocked */ } }
 };
+// 26-11-2026: the targets are worked out for the lines of the login (a management login may see only Line 1 & 2):
+// a copy made for other lines (another login in this browser) is never used — Line 3 / 4 had no target after such a switch
+const scopeKey = () => LINE_IDS.join(',');
+const fits = (m) => !!m && m.lines === scopeKey();
 const readLocal = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } };
 /** The rule in force: from the screen setup the app keeps in the browser (useUiSettings), else the default. */
 export function currentRule() {
@@ -113,10 +118,10 @@ export function loadAutoTargets(force = false) {
       const key = ruleKey(rule);
       // no line on Method D: the cached targets are used while the rule is the same (6 h)
       const sameDay = (m) => !dated(rule) || m?.day === serverToday();   // a dated change can start today
-      if (!force && !usesD(rule) && mem && mem.rule === key && sameDay(mem) && Date.now() - mem.at < ttlOf(mem)) { inflight = null; return mem; }
+      if (!force && !usesD(rule) && fits(mem) && mem.rule === key && sameDay(mem) && Date.now() - mem.at < ttlOf(mem)) { inflight = null; return mem; }
       // Method D: the master is read first
       const mAt = usesD(rule) ? await loadMaster() : null;
-      if (!force && mem && mem.rule === key && sameDay(mem) && (mem.masterAt || null) === (mAt || null) && Date.now() - mem.at < ttlOf(mem)) { inflight = null; return mem; }
+      if (!force && fits(mem) && mem.rule === key && sameDay(mem) && (mem.masterAt || null) === (mAt || null) && Date.now() - mem.at < ttlOf(mem)) { inflight = null; return mem; }
       if (!isServerTimeSynced()) await syncServerTime();
       const today = serverToday();
       const to = ruleEnd(rule, today);   // fixed window (e.g. 01-08 → 31-10): later months do not change the targets
@@ -137,7 +142,7 @@ export function loadAutoTargets(force = false) {
       const byLine = Object.fromEntries(LINE_IDS.map((l) => {
         // a D line whose model list did not come: its last targets of the same rule stay (nothing old of another rule)
         // the same when the master could not be read (no master in this browser yet): never an empty set for hours
-        const kept0 = mem?.rule === key ? (mem.byLine?.[l] || {}) : {};
+        const kept0 = fits(mem) && mem.rule === key ? (mem.byLine?.[l] || {}) : {};
         const kept = dLines.includes(l) && !Object.keys(kept0).length ? goodD(l) : kept0;
         if (dLines.includes(l) && ((!lm[l] && onlyD(rule)) || !masterReady())) return [l, kept];
         const t = lineTargets(j?.models, rule, l, null, lm[l]);
@@ -162,7 +167,7 @@ export function loadAutoTargets(force = false) {
         periods[l] = P.map((p) => ({ from: p.from, to: p.to, method: p.method, add: p.add, pct: p.pct,
           targets: sameCfg(p, methods[l]) ? byLine[l] : lineTargets(j?.models, rule, l, { method: p.method, add: p.add, pct: p.pct }, lm[l]) }));
       }
-      mem = { at: Date.now(), day: today, partial, onlyD: onlyD(rule), rule: key, masterAt: mAt || null, from, to, add: rule.add, cap: rule.cap, low: rule.low, min: rule.min, methods, byLine, periods };
+      mem = { at: Date.now(), lines: scopeKey(), day: today, partial, onlyD: onlyD(rule), rule: key, masterAt: mAt || null, from, to, add: rule.add, cap: rule.cap, low: rule.low, min: rule.min, methods, byLine, periods };
       try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch { /* storage blocked */ }
       subs.forEach((f) => f(mem));
       try { window.dispatchEvent(new Event(AUTO_EVENT)); } catch { /* old browser */ }
@@ -177,22 +182,23 @@ export function loadAutoTargets(force = false) {
 export default function useAutoTargets() {
   setFallbackRule(currentRule());
   // a kept copy is shown at once only when it was made with the rule in force (never targets of another method)
-  const [v, setV] = useState(() => { const k = mem || readLocal(); return k && k.rule === ruleKey(currentRule()) ? k : null; });
+  const [v, setV] = useState(() => { const k = mem || readLocal(); return fits(k) && k.rule === ruleKey(currentRule()) ? k : null; });
   useEffect(() => {
     subs.add(setV);
     const go = () => loadAutoTargets().then((x) => { if (x) setV(x); });
     // the targets are worked out from every scan since the rule's start date — a heavy read. When the kept copy is
     // still good it is used at once; otherwise the page's own numbers are read first and the targets a little later.
     const kept = mem || readLocal();
-    const good = kept && kept.rule === ruleKey(currentRule()) && Date.now() - kept.at < ttlOf(kept);
+    const good = fits(kept) && kept.rule === ruleKey(currentRule()) && Date.now() - kept.at < ttlOf(kept);
     const t0 = setTimeout(go, good || onlyD(currentRule()) ? 0 : kept ? 12000 : 4000);   // Method D everywhere: light, at once
     window.addEventListener(UI_EVENT, go);          // the rule was changed on the Target rule & check page
-    const goNow = () => loadAutoTargets(true).then((x) => { if (x) setV(x); });
+    const goNow = () => loadAutoTargets(true).then((x) => (x && !fits(x) ? loadAutoTargets(true) : x)).then((x) => { if (x) setV(x); });
+    window.addEventListener(AUTH_EVENT, goNow);   // another login (other lines): its own targets at once
     window.addEventListener('ems:target-rule', goNow);   // the server's rule differs from the kept one (useUiSettings)
     const id = setInterval(() => { if (!document.hidden) loadAutoTargets(); }, 30 * 60 * 1000);
     // a partial set or Method D everywhere: checked every 30 s (loadAutoTargets reads again only when its time is up)
     const id2 = setInterval(() => { if (!document.hidden && (mem?.partial || mem?.onlyD)) loadAutoTargets().then((x) => { if (x) setV(x); }); }, 30 * 1000);
-    return () => { subs.delete(setV); window.removeEventListener(UI_EVENT, go); window.removeEventListener('ems:target-rule', goNow); clearInterval(id); clearInterval(id2); clearTimeout(t0); };
+    return () => { subs.delete(setV); window.removeEventListener(UI_EVENT, go); window.removeEventListener('ems:target-rule', goNow); window.removeEventListener(AUTH_EVENT, goNow); clearInterval(id); clearInterval(id2); clearTimeout(t0); };
   }, []);
   return v;
 }

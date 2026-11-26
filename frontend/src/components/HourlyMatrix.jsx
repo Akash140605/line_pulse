@@ -40,6 +40,8 @@ export const HOUR_OK = '#15803D';
 export const HOUR_CLOSE = '#FB8C00';
 export const HOUR_BAD = '#DC2626';
 const NO_TONE = { bg: '#F1F5F9', fg: '#334155' };
+// 26-11-2026: the % chip in a deep shade of its band (white text readable on every screen and TV)
+const CHIP = { '#16A34A': '#166534', '#F59E0B': '#B45309', '#F87171': '#B91C1C' };
 const SOFT = { ok: { bg: '#E3F5E9', fg: '#14532D', edge: '#16A34A' }, close: { bg: '#FFF3DC', fg: '#7C4A03', edge: '#F59E0B' }, bad: { bg: '#FDE8E8', fg: '#8F1D1D', edge: '#F87171' } };
 const closeFrom = () => { const v = Number(savedUi()?.management?.oneView?.amberFrom); return v > 0 ? v / 100 : 0.9; };
 function planTone(ratio, close) {
@@ -629,7 +631,7 @@ export default function HourlyMatrix({ days, matrix: matrixProp, loading: loadin
                             <span className={stacked ? 'flex flex-col items-center leading-none' : 'flex items-baseline justify-center gap-1 leading-none'}>
                               <span className={`font-mono font-extrabold ${tight ? 'text-fs-13' : 'text-fs-15'} ${rowOff ? 'line-through' : ''}`}>{qty}</span>
                               {/* 26-11-2026: the % in a chip of its band colour (green / orange / red) — read at a glance */}
-                              {pc != null && !rowOff && <span className="rounded px-1 py-[1px] font-mono text-fs-11 font-extrabold" style={{ background: tone.edge || '#94A3B8', color: '#fff', marginTop: stacked ? 3 : 0 }}>{pc}%</span>}
+                              {pc != null && !rowOff && <span className="rounded px-1 py-[1px] font-mono text-fs-12 font-extrabold" style={{ background: CHIP[tone.edge] || '#475569', color: '#fff', marginTop: stacked ? 3 : 0 }}>{pc}%</span>}
                             </span>
                           ) : <span style={{ opacity: 0.35 }}>{state === 'future' ? '' : '·'}</span>}
                           {/* how much of the plan was made: a thin bar along the bottom of the cell */}

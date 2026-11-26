@@ -137,10 +137,10 @@ export function factorsOf(t, zero = false) {
           className="whitespace-nowrap rounded px-1 text-[#0E6E2E] underline decoration-dotted hover:bg-emerald-50" style={{ textUnderlineOffset: 3 }} title="Stage-wise FPY — RTY = FPY of every stage multiplied">
           {yPct(t.rty ?? fpyOf(t))} ›</button>, '', false, 'RTY'],
         // 26-11-2026: the rework and what became of it in ONE row — reworked / passed after rework / dismantled (88 / 70 / 18)
-        ['Rework / Passed / Dismantled', <span key="r" title={`${nf(t.rework || 0)} reworked: ${nf(Math.max(0, (t.rework || 0) - (t.dismantle || 0)))} passed after rework, ${nf(t.dismantle || 0)} dismantled`}>
-          <span className={t.rework ? 'text-[#C00000]' : ''}>{nf(t.rework || 0)}</span><span className="text-[#999]"> / </span>
-          <span className={(t.rework || 0) > (t.dismantle || 0) ? 'text-[#0E6E2E]' : ''}>{nf(Math.max(0, (t.rework || 0) - (t.dismantle || 0)))}</span><span className="text-[#999]"> / </span>
-          <span className={t.dismantle ? 'text-[#C00000]' : ''}>{nf(t.dismantle || 0)}</span></span>, '', false, 'R / P / D'], ...(t.rejects > 0 ? [['Rejected Qty', nf(t.rejects), 'text-[#C00000]']] : [])] },
+        ['Rework [Passed + Dism.]', <span key="r" className="whitespace-nowrap" title={`${nf(t.rework || 0)} reworked = ${nf(Math.max(0, (t.rework || 0) - (t.dismantle || 0)))} passed after rework + ${nf(t.dismantle || 0)} dismantled`}>
+          <span className={t.rework ? 'text-[#C00000]' : ''}>{nf(t.rework || 0)}</span><span className="text-[#777]"> [</span>
+          <span className={(t.rework || 0) > (t.dismantle || 0) ? 'text-[#0E6E2E]' : ''}>{nf(Math.max(0, (t.rework || 0) - (t.dismantle || 0)))}</span><span className="text-[#777]"> + </span>
+          <span className={t.dismantle ? 'text-[#C00000]' : ''}>{nf(t.dismantle || 0)}</span><span className="text-[#777]">]</span></span>, '', false, 'Rework'], ...(t.rejects > 0 ? [['Rejected Qty', nf(t.rejects), 'text-[#C00000]']] : [])] },
   ];
 }
 

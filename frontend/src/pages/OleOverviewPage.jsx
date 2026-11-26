@@ -445,6 +445,10 @@ function OverviewSkeleton({ label, sub, lines = 4 }) {
   );
 }
 
+// 26-11-2026: a reason written in CAPITALS reads as Title Case ("MOTOR SHORTAGE" → "Motor Shortage"); short codes stay ("IR Fail", "EPS Shortage")
+const KEEP = new Set(['EPS', 'XML', 'PCB', 'SAP', 'FQC', 'LQC', 'OQC', 'IPQC', 'HV', 'IR', 'QA', 'QC', 'NG', 'OK', 'PU', 'ESD', 'BOM', 'WIP', 'MES', 'IT']);
+const nice = (t) => String(t || '').replace(/[A-Za-z][A-Za-z']*/g, (w) => (KEEP.has(w.toUpperCase()) || (w.length <= 2 && w === w.toUpperCase()) ? w.toUpperCase() : w === w.toUpperCase() ? w[0] + w.slice(1).toLowerCase() : w));
+
 export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   const ALL = useOleLines();
   const today = serverToday();
@@ -577,14 +581,14 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   // ── columns of the tables
   const lineCell = (l) => <span className="whitespace-nowrap font-bold">Line {l}{plantOf(l) && <span className="ml-1 text-fs-12 font-semibold text-slate-500">{plantOf(l)}</span>}</span>;
   const C = {
-    down: [{ k: 'name', label: 'Reason', wrap: true, render: (r) => <span className="lp-caps font-semibold">{r.name}</span> }, { k: 'models', label: 'Model', wrap: true, render: (r) => modelsCell(r.models, 'min', 1, co, true) }, { k: 'dept', label: 'Dept.', render: (r) => (r.dept && r.dept !== 'Not set' ? r.dept : '—') }, { k: 'value', label: 'Time', right: true, render: (r) => hr2(r.value) }, { k: 'share', label: 'Share', right: true, render: (r) => `${Math.round(r.share * 1000) / 10}%` }],
+    down: [{ k: 'name', label: 'Reason', wrap: true, render: (r) => <span className="font-semibold">{nice(r.name)}</span> }, { k: 'models', label: 'Model', wrap: true, render: (r) => modelsCell(r.models, 'min', 1, co, true) }, { k: 'dept', label: 'Dept.', render: (r) => (r.dept && r.dept !== 'Not set' ? r.dept : '—') }, { k: 'value', label: 'Time', right: true, render: (r) => hr2(r.value) }, { k: 'share', label: 'Share', right: true, render: (r) => `${Math.round(r.share * 1000) / 10}%` }],
     lineLoss: [{ k: 'line', label: 'Line', render: (r) => lineCell(r.line) },
       // 23-11-2026: top 3 reasons one per row (name · bar · time), wraps inside the card — no side scroll; models in the tooltip
       { k: 'reasons', label: 'Top Reasons', render: (r) => (
         <div className="space-y-0.5 py-0.5" style={{ whiteSpace: 'normal', minWidth: 240 }}>
           {r.reasons.map((x) => (
             <div key={x.name} className="flex items-center gap-2 text-fs-13" title={`${x.name}${x.models?.length ? ` — ${x.models.map((m) => `${m.name} ${hr2(m.value)}`).join(', ')}` : ''}`}>
-              <span className="lp-caps truncate font-semibold text-[#222]" style={{ flex: '1 1 0', minWidth: 0 }}>{x.name}</span>
+              <span className="truncate font-semibold text-[#222]" style={{ flex: '1 1 0', minWidth: 0 }}>{nice(x.name)}</span>
               <span className="shrink-0 rounded-sm bg-[#EEF2F7]" style={{ width: 56, height: 6 }}><span className="block rounded-sm bg-[#2E75B6]" style={{ width: `${Math.max(6, Math.round((x.value / (r.reasons[0].value || 1)) * 100))}%`, height: 6 }} /></span>
               <span className="shrink-0 text-right font-mono text-fs-12 font-semibold text-[#333]" style={{ width: 46 }}>{hr2(x.value)}</span>
             </div>
@@ -598,7 +602,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
       { k: 'target', label: 'Target Qty', right: true, render: (r) => (r.few ? fewNote(r.qty) : r.target == null ? '—' : nf(r.target)) },
       { k: 'qty', label: 'Actual Qty', right: true, render: (r) => nf(r.qty) },
       { k: 'ach', label: 'Achieved', right: true, render: (r) => (r.few || r.target == null ? '—' : achChip(r.ach)) }, { k: 'lost', label: 'Time Lost', right: true, render: (r) => (r.few ? '—' : lostCell(r.lostMin)) }],
-    defects: [{ k: 'name', label: 'Reason', wrap: true, render: (r) => <span className="lp-caps font-semibold">{r.name}</span> }, { k: 'models', label: 'Model', wrap: true, render: (r) => modelsCell(r.models, 'pcs', 1, co, true) }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'dis', label: 'Dismantle', right: true, render: (r) => (r.dis ? <b className="text-red-700">{nf(r.dis)}</b> : <span className="text-slate-400">0</span>) }, { k: 'share', label: 'Share', right: true, render: (r) => `${Math.round(r.share * 1000) / 10}%` }],
+    defects: [{ k: 'name', label: 'Reason', wrap: true, render: (r) => <span className="font-semibold">{nice(r.name)}</span> }, { k: 'models', label: 'Model', wrap: true, render: (r) => modelsCell(r.models, 'pcs', 1, co, true) }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'dis', label: 'Dismantle', right: true, render: (r) => (r.dis ? <b className="text-red-700">{nf(r.dis)}</b> : <span className="text-slate-400">0</span>) }, { k: 'share', label: 'Share', right: true, render: (r) => `${Math.round(r.share * 1000) / 10}%` }],
     lineRej: [{ k: 'line', label: 'Line', render: (r) => lineCell(r.line) }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'r', label: 'Rework %', right: true, render: (r) => <span className={`rounded px-1.5 py-0.5 font-bold ${rejChip(r.r)}`}>{pc(r.r, 2)}</span> }],
     modelRej: [{ k: 'company', label: 'Company', render: (r) => <CompanyCell name={co(r.name)} /> }, { k: 'name', label: 'Model', wrap: true, render: (r) => <span className="font-mono font-semibold">{r.name}</span> }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'r', label: 'Rework %', right: true, render: (r) => <span className={`rounded px-1.5 py-0.5 font-bold ${rejChip(r.r)}`}>{pc(r.r, 2)}</span> }],
     linePerf: [{ k: 'company', label: 'Company', render: (r) => <CompanyCell name={co(r.model)} /> }, { k: 'model', label: 'Model', render: (r) => <span className="font-mono font-semibold">{r.model}</span> }, { k: 'target', label: 'Target', right: true, render: (r) => (r.few ? '—' : r.target == null ? '—' : nf(r.target)) }, { k: 'qty', label: 'Produced', right: true, render: (r) => nf(r.qty) },
@@ -730,18 +734,18 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
           {!oneDay && <div id="ov-trend" className="lp-anchor"><Trend data={trend} title={`${mode === 'year' || grain === 'month' ? 'Month-Wise' : grain === 'week' ? 'Week-Wise' : 'Day-Wise'} Trend`} label="OLE trend" gid="oleFill" /></div>}
 
           {/* 4 — per factor: its tables */}
-          <FactorBanner name="Availability" value={T.A} sub={`Idle Time ${hrs(T.lossMin)} Of ${hrs(T.plannedMin)} Planned`} />
+          <FactorBanner name="Availability" value={T.A} sub={`idle time ${hrs(T.lossMin)} of ${hrs(T.plannedMin)} planned`} />
           {/* 26-11-2026: each table the full width — no text cut, no sideways scroll */}
           <div className="grid gap-3">
             <QTable title="Idle Time Reasons" rows={downRows} cols={C.down} empty="No idle time entered for this period." onAll={() => setWin({ kind: 'down' })} onRow={drill('down')} />
             <QTable title="Line-Wise Idle Time" rows={lineLoss} cols={C.lineLoss} empty="No idle time entered for this period." onAll={() => setWin({ kind: 'lineLoss' })} onRow={drill('lineLoss')} />
           </div>
-          <FactorBanner name="Performance" value={T.P} sub={`Performance Loss ${hrs(T.speedMin || 0)}${modelInP ? ` · Written ${hrs(T.perfLossMin || 0)}` : ''}`} />
+          <FactorBanner name="Performance" value={T.P} sub={`speed loss ${hrs(T.speedMin || 0)}${modelInP ? ` · written ${hrs(T.perfLossMin || 0)}` : ''}`} />
           <div className="grid gap-3">
             {modelInP && <QTable title="Performance Loss Reasons" rows={perfRows} cols={C.down} empty="No performance loss written for this period." onAll={() => setWin({ kind: 'perfLoss' })} onRow={drill('perfLoss')} />}
             <QTable title="Cycle Time vs Standard" rows={perf} cols={C.perf} empty="No model with a std cycle in this period." onAll={() => setWin({ kind: 'perf' })} onRow={(r) => setWin({ kind: 'model', row: r })} />
           </div>
-          <FactorBanner name="Quality" value={T.Q} sub={`${nf((T.rejects || 0) + (T.rework || 0))} Reworked Of ${nf(T.qty)}`} />
+          <FactorBanner name="Quality" value={T.Q} sub={`${nf((T.rejects || 0) + (T.rework || 0))} reworked of ${nf(T.qty)} made`} />
           <QTable title="Rework / Defect Reasons" rows={defects} cols={C.defects} empty="No rework entered for this period." onAll={() => setWin({ kind: 'defects' })} onRow={drill('defects')} />
           <div className="grid gap-3 xl:grid-cols-2">
             <QTable title="Line-Wise Rework" rows={lineRej} cols={C.lineRej} empty="No rework entered for this period." onAll={() => setWin({ kind: 'lineRej' })} onRow={drill('lineRej')} />
@@ -787,7 +791,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
                   const tot = LR.filter((x) => x.unit === 'min').reduce((a, x) => a + x.value, 0);
                   return !LR.length ? <p className="p-4 text-fs-14 text-slate-600">No loss entered for this line in this period.</p>
                     : <Grid rows={LR.map((x) => ({ ...x, key: `${x.kind}|${x.name}` }))} label={`Line ${win.line} losses`} cols={[
-                      { k: 'name', label: 'Reason', render: (r) => <span className="lp-caps font-semibold">{r.name}</span> }, { k: 'models', label: 'Model', render: (r) => modelsCell(r.models, r.unit, 3, co) },
+                      { k: 'name', label: 'Reason', render: (r) => <span className="font-semibold">{nice(r.name)}</span> }, { k: 'models', label: 'Model', render: (r) => modelsCell(r.models, r.unit, 3, co) },
                       { k: 'dept', label: 'Department', render: (r) => (r.dept && r.dept !== 'Not set' ? r.dept : '—') },
                       { k: 'kind', label: 'Kind', render: (r) => (r.unit === 'min' ? 'Time' : 'Pieces') },
                       { k: 'value', label: 'Lost', right: true, render: (r) => (r.unit === 'min' ? <b className="text-red-700">{hr2(r.value)}</b> : `${nf(r.value)} pcs`) },

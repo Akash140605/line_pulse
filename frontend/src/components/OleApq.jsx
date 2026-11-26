@@ -116,17 +116,6 @@ const yPct = (v) => (v == null ? '—' : `${(Math.round(v * 10000) / 100).toFixe
 /** pieces right first time: made − defects (rework + rejected) */
 const fpQty = (t) => Math.max(0, (t?.qty || 0) - (t?.fpyBad != null ? t.fpyBad : (t?.rework || 0) + (t?.rejects || 0)));
 
-/** 26-11-2026: the short pieces split into idle time (Availability) and slow running (Performance) */
-function shortSplit(t, target) {
-  if (target == null || !(t?.qty < target) || !(t.lossMin > 0)) return null;
-  const cov = (t.qty || 0) - (t.noStdQty || 0);
-  const avg = cov > 0 && t.stdSec > 0 ? t.stdSec / cov : null;   // std seconds a piece
-  if (!avg) return null;
-  const short = target - t.qty;
-  const idle = Math.min(short, Math.round((t.lossMin * 60) / avg));
-  return { idle, speed: Math.max(0, short - idle) };
-}
-
 /** the figures behind A, P and Q of a total */
 export function factorsOf(t, zero = false) {
   const target = planTargetOf(t) ?? (zero ? 0 : null);   // 25-11-2026: the HPR / SAWM KPI plan
@@ -134,12 +123,7 @@ export function factorsOf(t, zero = false) {
     { k: 'A', name: 'Availability', value: t.A, formula: 'Run Time ÷ Planned Time', lossName: 'Availability Loss', loss: t.A == null ? null : 1 - t.A,
       rows: [['Planned Time', hrs(t.plannedMin)], ['Run Time', hrs(t.actualMin)], ['Idle Time', hrs(t.lossMin), t.lossMin ? 'text-[#C00000]' : '']] },
     { k: 'P', name: 'Performance', value: t.P, formula: oleConfig().pMode === 'std' ? 'Std Time Of Output ÷ Run Time' : 'Actual Qty ÷ Plan Target Qty', lossName: 'Performance Loss', loss: t.P == null ? null : Math.max(0, 1 - t.P),
-      rows: [['Plan Target Qty', target == null ? '—' : nf(target)], ['Actual Qty', nf(t.qty)], [target != null && t.qty < target ? 'Short Qty' : 'Excess Qty', target == null ? '—' : nf(Math.abs(t.qty - target)), target != null && t.qty < target ? 'text-[#C00000]' : 'text-[#138A36]'],
-        // 26-11-2026: why the plan was missed — the pieces the idle time cost (Availability) and the pieces lost to speed
-        // (Performance). Performance is measured on run time only, so a line that stood still can be short and still at 100 %
-        ...(shortSplit(t, target) ? [['Idle / Speed', <span key="ss" className="whitespace-nowrap" title={`Short ${nf(target - t.qty)} pcs = about ${nf(shortSplit(t, target).idle)} pcs not made while the line stood idle (${hrs(t.lossMin)} — Availability loss) + about ${nf(shortSplit(t, target).speed)} pcs lost to slower cycles while running (Performance loss)`}>
-          <span className="text-[#C00000]">{nf(shortSplit(t, target).idle)}</span><span className="text-[#777]"> / </span><span className={shortSplit(t, target).speed > 0 ? 'text-[#C00000]' : 'text-[#138A36]'}>{nf(shortSplit(t, target).speed)}</span></span>, '', true, 'Idle / Speed']] : []),
-        ...(t.Praw != null && t.P != null && t.Praw > t.P + 0.0005 ? [['Achieved (no cap)', `${(Math.round(t.Praw * 1000) / 10).toFixed(1)}%`, 'text-[#138A36]', true, 'Achieved']] : [])] },
+      rows: [['Plan Target Qty', target == null ? '—' : nf(target)], ['Actual Qty', nf(t.qty)], [target != null && t.qty < target ? 'Short Qty' : 'Excess Qty', target == null ? '—' : nf(Math.abs(t.qty - target)), target != null && t.qty < target ? 'text-[#C00000]' : 'text-[#138A36]']] },
     // 23-11-2026: no rejection any more (a bad piece is reworked or dismantled) — the third row is the rework; an old
     // rejection still shows in its place when the period has one
     // 26-11-2026: the formula as it is counted — Good = Actual − Rework (− Rejected); setup "rejections only": Actual − Rejected

@@ -137,7 +137,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
               <Tile name="Short / excess" value={t.short == null ? '—' : nf(Math.abs(t.short))} sub={t.short == null ? '—' : t.short < 0 ? 'pieces short of the plan' : 'pieces over the plan'} tone={t.short == null ? 'text-slate-900' : t.short < 0 ? 'text-red-700' : 'text-emerald-700'} />
               <Tile name="Cycle time" value={sec(t.act)} sub={`actual · std ${sec(t.std)}`} tone={t.act != null && t.std != null && t.act > t.std * 1.005 ? 'text-red-700' : 'text-emerald-700'} />
               <Tile name="Speed loss" value={hh(t.speed)} sub="run time beyond the std cycle" tone={t.speed >= 3 ? 'text-red-700' : 'text-slate-900'} />
-              <Tile name="Slow models" value={`${nf(t.slow)} of ${nf(t.judged)}`} sub={X.slow[0] ? `worst ${X.slow[0].model}` : 'none slower than std'} tone={t.slow ? 'text-red-700' : 'text-emerald-700'} />
+              <Tile name="Slow models" value={`${nf(t.slow)} of ${nf(t.judged)}`} sub={X.slow[0] ? `worst ${X.slow[0].model} (L${X.slow[0].line}) · ${dur(X.slow[0].lostMin)} lost` : 'none slower than std'} tone={t.slow ? 'text-red-700' : 'text-emerald-700'} />
             </section>
           )}
 
@@ -208,7 +208,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
               <>
                 <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                   <section className={card} aria-label="Cycle time variation by model">
-                    <Title right="actual cycle against std, slowest first · click a model for its hours">Cycle time variation · by model</Title>
+                    <Title right="actual cycle against std · most time lost first · click a model for its hours">Cycle time variation · by model</Title>
                     {!V.length ? <Empty text="No model with enough pieces and a std cycle." /> : (
                       <div className="flex max-h-[300px] flex-col gap-1 overflow-y-auto pr-1" role="list" aria-label="Cycle time variation by model">
                         {V.map((m) => (

@@ -79,6 +79,8 @@ describe('performance dashboard: cycle time variation', () => {
     expect(h9.std).toBe(20);
     expect(P.days[0].std).toBe(20);
     expect(P.variation.map((m) => m.line)).toEqual(['2', '1']);
+    // 26-11-2026: the worst model is the same in the tile, the Pareto and the variation list (most time lost first)
+    expect(P.variation[0].key).toBe(P.slow[0].key);
     expect(P.reasons).toEqual([]);   // standard: loss is availability, no performance reason
   });
 });

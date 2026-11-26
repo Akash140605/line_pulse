@@ -119,8 +119,9 @@ export function perfDash(R, ids0) {
       slow: judged.filter((m) => m.var > 0.005).length, models: M.length, judged: judged.length, worstDay },
     days, lines, models: M,
     slow: judged.filter((m) => m.lostMin > 0).sort((a, b) => b.lostMin - a.lostMin),
-    // cycle time variation: every judged model, slowest (most + %) first
-    variation: judged.filter((m) => m.var != null).sort((a, b) => b.var - a.var),
+    // cycle time variation: every judged model — 26-11-2026: most time lost first (the same order as the tile and the
+    // Pareto, so the worst model is the same everywhere), then the most % over std
+    variation: judged.filter((m) => m.var != null).sort((a, b) => (b.lostMin || 0) - (a.lostMin || 0) || b.var - a.var),
     hourCT: [...ctH.values()].sort((a, b) => a.hour - b.hour).map((o) => ({ hour: o.hour, act: o.qty ? o.actSec / o.qty : null, std: o.cov > 0 && o.stdSec > 0 ? o.stdSec / o.cov : null, qty: o.qty })),
     reasons: [...why.values()].map((w) => ({ ...w, lines: [...w.lines].sort(), models: [...w.models.entries()].map(([name, min]) => ({ name, min })).sort((a, b) => b.min - a.min) })).sort((a, b) => b.min - a.min),
     heat: ids.map((l) => ({ line: l, by: heat.get(l) || {} })),

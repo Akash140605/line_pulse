@@ -629,6 +629,7 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
   // pieces of a model without a cycle time on top of the actual bar (light blue) instead of a bar of their own
   const TGTc = std ? TARGET_GREY : TGT;
   const [sel, setSel] = useState(null);
+  const barsRef = useRef(null);
   const q = new Map((hours || []).map((h) => [h.hour, Number(h.quantity) || 0]));
   let lo = 9, hi = 20;
   for (const [h, v] of q) if (v > 0) { lo = Math.min(lo, h); hi = Math.max(hi, h); }
@@ -735,7 +736,7 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
         )}
       </div>
 
-      <div className={`relative flex-1 ${small ? 'min-h-0' : 'min-h-[110px]'}`}>
+      <div ref={barsRef} className={`relative flex-1 ${small ? 'min-h-0' : 'min-h-[110px]'}`}>
         {sel != null && (() => {
           // 26-11-2026: the hour's popup — the hour, its pieces against the target, then every model with its share
           const r0 = rows.find((x) => x.hour === sel);
@@ -745,8 +746,15 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
           const extra = r0 && outOfShift(sel) && t == null && r0.quantity > 0 && nt < r0.quantity;
           const lbl = r0?.label?.includes(':') ? `${r0.label}–${pad2(sel + 1)}:00` : `${pad2(sel)}:00–${pad2(sel + 1)}:00`;
           const hiQ = Math.max(1, ...models.map((m) => m.qty));
-          return (
-            <div className={`absolute top-0 z-30 flex max-h-full flex-col rounded-xl border border-sky-400/40 bg-blue-950/95 p-2.5 shadow-2xl backdrop-blur ${popRight ? 'right-0' : 'left-0'}`} style={{ width: 'min(22rem, 94%)' }} data-testid="hour-pop">
+          // 26-11-2026: the popup floats over the page (never cut by a low card): beside the bars, as tall as its models need
+          const rc = barsRef.current?.getBoundingClientRect?.() || { left: 16, right: 360, top: 120, bottom: 300 };
+          const vw = window.innerWidth || 1280, vh = window.innerHeight || 720, pw = Math.min(352, vw - 16), ph = Math.min(460, vh - 16);
+          const left = Math.max(8, Math.min(vw - pw - 8, popRight ? rc.right - pw : rc.left));
+          const top = Math.max(8, Math.min(vh - ph - 8, rc.top - 8));
+          return createPortal(
+            <>
+            <div className="fixed inset-0 z-[80]" onClick={() => setSel(null)} aria-hidden data-testid="hour-pop-backdrop" />
+            <div className="fixed z-[81] flex flex-col rounded-xl border border-sky-400/40 bg-blue-950/95 p-2.5 shadow-2xl backdrop-blur" style={{ left, top, width: pw, maxHeight: ph }} data-testid="hour-pop" onKeyDown={(e) => e.key === 'Escape' && setSel(null)}>
               <div className="mb-1.5 flex shrink-0 items-center gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="text-fs-14 font-extrabold text-white">{lbl}</div>
@@ -778,6 +786,8 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
                 )) : <div className="text-fs-13 text-slate-300">{selQty ? 'Model detail is not available in the line data.' : 'No scans in this hour.'}</div>}
               </div>
             </div>
+            </>, document.body
+
           );
         })()}
 
@@ -1431,7 +1441,7 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
                 <Scene uid={uid} compact lite active={running} hourQty={hourShown} cartons={cartons} flashKey={last.key} deltaN={last.n} onDone={removeCarton} model={model} company={company} loaded={shown} />
               </div>
             </div>
-            <div ref={tilesRef} className="lp-fit grid grid-cols-2 grid-rows-2 gap-1 min-h-0">
+            <div ref={tilesRef} className={`lp-fit grid gap-1 min-h-0 ${wideLow ? 'grid-cols-3 grid-rows-1' : 'grid-cols-2 grid-rows-2'}`}>
               {(() => { const T = [['Today', dayTarget > 0 ? Math.round(dayTarget) : null], ['This hour', hourTarget], ['Cycle', tcTxt]];
                 // one label size for every card on the wall (a target of up to 5 characters assumed), so the cards look the same
                 lpAll = (lp, tW) => Math.max(12, Math.min(...T.map(([l]) => { const head = l.length * 0.66 * lp + 6 * 0.62 * lp + 10; return head > tW ? lp * (tW / head) : lp; })));
@@ -1443,9 +1453,9 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
                 ['Cycle', fmtSeconds(cyc), tcTxt || '—', 'text-white', tcTxt ? H.cycle : 'No target cycle for this model yet — set it in Line target method / Standard cycle time'],
               ].map(([lab, val, tgt, tone, hint], ti) => {
                 // sizes from the tile's own room (the card can be small on a page, big on a TV): never cut, never wrapped
-                const tW = tall ? (wbox.w - 22) / 4 - 14 : ((wbox.w - 28) * 1.1) / 2.95 / 2 - 14;
-                const tH0 = tall ? ((wbox.h - 20) * 1.15) / 3.35 / 2 - 8 : wideLow ? ((wbox.h - 14) * 1.05) / 2.25 / 2 - 8 : ((wbox.h - 14) * 1.12) / 2.12 / 2 - 8;
-                const tH = ti === 0 ? tH0 * 1.6 : tH0;   // Today takes the whole left column (with Achieved under it)
+                const tW = tall ? (wbox.w - 22) / 4 - 14 : wideLow ? ((wbox.w - 28) * 1.1) / 2.95 / 3 - 10 : ((wbox.w - 28) * 1.1) / 2.95 / 2 - 14;
+                const tH0 = tall ? ((wbox.h - 20) * 1.15) / 3.35 / 2 - 8 : wideLow ? ((wbox.h - 14) * 1.05) / 2.25 - 10 : ((wbox.h - 14) * 1.12) / 2.12 / 2 - 8;
+                const tH = ti === 0 && !wideLow ? tH0 * 1.6 : tH0;   // Today takes the whole left column (with Achieved under it)
                 const lp = Math.max(14, Math.min(tall ? 20 : 18, tH * 0.3));
                 const head = String(lab).length * 0.66 * lp + (tgt != null ? (String(tgt).length + 5) * 0.62 * lp + 10 : 0);
                 const lpx = lpAll(lp, tW);   // label + target on one line, the same size in all four tiles
@@ -1455,7 +1465,7 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
                 const vpx = Math.max(16, Math.min(tall ? 50 : 40, (tW - 6) / (0.66 * Math.max(2, String(val).length) + (String(val).includes('%') ? 0.25 : 0)), tH - lpx * (withFoot || tLine ? 2 : 1) - (withFoot || tLine ? 10 : 6)));   // % is wider than a digit
                 const fz = (n) => ({ fontSize: `calc(${Math.round(n)}px * var(--fs-tv, 1) * var(--fit, 1))` });
                 return (
-                  <div key={lab} title={hint} className={`rounded-lg bg-white/[.07] border border-white/10 min-w-0 min-h-0 overflow-hidden px-2 py-1 flex flex-col justify-center gap-1 ${ti === 0 ? 'row-span-2' : ''}`}>
+                  <div key={lab} title={hint} className={`rounded-lg bg-white/[.07] border border-white/10 min-w-0 min-h-0 overflow-hidden px-2 py-1 flex flex-col justify-center gap-1 ${ti === 0 && !wideLow ? 'row-span-2' : ''}`}>
                     <div className="flex items-center justify-between gap-1 min-w-0">
                       <span className="leading-none font-extrabold uppercase tracking-wide text-sky-100 whitespace-nowrap" style={fz(lpx)}>{lab}</span>
                       {tgt != null && !tLine && <span className="shrink-0 whitespace-nowrap rounded bg-white px-1 font-mono font-extrabold leading-tight text-dixon-navy" style={fz(lpx)} title={lab === 'Cycle' ? 'Target cycle' : 'Target so far'}><span className="mr-1 font-sans font-bold uppercase" style={{ fontSize: '0.62em' }}>Target</span>{tgt}</span>}

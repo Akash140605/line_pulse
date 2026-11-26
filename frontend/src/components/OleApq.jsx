@@ -43,9 +43,9 @@ export function Factor({ k = null, name, value, formula, rows, lossName, loss, w
       </div>
       <div className={`flex min-w-0 flex-1 flex-col ${compact ? 'px-2.5 text-mes-body' : 'px-3 text-[calc(16px*var(--fs,1))] xl:px-3.5'} pb-1.5`}>
         {rows.map(([k, v, cls, sub, short]) => (
-          <div key={k} className={`flex flex-1 items-center justify-between gap-3 ${sub ? 'border-t border-dashed border-[#E5E7EB]' : `border-t ${HAIR}`} ${compact ? 'min-h-[28px] py-[3px]' : 'min-h-[32px] py-[4px]'}`}>
+          <div key={k} className={`flex flex-1 items-center justify-between ${compact ? 'gap-2' : 'gap-3'} ${sub ? 'border-t border-dashed border-[#E5E7EB]' : `border-t ${HAIR}`} ${compact ? 'min-h-[28px] py-[3px]' : 'min-h-[32px] py-[4px]'}`}>
             {/* a part of the row above (sub): set in, smaller, with ↳ */}
-            <span className={`min-w-0 break-words leading-tight ${sub ? 'pl-3 text-[0.88em] text-[#555]' : 'text-[#333]'}`}>{sub && <span aria-hidden className="mr-1 text-[#999]">↳</span>}{compact && short ? <span title={k}>{short}</span> : k}</span>
+            <span className={`min-w-0 break-words leading-tight ${sub ? 'pl-3 text-[0.88em] text-[#555]' : 'text-[#333]'}`}>{sub && <span aria-hidden className="mr-1 text-[#999]">↳</span>}{compact && short ? <span title={k} className="whitespace-nowrap">{short}</span> : k}</span>
             <span className={`shrink-0 text-right font-semibold tabular-nums ${cls || 'text-[#111]'}`}>{v}</span>
           </div>
         ))}
@@ -61,6 +61,11 @@ export function Factor({ k = null, name, value, formula, rows, lossName, loss, w
   );
 }
 
+/** FPY of a total: the page's own (stations) when given, else 1 − (rework + rejected) ÷ pieces */
+const fpyOf = (t) => (t?.fpy != null ? t.fpy : t?.qty > 0 ? Math.max(0, 1 - ((t.rework || 0) + (t.rejects || 0)) / t.qty) : null);
+const yPct = (v) => (v == null ? '—' : `${(Math.round(v * 1000) / 10).toFixed(1)}%`);
+const yNum = (v) => (v == null ? '—' : (Math.round(v * 1000) / 10).toFixed(1));   // the FPY before " / RTY%" (one % sign: fits a line card)
+
 /** the figures behind A, P and Q of a total */
 export function factorsOf(t, zero = false) {
   const target = planTargetOf(t) ?? (zero ? 0 : null);   // 25-11-2026: the HPR / SAWM KPI plan
@@ -73,7 +78,10 @@ export function factorsOf(t, zero = false) {
     // rejection still shows in its place when the period has one
     { k: 'Q', name: 'Quality', value: t.Q, formula: 'Good Qty ÷ Actual Qty', lossName: 'Quality Loss', loss: t.Q == null ? null : 1 - t.Q,
       // 25-11-2026: Actual = Good + Rework (+ Rejected) — Good is what passed first time (the same "out" as the Q formula)
-      rows: [['Actual Qty', nf(t.qty)], ['Good Qty', nf(goodOf(t))],
+      // 26-11-2026: FPY / RTY in place of Good Qty (FPY = 1 − defects ÷ pieces; RTY = product of the stations' FPY,
+      // from the page when it knows the stations — else '—')
+      rows: [['Actual Qty', nf(t.qty)], ['FPY / RTY', <span key="fr" title={`FPY (first pass yield) = 1 − defects ÷ pieces made · RTY (rolled throughput yield) = product of every station's FPY · good pieces ${nf(goodOf(t))}`}>
+          <span className="whitespace-nowrap text-[#0E6E2E]">{yNum(fpyOf(t))}</span><span className="text-[#999]"> / </span><span className="whitespace-nowrap text-[#0E6E2E]">{yPct(t.rty)}</span></span>, '', false, 'FPY/RTY'],
         // 26-11-2026: the rework and what became of it in ONE row — reworked / passed after rework / dismantled (88 / 70 / 18)
         ['Rework / Passed / Dismantled', <span key="r" title={`${nf(t.rework || 0)} reworked: ${nf(Math.max(0, (t.rework || 0) - (t.dismantle || 0)))} passed after rework, ${nf(t.dismantle || 0)} dismantled`}>
           <span className={t.rework ? 'text-[#C00000]' : ''}>{nf(t.rework || 0)}</span><span className="text-[#999]"> / </span>

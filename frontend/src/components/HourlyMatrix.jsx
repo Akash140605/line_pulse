@@ -628,14 +628,13 @@ export default function HourlyMatrix({ days, matrix: matrixProp, loading: loadin
                           className={`lp-hm-cell hm2-cell ${qty > 0 ? 'hm2-click' : ''} ${isSelected ? 'hm2-sel' : ''} ${state === 'running' && qty > 0 ? 'hm2-run' : ''} ${below ? 'hm2-below' : ''}`}
                           style={{ background: state === 'future' ? 'transparent' : tone.bg, color: tone.fg, '--edge': tone.edge && state !== 'future' ? tone.edge : 'transparent' }}>
                           {qty > 0 ? (
-                            <span className={stacked ? 'flex flex-col items-center leading-none' : 'flex items-baseline justify-center gap-1 leading-none'}>
+                            <span className={stacked ? 'flex flex-col items-center leading-none' : 'flex items-center justify-center gap-1.5 leading-none'}>
                               <span className={`font-mono font-extrabold ${tight ? 'text-fs-13' : 'text-fs-15'} ${rowOff ? 'line-through' : ''}`}>{qty}</span>
                               {/* 26-11-2026: the % in a chip of its band colour (green / orange / red) — read at a glance */}
                               {pc != null && !rowOff && <span className="rounded px-1 py-[1px] font-mono text-fs-12 font-extrabold" style={{ background: CHIP[tone.edge] || '#475569', color: '#fff', marginTop: stacked ? 3 : 0 }}>{pc}%</span>}
                             </span>
                           ) : <span style={{ opacity: 0.35 }}>{state === 'future' ? '' : '·'}</span>}
-                          {/* how much of the plan was made: a thin bar along the bottom of the cell */}
-                          {qty > 0 && pc != null && !rowOff && <span aria-hidden className="pointer-events-none absolute h-[3px] rounded-full" style={{ bottom: 2, left: 3, width: `calc(${Math.min(100, pc)}% - 6px)`, background: tone.edge || '#94A3B8', opacity: 0.85 }} />}
+                          {/* 26-11-2026: no bar along the bottom any more — in a short row it ran through the number; the % chip and the cell colour say it */}
                         </button>
                       </td>
                     );

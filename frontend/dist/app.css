@@ -6422,3 +6422,14 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 .lp-mes .lp-side .lp-side-group .lp-side-gname { letter-spacing: .03em; white-space: nowrap; overflow: visible; font-size: 11px; }
 .lp-mes .lp-side-group { gap: 6px; }
 .lp-mes .lp-side-group .lp-side-count { flex: none; }
+
+/* 26-11-2026: Live lines (Plant overview, all lines) responsive: 2 cards a row only on a wide screen */
+@media (min-width: 1024px) {
+  .lp-live-2 { grid-auto-rows: 360px; }
+  .lp-live-2.lp-live-2h { grid-auto-rows: 440px; }
+}
+@media (min-width: 1800px) {
+  .lp-live-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 330px; }
+  .lp-live-2.lp-live-2h { grid-auto-rows: 440px; }
+  .lp-live-2 > .lp-live-wide { grid-column: span 2 / span 2; }
+}

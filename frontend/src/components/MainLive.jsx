@@ -298,9 +298,11 @@ export default function MainLive({ tv = false }) {
       {/* the cards grow when fewer lines are chosen: 1 = whole width (big line view), 2 = side by side, 3 = two + one wide */}
       <div className={tv
         ? `flex-1 min-h-0 grid gap-2 ${n === 1 ? 'grid-cols-1 grid-rows-1' : n === 2 ? 'grid-cols-2 grid-rows-1' : 'grid-cols-2 grid-rows-2'}`
-        : `grid gap-2 grid-cols-1 ${n === 1 ? '' : n === 2 ? 'lg:grid-cols-2 lg:auto-rows-[440px]' : 'lg:grid-cols-2 lg:auto-rows-[330px]'}`}>
+        // 26-11-2026: responsive — two cards a row only where each card is wide enough for every hour's target and made
+          // number side by side (≥ 1800 px); a laptop gets one line card a row, full width
+          : `grid gap-2 grid-cols-1 ${n === 1 ? '' : n === 2 ? 'lp-live-2 lp-live-2h' : 'lp-live-2'}`}>
         {shown.map((l, i) => {
-          const span = n === 3 && i === 2 ? 'col-span-2 lg:col-span-2' : '';
+          const span = n === 3 && i === 2 ? (tv ? 'col-span-2' : 'lp-live-wide') : '';
           if (!l.ok) {
             return (
               <div key={l.line} className={`min-h-0 h-full ${span}`}><OfflineToday l={l} tv={tv} accent={COLORS[l.line]} /></div>

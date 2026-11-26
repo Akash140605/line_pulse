@@ -507,6 +507,9 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   const lineLossTotal = lineLoss.reduce((a, x) => a + x.min, 0);
   const perf = useMemo(() => modelPerf(R, IDS), [R, IDS]);
   const Q = useMemo(() => qualityOf(rows, D.ent.reasons.station || []), [rows, D.ent.reasons]);
+  // 26-11-2026: FPY / RTY on the Quality card of the plant and of every line (in place of Good Qty)
+  const TQ = useMemo(() => ({ ...T, fpy: Q.fpy, rty: Q.rty }), [T, Q]);
+  const lineTQ = useMemo(() => Object.fromEntries(IDS.map((l) => { const q = qualityOf(rowsOfLines([l]), D.ent.reasons.station || []); return [l, { ...lineT[l], fpy: q.fpy, rty: q.rty }]; })), [lineT, R, IDS, D.ent.reasons]); // eslint-disable-line react-hooks/exhaustive-deps
   // 23-11-2026: no separate rejection — a defect is reworked or dismantled: the tables count rework (+ any old rejection)
   const QD = Q.rej + Q.rwk;
   // 26-11-2026: the pieces dismantled for each defect (written on its rework rows)
@@ -682,7 +685,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
           {/* 2 — the plant (or the line): navy band + gauge | A | P | Q */}
           <section id="ov-summary" className={`${card} lp-anchor overflow-hidden`} aria-label="OLE of the period">
             {/* 24-11-2026: no navy band — the page title says the plant; updated time and Day by day are in the filter strip */}
-            <KpiPanel t={T} onFactor={(k) => setWin({ kind: 'factor', f: k })} onOle={() => setDet({ title: `${group} · ${periodText}`, ids: IDS })} />
+            <KpiPanel t={TQ} onFactor={(k) => setWin({ kind: 'factor', f: k })} onOle={() => setDet({ title: `${group} · ${periodText}`, ids: IDS })} />
           </section>
 
           {mode === 'year' && (
@@ -718,7 +721,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
                 </span>
               </SectionHead>
               <div className="grid gap-1.5 bg-white p-1.5 2xl:grid-cols-2">
-                {IDS.map((l) => <LineCard key={l} line={l} t={lineT[l]} onOpen={() => setWin({ kind: 'linePerf', line: l })} onDetails={() => setDet({ title: `Line ${l} · ${periodText}`, ids: [l], line: l })} onFactor={(k) => setWin({ kind: 'linePerf', line: l, view: k === 'P' ? 'models' : 'loss' })} />)}
+                {IDS.map((l) => <LineCard key={l} line={l} t={lineTQ[l]} onOpen={() => setWin({ kind: 'linePerf', line: l })} onDetails={() => setDet({ title: `Line ${l} · ${periodText}`, ids: [l], line: l })} onFactor={(k) => setWin({ kind: 'linePerf', line: l, view: k === 'P' ? 'models' : 'loss' })} />)}
               </div>
             </section>
           )}
@@ -753,7 +756,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
             const tab = (k, l) => <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setWin({ ...win, view: k })} className={`h-9 border-r border-slate-300 px-4 text-fs-14 font-bold last:border-r-0 ${view === k ? 'bg-dixon-navy text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}>{l}</button>;
             return (
               <Window title={`Line ${win.line}${plantOf(win.line) ? ` (${plantOf(win.line)})` : ''} — Performance · Reasons For The Loss`} sub={periodText} onClose={() => setWin(null)} width={85} minWidth={980}>
-                <div className="border-b border-[#BFBFBF]" aria-label={`Line ${win.line} A P Q`}><KpiPanel t={lineT[win.line]} zero gauge={150} onFactor={focusOk('A') || drillOk ? (k) => { setWin(null); if (focusOk(k)) openFocus(k, win.line); else openDrill(k, win.line); } : null} /></div>
+                <div className="border-b border-[#BFBFBF]" aria-label={`Line ${win.line} A P Q`}><KpiPanel t={lineTQ[win.line]} zero gauge={150} onFactor={focusOk('A') || drillOk ? (k) => { setWin(null); if (focusOk(k)) openFocus(k, win.line); else openDrill(k, win.line); } : null} /></div>
                 <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 p-2">
                   <div role="tablist" aria-label="Line details" className="flex overflow-hidden rounded-md border border-slate-300">{tab('models', 'Model-Wise')}{tab('hours', 'Hour-Wise')}{tab('days', 'Day-By-Day')}{tab('loss', 'Losses')}</div>
                 </div>

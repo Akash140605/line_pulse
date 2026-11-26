@@ -5,7 +5,7 @@ import { Clock, Timer, AlertTriangle, Gauge as GaugeIcon, Target, Package, Packa
 import { useAllLineSettings } from '../hooks/useLineSettings';
 import { serverToday } from '../utils/serverTime';
 import { oleRange, oleSum, hm, okFrom, watchFrom, normEntry, planTargetOf } from '../utils/ole';
-import { LINE_COLOR, nf, dmy, useOleLines, groupNameOf, useOleData, band, plantOf, plantsText, companyOf, CompanyCell } from '../components/OleParts';
+import { LINE_COLOR, nf, dmy, useOleLines, groupNameOf, useOleData, band, inkOf, plantOf, plantsText, companyOf, CompanyCell } from '../components/OleParts';
 import { PeriodBar, periodKind } from '../components/PeriodBar';
 import { useHeaderSlot } from './CleanDashboardPage';
 import { takeOleFocus } from '../utils/drillLink';
@@ -43,7 +43,7 @@ function Kpi({ icon: Icon, label, value, note, color = NAVY }) {
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[3px]" style={{ background: `${color}1A`, color }}><Icon size={20} strokeWidth={2} /></span>
       <div className="min-w-0 leading-tight">
         <div className="lp-caps text-[12px] font-bold tracking-[0.08em] text-[#555]">{label}</div>
-        <div className="lp-clamp2 mt-0.5 font-bold leading-tight tabular-nums" style={{ color, fontSize: `calc(${typeof value === 'string' && !/\d/.test(value) && value.length > 9 ? 18 : 24}px * var(--fs, 1))` }} title={typeof value === 'string' ? value : undefined}>{value}</div>
+        <div className="lp-clamp2 mt-0.5 font-bold leading-tight tabular-nums" style={{ color: inkOf(color), fontSize: `calc(${typeof value === 'string' && !/\d/.test(value) && value.length > 9 ? 18 : 24}px * var(--fs, 1))` }} title={typeof value === 'string' ? value : undefined}>{value}</div>
         {note && <div className="lp-clamp2 mt-0.5 text-[13px] leading-tight text-[#666]" title={typeof note === 'string' ? note : undefined}>{note}</div>}
       </div>
     </div>
@@ -237,7 +237,7 @@ function Table({ cols, rows: all, empty, label, top = 20 }) {
 }
 
 const LineName = ({ l }) => <span className="whitespace-nowrap font-semibold">Line {l}{plantOf(l) ? <span className="ml-1 text-[12px] text-[#777]">({plantOf(l)})</span> : null}</span>;
-const Pct = ({ v, k = null }) => <b style={{ color: toneOf(v, k) }}>{pc(v)}</b>;
+const Pct = ({ v, k = null }) => <b style={{ color: inkOf(toneOf(v, k)) }}>{pc(v)}</b>;
 const Bar = ({ v, color = STEEL }) => <span className="inline-block h-2 w-24 overflow-hidden rounded-[2px] bg-[#E5E7EB] align-middle"><span className="block h-full" style={{ width: `${Math.min(100, Math.max(0, v * 100))}%`, background: color }} /></span>;
 
 /* ───────────── the figures ───────────── */

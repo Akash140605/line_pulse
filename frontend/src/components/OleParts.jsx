@@ -201,6 +201,10 @@ export function useOleData({ start, end, ids, paused = false, pollEntries = fals
 // OLE colour bands (world class 85 %): green ≥ 85 %, amber 60–85 %, red below 60 %
 /** colour of a value; k = 'A' | 'P' | 'Q' uses that factor's benchmark, else the OLE one */
 export const band = (v, k = null) => (v == null ? BAND.none : v >= okFrom(k) ? BAND.ok : v >= watchFrom(k) ? BAND.mid : BAND.bad);
+// 26-11-2026: a band colour used as TEXT gets its darker ink (≥ 4.5 : 1 on white); bars and dots keep the bright colour
+const INK = { '#2E9E5B': '#1A7A43', '#138A36': '#0E6E2E', '#E0A100': '#9C5700', '#D98E04': '#9C5700', '#059669': '#047857', '#D97706': '#B45309', '#DC2626': '#B91C1C', '#8E8E8E': '#666666', '#94A3B8': '#64748B' };
+export const inkOf = (c) => INK[String(c).toUpperCase()] || c;
+export const bandInk = (v, k = null) => inkOf(band(v, k));
 export const bandText = (v, k = null) => (v == null ? 'text-slate-500' : v >= okFrom(k) ? 'text-emerald-700' : v >= watchFrom(k) ? 'text-amber-700' : 'text-red-700');
 
 /** Speedometer-style OLE gauge: half circle with red / amber / green zones, the value arc and a needle. */

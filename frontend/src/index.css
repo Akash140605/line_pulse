@@ -752,3 +752,7 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 .lp-showprog > i.lp-showfill { animation-name: lpShowFill; animation-timing-function: linear; animation-fill-mode: forwards; }
 @keyframes lpShowFill { from { width: 0; } to { width: 100%; } }
 @media print { .lp-showbar, .lp-palette-back { display: none !important; } }
+
+/* 26-11-2026 test pass: legend words in ink, the square carries the colour */
+.recharts-legend-item-text { color: #374151 !important; }
+.bg-amber-500.text-white { background-color: #B45309 !important; }   /* white words on amber: the darker amber (5 : 1) */

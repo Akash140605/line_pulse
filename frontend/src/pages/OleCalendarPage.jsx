@@ -9,7 +9,7 @@ import { useAllLineSettings } from '../hooks/useLineSettings';
 import { serverToday } from '../utils/serverTime';
 import { oleRange, oleSum, lossSummary, normEntry, modelTimeOfHour, okFrom, watchFrom, hm, oleConfig, planTargetOf } from '../utils/ole';
 import { api } from '../api';
-import { LINE_COLOR, nf, dmy, useOleLines, groupNameOf, useOleData, band, companyOf } from '../components/OleParts';
+import { LINE_COLOR, nf, dmy, useOleLines, groupNameOf, useOleData, band, bandInk, inkOf, companyOf } from '../components/OleParts';
 import { useHeaderSlot } from './CleanDashboardPage';
 
 /*
@@ -399,7 +399,7 @@ export default function OleCalendarPage() {
                 <div className="min-w-0 flex-1 space-y-1.5">
                   {FACT.map(([k, n]) => (
                     <div key={k}>
-                      <div className="flex items-baseline justify-between text-fs-13"><b className="text-[#1F3864]">{n}</b><b className="tabular-nums" style={{ color: T[k] == null ? '#777' : band(T[k], k) === '#E0A100' ? '#9C5700' : band(T[k], k) }}>{pc(T[k] ?? 0)}</b></div>
+                      <div className="flex items-baseline justify-between text-fs-13"><b className="text-[#1F3864]">{n}</b><b className="tabular-nums" style={{ color: T[k] == null ? '#666' : bandInk(T[k], k) }}>{pc(T[k] ?? 0)}</b></div>
                       <div className="h-1.5 overflow-hidden rounded-[2px] bg-[#E7ECF2]"><div className="h-full" style={{ width: `${Math.min(100, (T[k] ?? 0) * 100)}%`, background: band(T[k], k) }} /></div>
                     </div>
                   ))}
@@ -471,7 +471,7 @@ function Ring({ v, size = 78, label = '' }) {
       </svg>
       <div className="absolute inset-0 grid place-items-center text-center leading-none">
         <div>
-          <div className={`font-bold tabular-nums ${size > 50 ? 'text-[17px]' : 'text-[11px] tracking-[-0.04em]'}`} style={{ color: col === '#E0A100' ? '#9C5700' : col }}>{pc(v ?? 0)}</div>
+          <div className={`font-bold tabular-nums ${size > 50 ? 'text-[17px]' : 'text-[11px] tracking-[-0.04em]'}`} style={{ color: inkOf(col) }}>{pc(v ?? 0)}</div>
           {label && <div className="mt-0.5 text-[11px] font-semibold text-[#777]">{label}</div>}
         </div>
       </div>

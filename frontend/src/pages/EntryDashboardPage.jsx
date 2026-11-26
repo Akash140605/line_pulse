@@ -368,7 +368,7 @@ export default function EntryDashboardPage({ onOpen = null, canOpen = [] }) {
 
       <section className={`${card} overflow-hidden`} aria-label="Entries of the period">
         <div className="flex flex-wrap items-center gap-2 bg-dixon-navy px-4 py-2.5 text-white">
-          <h2 className="lp-caps min-w-0 flex-1 text-fs-18 font-extrabold tracking-wide sm:text-fs-22">{group} · Loss{F.rej.length ? ', rejection' : ''} & rework entries</h2>
+          <h2 className="lp-caps min-w-0 flex-1 text-fs-18 font-extrabold tracking-wide sm:text-fs-22" style={{ minWidth: 'min(100%, 260px)' }}>{group} · Loss{F.rej.length ? ', rejection' : ''} & rework entries</h2>
           <span className="rounded border border-white/40 bg-white/10 px-3 py-1 text-fs-14 font-bold">{periodText}</span>
           <button type="button" onClick={excel} disabled={!F.loss.length && !F.rej.length && !F.rwk.length}
             className="inline-flex items-center gap-1.5 rounded border border-white/40 bg-white px-3 py-1 text-fs-14 font-bold text-dixon-navy hover:bg-blue-50 disabled:opacity-50"><Download size={15} aria-hidden />Excel</button>

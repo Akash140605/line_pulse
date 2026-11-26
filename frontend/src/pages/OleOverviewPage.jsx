@@ -38,8 +38,8 @@ const weakOf = (t) => FACT.filter(([k]) => t?.[k] != null).sort((a, b) => t[a[0]
 const cellTone = (v, k = null) => (v == null ? '' : v >= okFrom(k) ? 'bg-emerald-50 text-emerald-800' : v >= watchFrom(k) ? 'bg-amber-50 text-amber-800' : 'bg-red-50 text-red-800');
 const pc = (v, d = 1) => (v == null ? '—' : `${(v * 100).toFixed(d)}%`);
 const pc1 = (v) => (v == null ? '—' : `${Math.round(v * 1000) / 10}%`);   // 90% / 48.4% (no trailing .0)
-const tone = (v, k = null) => (v == null ? 'text-slate-500' : v >= okFrom(k) ? 'text-[#138A36]' : v >= watchFrom(k) ? 'text-[#D98E04]' : 'text-[#C00000]');
-const lossTone = (v) => (v == null ? 'text-slate-500' : v <= 1 - okFrom() ? 'text-[#138A36]' : v <= 0.4 ? 'text-[#D98E04]' : 'text-[#C00000]');
+const tone = (v, k = null) => (v == null ? 'text-slate-500' : v >= okFrom(k) ? 'text-[#138A36]' : v >= watchFrom(k) ? 'text-[#9C5700]' : 'text-[#C00000]');
+const lossTone = (v) => (v == null ? 'text-slate-500' : v <= 1 - okFrom() ? 'text-[#138A36]' : v <= 0.4 ? 'text-[#9C5700]' : 'text-[#C00000]');
 // 19-11-2026: in words, not + / − — "Short 28" · "Excess 116" · "On target"
 const signed = (v) => (v > 0 ? `Excess ${nf(v)}` : v < 0 ? `Short ${nf(-v)}` : 'On target');
 /** 20-11-2026: the models a reason / defect was written on — the first `max` (with their own time or pieces when more than one), "+N" for the rest; all in the tooltip */

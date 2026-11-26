@@ -17,7 +17,7 @@ import {
 } from '../utils/modelExplorer';
 import { serverNow } from '../utils/serverTime';
 
-const CLS_COLOR = { A: '#1D4ED8', B: '#F59E0B', C: '#94A3B8' };
+const CLS_COLOR = { A: '#1D4ED8', B: '#B45309', C: '#64748B' };   // 26-11-2026: dark enough for the white letter
 const LID_COLOR = { full: '#0369A1', half: '#4338CA', glass: '#0F766E', none: '#64748B', unknown: '#DC2626' };
 
 const BAND_COLOR = ['#0EA5E9', '#14B8A6', '#22C55E', '#EAB308', '#F97316', '#CBD5E1'];

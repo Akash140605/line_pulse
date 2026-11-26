@@ -599,7 +599,7 @@ export default function HourlyMatrix({ days, matrix: matrixProp, loading: loadin
                     <label className="flex cursor-pointer items-center gap-2" title={rowOff ? 'Left out of the totals — click to count it again' : 'Counted in the totals — click to leave this hour out'}>
                       <input type="checkbox" checked={!rowOff} onChange={() => toggleRow(hour)} className="h-3.5 w-3.5 shrink-0 cursor-pointer" style={{ accentColor: '#1E3A8A' }} />
                       <span className="min-w-0">
-                        <span className={`block font-mono font-bold text-slate-900 ${tight ? 'text-fs-13' : 'text-fs-14'}`}>{isWork ? spec.label : `${pad2(hour)}:00–${pad2(hour + 1)}:00`}{tight && (isWork || outside) && <span className="ml-1 font-sans text-fs-11 font-semibold text-slate-500">{outside ? '· off shift' : `· ${spec.min}m`}</span>}</span>
+                        <span className={`block whitespace-normal font-mono font-bold text-slate-900 ${tight ? 'text-fs-13' : 'text-fs-14'}`}>{isWork ? spec.label : `${pad2(hour)}:00–${pad2(hour + 1)}:00`}{tight && (isWork || outside) && ' '}{tight && (isWork || outside) && <span className="whitespace-nowrap font-sans text-fs-11 font-semibold text-slate-500">{outside ? '· off shift' : `· ${spec.min}m`}</span>}</span>
                         {!tight && (isWork || outside) && <span className="block text-fs-11 font-semibold text-slate-500">{outside ? 'outside shift' : `${spec.min} min`}</span>}
                       </span>
                     </label>

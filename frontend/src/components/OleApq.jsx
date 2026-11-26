@@ -12,7 +12,7 @@ const hrs = (min) => hm(Math.max(0, Number(min) || 0));
 const FACT = [['A', 'Availability'], ['P', 'Performance'], ['Q', 'Quality']];
 const weakOf = (t) => FACT.filter(([k]) => t?.[k] != null).sort((a, b) => t[a[0]] - t[b[0]])[0] || null;
 const pc1 = (v) => (v == null ? '—' : `${Math.round(v * 1000) / 10}%`);
-const tone = (v, k = null) => (v == null ? 'text-slate-500' : v >= okFrom(k) ? 'text-[#138A36]' : v >= watchFrom(k) ? 'text-[#D98E04]' : 'text-[#C00000]');   // the MES colours (19-11-2026)
+const tone = (v, k = null) => (v == null ? 'text-slate-500' : v >= okFrom(k) ? 'text-[#138A36]' : v >= watchFrom(k) ? 'text-[#9C5700]' : 'text-[#C00000]');   // the MES colours (19-11-2026)
 // 19-11-2026: in words, not + / − — "Short 28" · "Excess 116" · "On target"
 const signed = (v) => (v > 0 ? `Excess ${nf(v)}` : v < 0 ? `Short ${nf(-v)}` : 'On target');
 

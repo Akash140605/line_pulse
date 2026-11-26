@@ -19,7 +19,7 @@ import CtSummaryDialog from '../components/CtSummaryDialog';
 import { serverNow } from '../utils/serverTime';
 
 const HEALTH_COLOR = { ok: PAL.green, watch: PAL.amber, behind: PAL.red, idle: '#94A3B8' };
-const CLS_COLOR = { A: '#1D4ED8', B: '#F59E0B', C: '#94A3B8' };
+const CLS_COLOR = { A: '#1D4ED8', B: '#B45309', C: '#64748B' };   // 26-11-2026: dark enough for the white letter
 const tick = { fontSize: fs(12), fill: '#475569' };
 const s1 = (v) => (v == null ? '—' : `${Number(v).toFixed(1)}s`);
 const n0 = (v) => Number(v || 0).toLocaleString('en-IN');

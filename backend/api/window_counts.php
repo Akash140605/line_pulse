@@ -28,7 +28,7 @@ $from = $hm('from'); $to = $hm('to');
 if ($to <= $from) { http_response_code(400); echo json_encode(['error' => 'to must be after from']); exit; }
 
 respond_cached(function () use ($range, $from, $to) {
-    $pdo = snap_query_timeout(get_db(), 25);   // 25-11-2026: a hung query gives up after 25 s (it held a server thread 120 s)
+    $pdo = snap_alive(fn () => get_db(), 25);   // 25-11-2026: a hung query gives up after 25 s (it held a server thread 120 s)
     $range = with_scan_ids($pdo, $range);
     $b = scan_base($range);
     $st = $pdo->prepare("SELECT CONVERT(char(10), CAST(s.ScanDate AS DATE), 23) AS d, DATEPART(hour, s.ScanDate) AS h, COUNT(*) AS q

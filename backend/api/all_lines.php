@@ -84,7 +84,7 @@ foreach (LINES as $id => $cfg) {
     $tl = microtime(true);
     try {
         // a backup that stops before the period has nothing of it: ask the line itself (lib/backup.php)
-        $pdo = snap_query_timeout(connect_line($id, !backup_stale_for((int)$id, $start)), 25);   // a slow line gives up after 25 s: its last good answer (snapshot) or "not answering" is shown instead of a screen that waits
+        $pdo = snap_alive(fn () => connect_line($id, !backup_stale_for((int)$id, $start)), 25);   // a slow line gives up after 25 s: its last good answer (snapshot) or "not answering" is shown instead of a screen that waits
         $row['backup'] = backup_row_info(backup_used(), $id); // null = live line server
         // backup copy older than the last live answer of this line for the same period: show that answer
         if ($row['backup'] && ($snap = snap_row_if_newer('all', $id, $snapVariant, $row['backup']))) { $lines[] = $snap; continue; }
@@ -174,6 +174,7 @@ ORDER BY qty DESC";
         }
     } catch (Throwable $e) {
         $row['ok'] = false; $row['error'] = $e->getMessage();
+        cache_note_error("line $id not answering", $row['error']);   // 26-11-2026: the reason is kept (ems_api_errors.log)
         // line offline and no SQL backup: the last good answer of this line for the same period (lib/snapshot.php)
         if (snap_is_offline_error($row['error'])) {
             if ($snap = snap_row('all', $id, $snapVariant)) { $snap['offlineError'] = $row['error']; $row = $snap; }

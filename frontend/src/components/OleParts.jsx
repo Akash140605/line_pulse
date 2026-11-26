@@ -116,6 +116,7 @@ const POLL_MS = () => refreshMs('ole');   // 23-11-2026: the admin's Setup → S
 export function useOleData({ start, end, ids, paused = false, pollEntries = false, prod = true }) {
   const key = pcKey(start, end, ids);
   const [al, setAl] = useState(() => pcRead(key)?.al || null);
+  const alKey = useRef(key);   // the lines / period the numbers in `al` belong to
   const alRef = useRef(al);
   const [ent, setEnt] = useState(() => { const c = pcRead(key)?.ent; return c ? { ...EMPTY_ENT, ...c, reasons: normReasons(c.reasons) } : EMPTY_ENT; });
   const [entReady, setEntReady] = useState(() => !!pcRead(key)?.ent);   // the entries of this period were read (or kept from before)
@@ -128,8 +129,15 @@ export function useOleData({ start, end, ids, paused = false, pollEntries = fals
   const [updatedAt, setUpdatedAt] = useState(null);   // time of the last good read (shown on the dashboard)
   const [lastScan, setLastScan] = useState({});        // today: minute of the day of every line's last scan (time is counted up to it)
   const today = serverToday();
+  // 26-11-2026: the 20 s re-read and the retry timer were made with the lines of the first render; after Line 1 → Line 2
+  // they kept reading Line 1, so Line 2 showed "not answering — No answer" again and again. Every read now takes the
+  // period and the lines on screen at that moment.
+  const argsRef = useRef(null);
+  argsRef.current = { start, end, ids, key };
   const loadProd = async (force = false, poll = false) => {
     if (poll && ctl.current && loadingRef.current) return;   // the last read is still running: do not start it again
+    const { start, end, ids, key } = argsRef.current;
+    const today = serverToday();
     ctl.current?.abort(); const c = new AbortController(); ctl.current = c;
     loadingRef.current = true; setLoading(true); setErr('');
     try {
@@ -156,7 +164,7 @@ export function useOleData({ start, end, ids, paused = false, pollEntries = fals
       // 23-11-2026: how many reads in a row a line has not answered — the first few show "Reading again…", not the warning
       const tries = retryRef.current + 1;
       const merged = merged0?.lines ? { ...merged0, lines: merged0.lines.map((row) => (row && !row.ok ? { ...row, tries } : row)) } : merged0;
-      if (ctl.current === c) { setAl(merged); alRef.current = merged; setFresh(true); setUpdatedAt(serverNow()); pcWrite(key, { al: merged }); }
+      if (ctl.current === c) { setAl(merged); alRef.current = merged; alKey.current = key; setFresh(true); setUpdatedAt(serverNow()); pcWrite(key, { al: merged }); }
       // 20-11-2026: a line still not answering (and with no old numbers) is asked again by itself: every 10 s six
       // times, then every 30 s for as long as the page is open (a past day too, which is not polled)
       if (ctl.current === c && merged?.lines?.some((row) => row && !row.ok)) {
@@ -167,15 +175,17 @@ export function useOleData({ start, end, ids, paused = false, pollEntries = fals
     } catch (x) { if (x.name !== 'AbortError') setErr(String(x.message || x)); } finally { if (ctl.current === c) { loadingRef.current = false; setLoading(false); } }
   };
   const loadEnt = async () => {
+    const { start, end, key } = argsRef.current;
     try {
       const e = await api.oleEntries(start, end);
       const v = { entries: e?.entries || {}, reasons: normReasons(e?.reasons), rca: e?.rca || {}, days: e?.days || {}, dayReasons: Array.isArray(e?.dayReasons) && e.dayReasons.length ? e.dayReasons : DAY_REASONS, setup: e?.setup || {}, kpi: e?.kpi || {} };
+      if (argsRef.current.key !== key) return;   // another period was chosen meanwhile
       setEnt(v); setEntReady(true); pcWrite(key, { ent: v });
     } catch (x) { setErr(`Entries could not be read: ${x.message}`); }
   };
   useEffect(() => {
     const c = pcRead(key);
-    setAl(c?.al || null); alRef.current = c?.al || null; setFresh(false);
+    setAl(c?.al || null); alRef.current = c?.al || null; alKey.current = key; setFresh(false);
     setEnt(c?.ent ? { ...EMPTY_ENT, ...c.ent, reasons: normReasons(c.ent.reasons) } : EMPTY_ENT); setEntReady(!!c?.ent);
     retryRef.current = 0;
     if (prod) loadProd(false);
@@ -195,7 +205,9 @@ export function useOleData({ start, end, ids, paused = false, pollEntries = fals
   const nowMin = now.getHours() * 60 + now.getMinutes();
   // endMin: today's time of every line ends at its last scan (never after now); other lines / days: now
   const endMin = useMemo(() => ({ now: nowMin, ...Object.fromEntries(Object.entries(lastScan).map(([l, m]) => [l, Math.min(nowMin, m)])) }), [nowMin, lastScan]);
-  return { al, ent, entReady, setEnt, loading, updatedAt, stale: !!al && !fresh, err, today, nowMin, endMin, reload: () => { if (prod) loadProd(true); loadEnt(); }, reloadEnt: loadEnt };
+  // the first render after another line / period is chosen: never the numbers of the last one (they read as "No answer")
+  const alNow = alKey.current === key ? al : (pcRead(key)?.al || null);
+  return { al: alNow, ent, entReady, setEnt, loading, updatedAt, stale: !!alNow && !fresh, err, today, nowMin, endMin, reload: () => { if (prod) loadProd(true); loadEnt(); }, reloadEnt: loadEnt };
 }
 
 // OLE colour bands (world class 85 %): green ≥ 85 %, amber 60–85 %, red below 60 %

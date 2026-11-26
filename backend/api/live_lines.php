@@ -43,7 +43,7 @@ $tDay = microtime(true);
 foreach ($focusReq ? [] : $LINES_ASKED as $id => $cfg) { // a requested day needs no lookup
     $tl = microtime(true);
     try {
-        $pdo = snap_query_timeout(connect_line($id, !backup_stale_for((int)$id, $focusReq ?: ems_today())), 15);   // 25-11-2026: gives up after 15 s → the line's last good row   // a backup older than the day asked has nothing of it
+        $pdo = snap_alive(fn () => connect_line($id, !backup_stale_for((int)$id, $focusReq ?: ems_today())), 15);   // 25-11-2026: gives up after 15 s → the line's last good row   // a backup older than the day asked has nothing of it
         $d = $legacy ? $pdo->query("SELECT CONVERT(char(10), MAX(s.ScanDate), 23) FROM dbo.ScanStatus s WHERE " . VALID)->fetchColumn()
                      : latest_scan_day($pdo);
         $maxDay[$id] = $d ?: '';
@@ -66,7 +66,7 @@ foreach ($LINES_ASKED as $id => $cfg) {
     $t0 = microtime(true);
     try {
         if (isset($downErr[$id])) throw new RuntimeException($downErr[$id]);
-        $pdo = snap_query_timeout(connect_line($id, !backup_stale_for((int)$id, $focusReq ?: ems_today())), 15);   // 25-11-2026: gives up after 15 s → the line's last good row
+        $pdo = snap_alive(fn () => connect_line($id, !backup_stale_for((int)$id, $focusReq ?: ems_today())), 15);   // 25-11-2026: gives up after 15 s → the line's last good row
         // line offline → answered from the local backup: show its last production day (unless a day was asked for)
         $row['backup'] = backup_row_info(backup_used(), $id);
         $day = $focus;
@@ -131,6 +131,7 @@ WHERE g >= $lo AND g <= $hi");
         }
     } catch (Throwable $e) {
         $row['ok'] = false; $row['error'] = $e->getMessage();
+        cache_note_error("line $id not answering", $row['error']);   // 26-11-2026: the reason is kept (ems_api_errors.log)
         // line offline and no SQL backup: its last good live row (of the asked day, else the newest one)
         if (!$legacy && snap_is_offline_error($row['error'])) {
             $snap = $focusReq ? snap_row('live', $id, $focusReq) : (snap_row('live', $id) ?? snap_recover_live_row($id));

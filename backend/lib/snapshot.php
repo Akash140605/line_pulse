@@ -28,7 +28,7 @@ function snap_dir(): string
 /** Error text that means "the line could not be reached" (not a mistake in a query). */
 function snap_is_offline_error(string $msg): bool
 {
-    return (bool)preg_match('/SQLSTATE\[(08001|08S01|08004|HYT00|HYT01|28000)\]|TCP Provider|Named Pipes|timed? ?out|timeout expired|not reachable|could not open a connection|network-related|server was not found|No connection could be made|Login failed|Communication link failure|offline/i', $msg);
+    return (bool)preg_match('/SQLSTATE\[(08001|08S01|08S02|08004|HYT00|HYT01|28000)\]|Physical connection is not usable|TCP Provider|Named Pipes|timed? ?out|timeout expired|not reachable|could not open a connection|network-related|server was not found|No connection could be made|Login failed|Communication link failure|offline/i', $msg);
 }
 
 function snap_path(string $key): string
@@ -159,6 +159,36 @@ function snap_mark_down(int $line, string $error, float $seconds = 99): void
 function snap_mark_up(int $line): void { if (is_file(snap_down_file($line))) @unlink(snap_down_file($line)); }
 
 /** Every query of this connection gives up after $sec seconds (a line that hangs then counts as offline). */
+/**
+ * 26-11-2026: a database connection that died while it waited in the driver's pool ("SMux Provider: Physical connection
+ * is not usable", 08S02 / 08S01 / communication link failure). It fails every query until it is dropped, and the page
+ * said "Line N is not answering" again and again.
+ */
+function snap_is_broken_link(string $msg): bool
+{
+    return (bool)preg_match('/SQLSTATE\[(08S02|08S01)\]|Physical connection is not usable|Communication link failure|existing connection was forcibly closed|connection is broken/i', $msg);
+}
+
+/**
+ * Opens a connection ($connect returns a PDO), sets the query timeout and checks it with SELECT 1. A dead pooled
+ * connection is noted in the error log and opened once more (the driver has dropped the dead one by then).
+ * Any other error is left to the real query (which reports it as before).
+ */
+function snap_alive(callable $connect, int $sec): PDO
+{
+    $pdo = snap_query_timeout($connect(), $sec);
+    try {
+        $st = $pdo->query('SELECT 1');
+        if ($st !== false) $st->fetchColumn();
+        return $pdo;
+    } catch (Throwable $e) {
+        if (!snap_is_broken_link($e->getMessage())) return $pdo;
+        if (function_exists('cache_note_error')) cache_note_error('dead connection, connected again', $e->getMessage());
+        $pdo = null;
+        return snap_query_timeout($connect(), $sec);
+    }
+}
+
 function snap_query_timeout(PDO $pdo, int $sec): PDO
 {
     if (defined('PDO::SQLSRV_ATTR_QUERY_TIMEOUT')) { try { $pdo->setAttribute(PDO::SQLSRV_ATTR_QUERY_TIMEOUT, $sec); } catch (Throwable $e) {} }

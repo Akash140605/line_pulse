@@ -87,7 +87,8 @@ export function Pareto({ rows, fmt = nf, unit = '', color = STEEL, empty, time =
   const n = u.length, step = (Rr - L) / n, bw = Math.min(56, step * 0.62);
   // 26-11-2026: the whole name under its bar, word by word on as many lines as it needs (never cut with …)
   const per = Math.max(5, Math.floor(step / 7.2));   // letters that fit under one bar
-  const wrap = (t) => { const out = []; let cur = ''; for (const w0 of String(t).split(/\s+/)) { for (let w = w0; w.length;) { const room = per - (cur ? cur.length + 1 : 0); if (w.length <= room) { cur = cur ? `${cur} ${w}` : w; w = ''; } else if (!cur) { out.push(w.slice(0, per)); w = w.slice(per); } else { out.push(cur); cur = ''; } } } if (cur) out.push(cur); return out; };
+  // a word is kept whole when it is only a little longer than the bar; only a very long word (a model code) is split
+  const wrap = (t) => { const out = []; let cur = ''; for (const w0 of String(t).split(/\s+/)) { for (let w = w0; w.length;) { const room = per - (cur ? cur.length + 1 : 0); if (w.length <= room) { cur = cur ? `${cur} ${w}` : w; w = ''; } else if (cur) { out.push(cur); cur = ''; } else if (w.length <= per + 4) { out.push(w); w = ''; } else { out.push(w.slice(0, per)); w = w.slice(per); } } } if (cur) out.push(cur); return out; };
   const lab = u.map((r) => wrap(r.label));
   const H = B + 22 + 12 * Math.max(1, ...lab.map((l) => l.length));
   const axisFmt = time ? axisMin : (v) => nf(Math.round(v * 100) / 100);
@@ -125,9 +126,7 @@ export function Pareto({ rows, fmt = nf, unit = '', color = STEEL, empty, time =
 export function Donut({ rows, fmt = nf, unit = '', centre = 'Total', empty }) {
   const list = rows.filter((r) => r.value > 0);
   if (!list.length) return <Empty>{empty}</Empty>;
-  const top = list.slice(0, 7);
-  const rest = list.slice(7).reduce((a, r) => a + r.value, 0);
-  const parts = rest > 0 ? [...top, { label: 'Others', value: rest }] : top;
+  const parts = list;   // 26-11-2026: every slice by its own name (no "Others")
   const total = parts.reduce((a, r) => a + r.value, 0);
   const R0 = 66, R1 = 42, C = 80;
   let a0 = -Math.PI / 2;
@@ -162,6 +161,15 @@ export function Donut({ rows, fmt = nf, unit = '', centre = 'Total', empty }) {
  * 25-11-2026: under the department donut — what each department owns: its share, its biggest reasons (time and how
  * often) and where to start (fills the card beside the Pareto)
  */
+/** 26-11-2026: idle time written without a department is not a department ("Not set" never shown as one) — one line under the chart instead */
+export const NO_DEPT = new Set(['Not set', 'Not given', '']);
+export const withDept = (rows) => (rows || []).filter((d) => !NO_DEPT.has(String(d.label ?? '').trim()));
+export function NoDeptNote({ rows, fmt = nf }) {
+  const v = (rows || []).filter((d) => NO_DEPT.has(String(d.label ?? '').trim())).reduce((a, d) => a + (d.value || 0), 0);
+  if (!(v > 0)) return null;
+  return <p className="mt-2 rounded-md bg-[#F3F4F6] px-2 py-1 text-[11.5px] text-[#555]" data-testid="no-dept-note"><b className="text-[#333]">{fmt(v)}</b> of idle time was written without a department (Loss entry) — not shown above.</p>;
+}
+
 export function DeptOwners({ depts, byDept = {}, fmt = nf }) {
   const list = depts.filter((d) => d.value > 0);   // 26-11-2026: every department (was the first 4)
   if (!list.length) return null;
@@ -370,11 +378,11 @@ export default function OleFocusPage({ factor = 'A' }) {
           <Kpi icon={Clock} label="Idle time" value={hrs(T.lossMin)} note={T.plannedMin ? `${pc(T.lossMin / T.plannedMin)} of planned time` : 'no planned time'} color={RED} />
           <Kpi icon={Hash} label="Stops written" value={nf(F.stops)} note="loss entries with minutes" color={NAVY} />
           <Kpi icon={Timer} label="Average stop" value={F.stops ? hrs(T.lossMin / F.stops) : '—'} note="idle time ÷ stops" color={AMBER} />
-          <Kpi icon={AlertTriangle} label="Top reason" value={top ? top.label : '—'} note={top ? `${hrs(top.value)} · ${top.dept}` : 'no idle time'} color={RED} />
+          <Kpi icon={AlertTriangle} label="Top reason" value={top ? top.label : '—'} note={top ? `${hrs(top.value)}${top.dept !== 'Not set' ? ` · ${top.dept}` : ''}` : 'no idle time'} color={RED} />
         </div>
         <div className="grid gap-3 xl:grid-cols-3">
           <Card title="Idle time reasons" sub="Pareto by time lost" className="xl:col-span-2"><Pareto rows={F.reasonsA} fmt={(v) => hrs(v)} time empty="No idle time in this period." color={RED} /></Card>
-          <Card title="Share by department" sub="who owns the lost time"><Donut rows={F.deptA} fmt={(v) => hrs(v)} centre="idle time" empty="No idle time in this period." /><DeptOwners depts={F.deptA} byDept={F.deptR} fmt={(v) => hrs(v)} /></Card>
+          <Card title="Share by department" sub="who owns the lost time"><Donut rows={withDept(F.deptA)} fmt={(v) => hrs(v)} centre="idle time" empty="No idle time in this period." /><DeptOwners depts={withDept(F.deptA)} byDept={F.deptR} fmt={(v) => hrs(v)} /><NoDeptNote rows={F.deptA} fmt={(v) => hrs(v)} /></Card>
         </div>
         <div className="grid gap-3 xl:grid-cols-2">
           <Card title="When it happens" sub="idle time by hour of the day"><When hours={F.hoursA} fmt={(v) => `${Math.round(v)}`} unit=" min" empty="No idle time in this period." /></Card>
@@ -398,7 +406,7 @@ export default function OleFocusPage({ factor = 'A' }) {
               : r.models.length === 1 ? <span className="whitespace-nowrap">{co(r.models[0].name) && <span className="mr-1 text-[11px] font-bold uppercase text-[#777]">{co(r.models[0].name)}</span>}<b className="font-mono font-semibold">{r.models[0].name}</b></span>
               // 26-11-2026: every model named (no "+2"), one under the other with its time
               : <span className="flex flex-col gap-0.5">{r.models.map((m) => <span key={m.name} className="flex items-baseline justify-between gap-3 whitespace-nowrap"><span>{co(m.name) && <span className="mr-1 text-[11px] font-bold uppercase text-[#777]">{co(m.name)}</span>}<b className="font-mono font-semibold">{m.name}</b></span><span className="text-[12px] text-[#777]">{hrs(m.value)}</span></span>)}</span>) },
-            { label: 'Department', get: (r) => r.dept },
+            { label: 'Department', get: (r) => (r.dept && r.dept !== 'Not set' ? r.dept : '—') },
             { label: 'Times', right: true, get: (r) => nf(r.n) },
             { label: 'Time lost', right: true, get: (r) => <b className="text-[#C00000]">{hrs(r.value)}</b> },
             { label: 'Share', right: true, get: (r) => { const s = T.lossMin ? r.value / F.reasonsA.reduce((a, x) => a + x.value, 0) : 0; return <span className="inline-flex items-center gap-2"><Bar v={s} color={RED} />{pc(s, 0)}</span>; } },

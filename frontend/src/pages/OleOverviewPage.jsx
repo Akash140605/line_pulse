@@ -570,7 +570,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   // ── columns of the tables
   const lineCell = (l) => <span className="whitespace-nowrap font-bold">Line {l}{plantOf(l) && <span className="ml-1 text-fs-12 font-semibold text-slate-500">{plantOf(l)}</span>}</span>;
   const C = {
-    down: [{ k: 'name', label: 'Reason', wrap: true, render: (r) => <span className="lp-caps font-semibold">{r.name}</span> }, { k: 'models', label: 'Model', wrap: true, render: (r) => modelsCell(r.models, 'min', 1, co, true) }, { k: 'dept', label: 'Dept.' }, { k: 'value', label: 'Time', right: true, render: (r) => hr2(r.value) }, { k: 'share', label: 'Share', right: true, render: (r) => `${Math.round(r.share * 1000) / 10}%` }],
+    down: [{ k: 'name', label: 'Reason', wrap: true, render: (r) => <span className="lp-caps font-semibold">{r.name}</span> }, { k: 'models', label: 'Model', wrap: true, render: (r) => modelsCell(r.models, 'min', 1, co, true) }, { k: 'dept', label: 'Dept.', render: (r) => (r.dept && r.dept !== 'Not set' ? r.dept : '—') }, { k: 'value', label: 'Time', right: true, render: (r) => hr2(r.value) }, { k: 'share', label: 'Share', right: true, render: (r) => `${Math.round(r.share * 1000) / 10}%` }],
     lineLoss: [{ k: 'line', label: 'Line', render: (r) => lineCell(r.line) },
       // 23-11-2026: top 3 reasons one per row (name · bar · time), wraps inside the card — no side scroll; models in the tooltip
       { k: 'reasons', label: 'Top Reasons', render: (r) => (
@@ -775,7 +775,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
                   return !LR.length ? <p className="p-4 text-fs-14 text-slate-600">No loss entered for this line in this period.</p>
                     : <Grid rows={LR.map((x) => ({ ...x, key: `${x.kind}|${x.name}` }))} label={`Line ${win.line} losses`} cols={[
                       { k: 'name', label: 'Reason', render: (r) => <span className="lp-caps font-semibold">{r.name}</span> }, { k: 'models', label: 'Model', render: (r) => modelsCell(r.models, r.unit, 3, co) },
-                      { k: 'dept', label: 'Department', render: (r) => r.dept || '—' },
+                      { k: 'dept', label: 'Department', render: (r) => (r.dept && r.dept !== 'Not set' ? r.dept : '—') },
                       { k: 'kind', label: 'Kind', render: (r) => (r.unit === 'min' ? 'Time' : 'Pieces') },
                       { k: 'value', label: 'Lost', right: true, render: (r) => (r.unit === 'min' ? <b className="text-red-700">{hr2(r.value)}</b> : `${nf(r.value)} pcs`) },
                       { k: 'share', label: 'Share', right: true, render: (r) => (r.unit === 'min' && tot ? `${Math.round((r.value / tot) * 1000) / 10}%` : '—') }]} />;
@@ -819,7 +819,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
                   ...(unit === 'qty' ? [{ k: 'kind', label: 'Kind', render: (r) => r.kind }, ...(has('station') ? [{ k: 'station', label: 'Station', wrap: true, render: (r) => r.station || '—' }] : [])] : []),
                   { k: 'reason', label: unit === 'qty' ? 'Defect' : 'Reason', wrap: true, render: (r) => <span className="lp-caps font-semibold">{r.reason || 'Not given'}</span> },
                   { k: 'model', label: 'Model', wrap: true, render: (r) => (r.model ? <span>{co(r.model) && <span className="mr-1 text-fs-11 font-bold uppercase text-[#777]">{co(r.model)}</span>}<span className="font-mono font-semibold">{r.model}</span></span> : <span className="text-[#999]">—</span>) },
-                  { k: 'dept', label: 'Dept.', wrap: true, render: (r) => r.dept || '—' },
+                  { k: 'dept', label: 'Dept.', wrap: true, render: (r) => (r.dept && r.dept !== 'Not set' ? r.dept : '—') },
                   ...(has('owner') ? [{ k: 'owner', label: 'Owner', render: (r) => r.owner || '—' }] : []),
                   ...(has('part') ? [{ k: 'part', label: 'Part', wrap: true, render: (r) => r.part || '—' }] : []),
                   ...(unit === 'qty' && has('cat') ? [{ k: 'cat', label: 'Category', wrap: true, render: (r) => r.cat || '—' }] : []),

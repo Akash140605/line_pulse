@@ -9,7 +9,7 @@ import { nf, dmy, p2, useOleData, useOleLines, groupNameOf, companyOf, CompanyCe
 import { useAllLineSettings } from '../hooks/useLineSettings';
 import { useLastScans } from '../hooks/useLastScans';
 import { oleRange, okFrom, watchFrom, hm } from '../utils/ole';
-import { Pareto, Donut, DeptOwners } from './OleFocusPage';
+import { Pareto, Donut, DeptOwners, withDept, NoDeptNote } from './OleFocusPage';
 import { availDash, perfDash, modelHours } from '../utils/factorDash';
 import MesDrawer from '../components/MesDrawer';
 import { exportPanel } from '../utils/domExcel';
@@ -127,7 +127,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
               <Tile name="Idle time" value={hh(t.idle)} sub={t.planned ? `${pct(t.idle / t.planned)} of planned` : '—'} tone={t.idle > 0 ? 'text-red-700' : 'text-slate-900'} />
               <Tile name="Stops written" value={nf(t.stops)} sub={t.notWritten >= 3 ? `${hh(t.notWritten)} idle not written` : 'every idle minute written'} tone={t.notWritten >= 3 ? 'text-amber-700' : 'text-slate-900'} />
               <Tile name="Average stop" value={t.avg == null ? '—' : `${Math.round(t.avg)} min`} sub="written minutes ÷ stops" />
-              <Tile name="Top reason" value={X.reasons[0]?.name || '—'} sub={X.reasons[0] ? `${hh(X.reasons[0].min)} · ${X.reasons[0].dept}` : 'no idle time written'} tone={X.reasons[0] ? 'text-red-700' : 'text-slate-900'} />
+              <Tile name="Top reason" value={X.reasons[0]?.name || '—'} sub={X.reasons[0] ? `${hh(X.reasons[0].min)}${X.reasons[0].dept !== 'Not set' ? ` · ${X.reasons[0].dept}` : ''}` : 'no idle time written'} tone={X.reasons[0] ? 'text-red-700' : 'text-slate-900'} />
             </section>
           ) : (
             <section className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7" aria-label="Performance of the period">
@@ -155,8 +155,9 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                 </section>
                 <section className={card} aria-label="Share by department">
                   <Title right="who owns the lost time">Share by department</Title>
-                  <Donut rows={depts} fmt={hrs} centre="idle time" empty="No idle time in this period." />
-                  <DeptOwners depts={depts} byDept={byDept} fmt={hrs} />
+                  <Donut rows={withDept(depts)} fmt={hrs} centre="idle time" empty="No idle time in this period." />
+                  <DeptOwners depts={withDept(depts)} byDept={byDept} fmt={hrs} />
+                  <NoDeptNote rows={depts} fmt={hrs} />
                 </section>
               </div>
             );
@@ -250,7 +251,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                           <td className={`${td} text-right font-mono`}>{r.avg == null ? '—' : `${Math.round(r.avg)}m`}</td>
                           <td className={`${td} text-right font-mono font-extrabold ${tone(r.A)}`}>{pct(r.A)}</td>
                           <td className={`${td} font-semibold`}>{r.topReason || '—'}</td>
-                          <td className={td}>{r.topDept || '—'}</td>
+                          <td className={td}>{r.topDept && r.topDept !== 'Not set' ? r.topDept : '—'}</td>
                         </tr>
                       ))}
                     </tbody>

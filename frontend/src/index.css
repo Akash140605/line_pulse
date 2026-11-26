@@ -800,3 +800,71 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 
 /* 26-11-2026: dashboards — a softer red for numbers that are behind (was a hard dark red) */
 .lp-fac .text-red-700, [aria-label="Performance dashboard"] .text-red-700, [aria-label="Availability dashboard"] .text-red-700, [aria-label="Quality dashboard"] .text-red-700 { color: #D64545; }
+
+/* 26-11-2026: login page — animated hero (moving gradient, grid, glowing orbs, rising hour bars, conveyor) and a glass card */
+.lp-login-hero { background: linear-gradient(125deg, #0B1B3A, #1F3864 35%, #1E4E8C 65%, #0F2A52); background-size: 240% 240%; animation: lpGrad 16s ease infinite; }
+@keyframes lpGrad { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.lp-login-grid { position: absolute; inset: -40px; background-image: linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px); background-size: 42px 42px; transform: perspective(700px) rotateX(55deg) translateY(30%); transform-origin: bottom; animation: lpGridMove 7s linear infinite; mask-image: linear-gradient(to top, #000, transparent 75%); }
+@keyframes lpGridMove { to { background-position: 0 42px, 0 0; } }
+.lp-login-orb { position: absolute; border-radius: 9999px; filter: blur(60px); opacity: .55; }
+.lp-login-orb1 { width: 340px; height: 340px; background: #38BDF8; top: -90px; right: -60px; animation: lpFloat 11s ease-in-out infinite; }
+.lp-login-orb2 { width: 280px; height: 280px; background: #34D399; bottom: -80px; left: -60px; opacity: .35; animation: lpFloat 13s ease-in-out infinite reverse; }
+@keyframes lpFloat { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(30px, 25px); } }
+.lp-login-live { width: 8px; height: 8px; border-radius: 9999px; background: #34D399; box-shadow: 0 0 0 0 rgba(52,211,153,.7); animation: lpPing 1.6s ease-out infinite; }
+@keyframes lpPing { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.7); } 100% { box-shadow: 0 0 0 10px rgba(52,211,153,0); } }
+.lp-login-shine { background: linear-gradient(90deg, #7DD3FC, #A7F3D0, #7DD3FC); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: lpShine 5s linear infinite; }
+@keyframes lpShine { to { background-position: 200% center; } }
+.lp-login-card { animation: lpRise .8s cubic-bezier(.2,.8,.2,1) both; transform-style: preserve-3d; }
+.lp-login-bar { transform-origin: bottom; animation: lpBar 1.1s cubic-bezier(.2,.8,.2,1) both, lpBreathe 3.2s ease-in-out 1.2s infinite; box-shadow: 0 6px 14px -6px rgba(0,0,0,.45); }
+@keyframes lpBar { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes lpBreathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.93); } }
+.lp-login-belt { position: relative; overflow: hidden; background: repeating-linear-gradient(90deg, rgba(255,255,255,.16) 0 10px, rgba(255,255,255,.06) 10px 20px); background-size: 40px 100%; animation: lpBelt 1s linear infinite; }
+@keyframes lpBelt { to { background-position: 40px 0; } }
+.lp-login-box { position: absolute; top: -9px; left: -30px; width: 24px; height: 18px; border-radius: 3px; background: linear-gradient(180deg, #FDE68A, #D97706); box-shadow: 0 3px 6px rgba(0,0,0,.35); animation: lpBox 4.4s linear infinite; }
+@keyframes lpBox { to { left: calc(100% + 30px); } }
+.lp-login-feat { animation: lpRise .7s cubic-bezier(.2,.8,.2,1) both; transition: transform .2s ease, background .2s ease; }
+.lp-login-feat:hover { transform: translateY(-3px) rotateX(6deg); background: rgba(255,255,255,.09); }
+@keyframes lpRise { from { opacity: 0; transform: translateY(18px) rotateX(12deg); } to { opacity: 1; transform: none; } }
+.lp-login-soft { position: absolute; width: 520px; height: 520px; border-radius: 9999px; background: radial-gradient(circle, rgba(46,117,182,.18), transparent 65%); top: -160px; right: -160px; animation: lpFloat 12s ease-in-out infinite; }
+.lp-login-form { animation: lpCard .7s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes lpCard { from { opacity: 0; transform: perspective(900px) translateY(24px) rotateX(10deg); } to { opacity: 1; transform: none; } }
+.lp-login-form input:focus { box-shadow: 0 0 0 4px rgba(46,117,182,.15); }
+.lp-login-btn { background: linear-gradient(90deg, #1F3864, #2E75B6, #1F3864); background-size: 200% auto; box-shadow: 0 10px 24px -10px rgba(31,56,100,.7); transition: background-position .5s ease, transform .15s ease, box-shadow .2s ease; }
+.lp-login-btn:hover:not(:disabled) { background-position: right center; transform: translateY(-1px); box-shadow: 0 14px 28px -10px rgba(31,56,100,.8); }
+.lp-login-btn:active:not(:disabled) { transform: translateY(0); }
+.lp-login-spin { width: 18px; height: 18px; border-radius: 9999px; border: 2.5px solid rgba(255,255,255,.4); border-top-color: #fff; animation: lpSpin .8s linear infinite; }
+@keyframes lpSpin { to { transform: rotate(360deg); } }
+.lp-login-shake { animation: lpShake .4s ease; }
+@keyframes lpShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+@media (prefers-reduced-motion: reduce) { .lp-login *, .lp-login-hero { animation: none !important; } }
+
+/* login page: classes not in the prebuilt Tailwind CSS */
+.bg-emerald-400\/10 { background-color: rgba(52,211,153,.1); }
+.bg-white\/\[\.05\] { background-color: rgba(255,255,255,.05); }
+.border-emerald-300\/40 { border-color: rgba(110,231,183,.4); }
+.disabled\:opacity-70:disabled { opacity: .7; }
+.from-sky-400\/30 { --tw-gradient-from: rgba(56,189,248,.3); --tw-gradient-to: rgba(56,189,248,0); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.to-indigo-400\/20 { --tw-gradient-to: rgba(129,140,248,.2); }
+.h-12 { height: 3rem; }
+.h-28 { height: 7rem; }
+.mt-7 { margin-top: 1.75rem; }
+.rounded-t-md { border-top-left-radius: .375rem; border-top-right-radius: .375rem; }
+.shadow-\[0_20px_60px_-20px_rgba\(31\,56\,100\,\.35\)\] { box-shadow: 0 20px 60px -20px rgba(31,56,100,.35); }
+.text-sky-100\/70 { color: rgba(224,242,254,.7); }
+.transition-shadow { transition: box-shadow .15s ease; }
+@media (min-width: 1024px) {
+  .lg\:flex-col { flex-direction: column; }
+  .lg\:justify-between { justify-content: space-between; }
+  .lg\:grid-cols-\[minmax\(0\,1\.1fr\)_minmax\(0\,1fr\)\] { grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); }
+}
+
+/* login: rounded shapes (the MES look squares boxes elsewhere) */
+.lp-login .lp-login-form { border-radius: 18px !important; }
+.lp-login .lp-login-card { border-radius: 16px !important; }
+.lp-login .lp-login-feat { border-radius: 12px !important; }
+.lp-login .lp-login-feat > span:first-child { border-radius: 10px !important; }
+.lp-login input, .lp-login .lp-login-btn { border-radius: 12px !important; }
+.lp-login .lp-login-btn { min-height: 48px; }
+.lp-login .rounded-full { border-radius: 9999px !important; }
+.lp-login .lp-login-bar { border-radius: 6px 6px 0 0 !important; }
+.lp-login [role="alert"], .lp-login [role="status"] { border-radius: 10px !important; }

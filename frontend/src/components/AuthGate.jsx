@@ -29,54 +29,82 @@ function LoginPage() {
       setErr(String(x.message || x) === 'Failed to fetch' ? 'The server did not answer. Check the network and try again.' : String(x.message || x));
     } finally { setBusy(false); }
   };
+  const [caps, setCaps] = useState(false);
+  const capsOf = (e) => { try { setCaps(!!e.getModifierState?.('CapsLock')); } catch { /* old browser */ } };
   const FEAT = [
-    [Radio, 'Live lines', 'Every line hour by hour: pieces, target, running model'],
+    [Radio, 'Live lines', 'Every line hour by hour — pieces, target, running model'],
     [Gauge, 'OLE & losses', 'Availability, performance and quality of every line'],
-    [ClipboardList, 'Loss entry', 'Planned stop, unplanned loss, rejection and rework per hour'],
-    [Wrench, 'RCA', 'Each loss goes to its department for the root cause'],
+    [ClipboardList, 'Loss & quality entry', 'Idle time, rework and dismantle — hour by hour'],
+    [Wrench, 'RCA & CAPA', 'Every loss reaches its department for the root cause'],
   ];
+  // 26-11-2026: the hour bars of the animated line on the left (heights in %, the last one is "this hour")
+  const BARS = [62, 78, 70, 88, 54, 92, 80, 96];
   return (
-    <div className="min-h-screen grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] bg-[rgb(var(--page))]">
-      {/* left: what the system is (the Dixon MES way); phones show only the form */}
-      <aside className="hidden lg:flex flex-col justify-between bg-dixon-navy px-12 py-10 text-white" style={{ background: 'rgb(var(--sidebar))' }}>
-        <DixonLogo white className="h-8 self-start" />
-        <div>
-          <div className="inline-flex items-center gap-2 border border-white/30 px-2.5 py-1 text-fs-12 font-bold uppercase tracking-wider text-sky-100">Washing machine assembly · Line Pulse</div>
-          <h2 className="mt-4 text-fs-40 font-extrabold leading-tight">Production Line Dashboard</h2>
-          <p className="mt-2 max-w-xl text-fs-16 text-sky-100">Live output, OLE, losses and root cause of every line — one screen for supervisors and management.</p>
-          <ul className="mt-8 space-y-4">
-            {FEAT.map(([Icon, t, d]) => (
-              <li key={t} className="flex items-start gap-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center bg-white/10"><Icon size={18} aria-hidden /></span>
-                <span><span className="block text-fs-16 font-bold">{t}</span><span className="block text-fs-14 text-sky-100/90">{d}</span></span>
+    <div className="lp-login min-h-screen grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] bg-[#F3F6FB]">
+      {/* left: what the system is — animated (moving gradient, a running line, rising hour bars); phones show only the form */}
+      <aside className="lp-login-hero relative hidden overflow-hidden px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between">
+        <span aria-hidden className="lp-login-grid" />
+        <span aria-hidden className="lp-login-orb lp-login-orb1" />
+        <span aria-hidden className="lp-login-orb lp-login-orb2" />
+        <div className="relative z-10 flex items-center gap-3">
+          <DixonLogo white className="h-8" />
+          <span className="rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 text-fs-12 font-bold tracking-wide text-sky-100 backdrop-blur">Line Pulse</span>
+        </div>
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/40 bg-emerald-400/10 px-3 py-1 text-fs-12 font-bold uppercase tracking-wider text-emerald-200">
+            <span className="lp-login-live" aria-hidden /> Live · Washing machine assembly
+          </div>
+          <h2 className="mt-4 text-fs-40 font-extrabold leading-[1.1]">Every line.<br /><span className="lp-login-shine">Every hour. Every piece.</span></h2>
+          <p className="mt-3 max-w-xl text-fs-16 text-sky-100/90">Live output, OLE, losses and root cause of every line — one screen for supervisors and management.</p>
+          {/* the running line: hour bars rising against the target, boxes moving on the conveyor */}
+          <div className="lp-login-card mt-7 max-w-xl rounded-2xl border border-white/15 bg-white/[.06] p-4 backdrop-blur" aria-hidden>
+            <div className="mb-2 flex items-center justify-between text-fs-12 font-bold uppercase tracking-wider text-sky-100/80"><span>Output by hour</span><span className="text-emerald-300">104%</span></div>
+            <div className="relative flex h-28 items-end gap-2">
+              <span className="absolute inset-x-0 border-t-2 border-dashed border-white/40" style={{ bottom: '72%' }} />
+              {BARS.map((h, k) => <span key={k} className="lp-login-bar flex-1 rounded-t-md" style={{ height: `${h}%`, animationDelay: `${k * 0.12}s`, background: h >= 72 ? 'linear-gradient(180deg,#34D399,#059669)' : 'linear-gradient(180deg,#FBBF24,#D97706)' }} />)}
+            </div>
+            <div className="lp-login-belt mt-3 h-3 rounded-full">{[0, 1, 2, 3].map((k) => <span key={k} className="lp-login-box" style={{ animationDelay: `${k * 1.1}s` }} />)}</div>
+          </div>
+          <ul className="mt-7 grid max-w-xl grid-cols-2 gap-3">
+            {FEAT.map(([Icon, t, d], k) => (
+              <li key={t} className="lp-login-feat flex items-start gap-3 rounded-xl border border-white/10 bg-white/[.05] p-3" style={{ animationDelay: `${0.3 + k * 0.1}s` }}>
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-sky-400/30 to-indigo-400/20 text-sky-100"><Icon size={18} aria-hidden /></span>
+                <span><span className="block text-fs-14 font-bold">{t}</span><span className="block text-fs-12 leading-snug text-sky-100/80">{d}</span></span>
               </li>
             ))}
           </ul>
         </div>
-        <p className="text-fs-12 text-sky-100/80">Dixon Technologies (India) Ltd · For plant use only</p>
+        <p className="relative z-10 text-fs-12 text-sky-100/70">Dixon Technologies (India) Ltd · For plant use only</p>
       </aside>
       {/* right: sign in */}
-      <div className="flex items-center justify-center p-4 sm:p-8">
-        <div className="w-full max-w-md">
+      <div className="relative flex items-center justify-center overflow-hidden p-4 sm:p-8">
+        <span aria-hidden className="lp-login-soft" />
+        <div className="relative w-full max-w-md">
           <DixonLogo className="mb-6 h-8 lg:hidden" />
-          <form onSubmit={submit} aria-label="Login" className="border border-slate-300 bg-white p-6 shadow-sm sm:p-8">
-            <h1 className="text-fs-24 font-extrabold text-dixon-ink">Sign in</h1>
-            <p className="mt-1 text-fs-14 text-slate-600">Please sign in with the user ID and password provided by the administrator.</p>
-            <label className="mt-6 block text-fs-14 font-semibold text-slate-800" htmlFor="login-user">User ID</label>
+          <form onSubmit={submit} aria-label="Login" className="lp-login-form rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-[0_20px_60px_-20px_rgba(31,56,100,.35)] backdrop-blur sm:p-8">
+            <div className="mb-5 flex items-center gap-3">
+              <span className="grid h-11 w-11 place-items-center text-white shadow-md" style={{ borderRadius: 12, background: 'linear-gradient(135deg,#1F3864,#2E75B6)' }}><ShieldCheck size={22} aria-hidden /></span>
+              <div><h1 className="text-fs-24 font-extrabold leading-tight text-dixon-ink">Welcome back</h1><p className="text-fs-14 text-slate-600">Sign in to Line Pulse</p></div>
+            </div>
+            <label className="block text-fs-14 font-semibold text-slate-800" htmlFor="login-user">User ID</label>
             <div className="relative mt-1">
               <User size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden />
-              <input id="login-user" className={`${inp} h-11 pl-9 text-fs-15`} value={user} onChange={(e) => setUser(e.target.value)} autoComplete="username" autoCapitalize="none" autoFocus placeholder="e.g. line12" />
+              <input id="login-user" className={`${inp} h-12 rounded-xl pl-9 text-fs-15 transition-shadow`} value={user} onChange={(e) => setUser(e.target.value)} autoComplete="username" autoCapitalize="none" autoFocus placeholder="e.g. line12" />
             </div>
             <label className="mt-4 block text-fs-14 font-semibold text-slate-800" htmlFor="login-pass">Password</label>
             <div className="relative mt-1">
               <KeyRound size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden />
-              <input id="login-pass" type={show ? 'text' : 'password'} className={`${inp} h-11 pl-9 pr-11 text-fs-15`} value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="current-password" placeholder="Password" />
-              <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-1 top-1 h-9 w-9 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100">{show ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+              <input id="login-pass" type={show ? 'text' : 'password'} className={`${inp} h-12 rounded-xl pl-9 pr-11 text-fs-15 transition-shadow`} value={pass} onChange={(e) => setPass(e.target.value)} onKeyUp={capsOf} onKeyDown={capsOf} autoComplete="current-password" placeholder="Password" />
+              <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100">{show ? <EyeOff size={18} /> : <Eye size={18} />}</button>
             </div>
-            {err && <div role="alert" className="mt-4 border border-red-200 bg-red-50 px-3 py-2 text-fs-13 font-semibold text-red-800">{err}</div>}
-            <button type="submit" disabled={busy} className="mt-6 h-11 w-full bg-blue-600 text-white text-fs-16 font-bold hover:bg-blue-700 disabled:opacity-60">{busy ? 'Checking…' : 'Log in'}</button>
-            <p className="mt-4 text-center text-fs-13 text-slate-500">You remain signed in on this device for 7 days. If you have forgotten your password, please contact the administrator.</p>
+            {caps && <div role="status" className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-fs-12 font-semibold text-amber-800"><ShieldAlert size={14} aria-hidden /> Caps Lock is on</div>}
+            {err && <div role="alert" className="lp-login-shake mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-fs-13 font-semibold text-red-800">{err}</div>}
+            <button type="submit" disabled={busy} className="lp-login-btn mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl text-fs-16 font-bold text-white disabled:opacity-70">
+              {busy ? <><span className="lp-login-spin" aria-hidden /> Checking…</> : 'Log in'}
+            </button>
+            <p className="mt-4 text-center text-fs-13 text-slate-500">You stay signed in on this device for 7 days. Forgot your password? Ask the administrator.</p>
           </form>
+          <p className="mt-4 text-center text-fs-12 text-slate-400">Line Pulse · Dixon EMS</p>
         </div>
       </div>
     </div>

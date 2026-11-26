@@ -1,5 +1,6 @@
 import React from 'react';
-import { hm, okFrom, watchFrom, planTargetOf, goodOf } from '../utils/ole';
+import { hm, okFrom, watchFrom, planTargetOf, goodOf, oleConfig } from '../utils/ole';
+import MesDrawer from './MesDrawer';
 import { nf, Gauge, band } from './OleParts';
 
 /*
@@ -61,10 +62,59 @@ export function Factor({ k = null, name, value, formula, rows, lossName, loss, w
   );
 }
 
+/** 26-11-2026: the Quality formula as counted (OLE setup: rework counts — the default — or rejections only) */
+const qFormula = () => (oleConfig().qMode === 'rej' ? '(Actual − Rejected) ÷ Actual Qty' : '(Actual − Rework − Rejected) ÷ Actual Qty');
+/** opens the stage-wise FPY window (StageFpyHost, mounted once on the page) */
+export const openStages = (t) => { try { window.dispatchEvent(new CustomEvent('lp:stage-fpy', { detail: t })); } catch { /* old browser */ } };
+
+/** Stage-wise FPY of a total: every stage, its defects, FPY = 1 − defects ÷ pieces made, RTY = product of the FPYs */
+export function StageFpyHost() {
+  const [t, setT] = React.useState(null);
+  React.useEffect(() => { const on = (e) => setT(e.detail || null); window.addEventListener('lp:stage-fpy', on); return () => window.removeEventListener('lp:stage-fpy', on); }, []);
+  if (!t) return null;
+  // the same stage written by its code on an entry ("FQC") and by its name in the setup: one row
+  const byLab = new Map();
+  for (const x of t.stages || []) {
+    const k = String(x.label || x.name).trim().toUpperCase();
+    const o = byLab.get(k) || { ...x, rej: 0, rwk: 0, defects: [] };
+    o.rej += x.rej || 0; o.rwk += x.rwk || 0; o.rty = o.rty || x.rty; o.defects = [...o.defects, ...(x.defects || [])].sort((p, q) => q.qty - p.qty);
+    byLab.set(k, o);
+  }
+  const st = [...byLab.values()].map((x) => ({ ...x, fpy: t.qty > 0 ? Math.max(0, 1 - (x.rej + x.rwk) / t.qty) : null }))
+    .sort((a, b) => (b.rty === a.rty ? 0 : b.rty ? 1 : -1) || (a.fpy ?? 1) - (b.fpy ?? 1));
+  const worst = st.filter((x) => x.rty && x.fpy != null).sort((a, b) => a.fpy - b.fpy)[0];
+  return (
+    <MesDrawer title={`Stage-wise FPY · ${t.title || 'Quality'}`} sub={`RTY ${yPct(t.rty)} = product of the FPY of the ${st.filter((x) => x.rty).length} stages · ${nf(t.qty)} pcs made`} onClose={() => setT(null)} label="Stage-wise FPY" width={55} fit minWidth={520}>
+      <div className="p-2" data-testid="stage-fpy">
+        <div className="mb-2 grid grid-cols-3 gap-px overflow-hidden rounded border border-[#D4D4D4] bg-[#D4D4D4] text-center">
+          {[['Pieces made', nf(t.qty)], ['Right first time', `${nf(Math.max(0, (t.qty || 0) - (t.fpyBad || 0)))} pcs · FPY ${yPct(fpyOf(t))}`], ['RTY', yPct(t.rty)]].map(([k, v]) => (
+            <div key={k} className="bg-white px-2 py-1.5"><div className="text-fs-12 font-semibold text-[#555]">{k}</div><div className="font-mono text-fs-16 font-extrabold text-[#1F3864]">{v}</div></div>))}
+        </div>
+        {!st.length ? <p className="p-3 text-fs-14 text-[#555]">No stage set up and no defect written in this period.</p> : (
+          <table className="w-full text-fs-14">
+            <thead><tr className="bg-[#1F3864] text-left text-white">{['Stage', 'Defect pcs', 'FPY', 'In RTY', 'Top defect'].map((h) => <th key={h} className="px-2 py-1.5 font-bold">{h}</th>)}</tr></thead>
+            <tbody>
+              {st.map((x) => (
+                <tr key={x.name} className={`border-b border-[#E5E7EB] ${worst && x.name === worst.name ? 'bg-red-50' : ''}`}>
+                  <td className="px-2 py-1.5 font-semibold">{x.label || x.name}</td>
+                  <td className={`px-2 py-1.5 text-right font-mono ${x.rej + x.rwk ? 'font-bold text-[#C00000]' : ''}`}>{nf(x.rej + x.rwk)}</td>
+                  <td className="px-2 py-1.5 text-right font-mono font-bold text-[#0E6E2E]">{yPct(x.fpy)}</td>
+                  <td className="px-2 py-1.5 text-center">{x.rty ? 'Yes' : 'No'}</td>
+                  <td className="px-2 py-1.5 text-[#555]">{x.defects?.[0] ? `${x.defects[0].name} (${nf(x.defects[0].qty)})` : '—'}</td>
+                </tr>))}
+            </tbody>
+            <tfoot><tr className="bg-[#F3F3F3] font-bold"><td className="px-2 py-1.5">RTY</td><td className="px-2 py-1.5 text-right font-mono text-[#C00000]">{nf(t.fpyBad || 0)}</td><td className="px-2 py-1.5 text-right font-mono text-[#0E6E2E]">{yPct(t.rty)}</td><td colSpan={2} className="px-2 py-1.5 text-fs-12 font-semibold text-[#555]">FPY of each stage = 1 − its defects ÷ pieces made · RTY = all stage FPYs multiplied{worst ? ` · weakest: ${worst.label || worst.name}` : ''}</td></tr></tfoot>
+          </table>)}
+      </div>
+    </MesDrawer>
+  );
+}
+
 /** FPY of a total: the page's own (stations) when given, else 1 − (rework + rejected) ÷ pieces */
 const fpyOf = (t) => (t?.fpy != null ? t.fpy : t?.qty > 0 ? Math.max(0, 1 - ((t.rework || 0) + (t.rejects || 0)) / t.qty) : null);
-const yPct = (v) => (v == null ? '—' : `${(Math.round(v * 1000) / 10).toFixed(1)}%`);
-const yNum = (v) => (v == null ? '—' : (Math.round(v * 1000) / 10).toFixed(1));   // the FPY before " / RTY%" (one % sign: fits a line card)
+const yPct = (v) => (v == null ? '—' : `${(Math.round(v * 10000) / 100).toFixed(2)}%`);
+/** pieces right first time: made − defects (rework + rejected) */
+const fpQty = (t) => Math.max(0, (t?.qty || 0) - (t?.fpyBad != null ? t.fpyBad : (t?.rework || 0) + (t?.rejects || 0)));
 
 /** the figures behind A, P and Q of a total */
 export function factorsOf(t, zero = false) {
@@ -76,12 +126,16 @@ export function factorsOf(t, zero = false) {
       rows: [['Plan Target Qty', target == null ? '—' : nf(target)], ['Actual Qty', nf(t.qty)], [target != null && t.qty < target ? 'Short Qty' : 'Excess Qty', target == null ? '—' : nf(Math.abs(t.qty - target)), target != null && t.qty < target ? 'text-[#C00000]' : 'text-[#138A36]']] },
     // 23-11-2026: no rejection any more (a bad piece is reworked or dismantled) — the third row is the rework; an old
     // rejection still shows in its place when the period has one
-    { k: 'Q', name: 'Quality', value: t.Q, formula: 'Good Qty ÷ Actual Qty', lossName: 'Quality Loss', loss: t.Q == null ? null : 1 - t.Q,
+    // 26-11-2026: the formula as it is counted — Good = Actual − Rework (− Rejected); setup "rejections only": Actual − Rejected
+    { k: 'Q', name: 'Quality', value: t.Q, formula: qFormula(), lossName: 'Quality Loss', loss: t.Q == null ? null : 1 - t.Q,
       // 25-11-2026: Actual = Good + Rework (+ Rejected) — Good is what passed first time (the same "out" as the Q formula)
       // 26-11-2026: FPY / RTY in place of Good Qty (FPY = 1 − defects ÷ pieces; RTY = product of the stations' FPY,
       // from the page when it knows the stations — else '—')
-      rows: [['Actual Qty', nf(t.qty)], ['FPY / RTY', <span key="fr" title={`FPY (first pass yield) = 1 − defects ÷ pieces made · RTY (rolled throughput yield) = product of every station's FPY · good pieces ${nf(goodOf(t))}`}>
-          <span className="whitespace-nowrap text-[#0E6E2E]">{yNum(fpyOf(t))}</span><span className="text-[#999]"> / </span><span className="whitespace-nowrap text-[#0E6E2E]">{yPct(t.rty)}</span></span>, '', false, 'FPY/RTY'],
+      rows: [['Actual Qty', nf(t.qty)], ['Good Qty', nf(goodOf(t))],
+        // 26-11-2026: RTY of the stages; a click opens every stage with its defects and FPY (RTY = their product)
+        ['RTY', <button key="rty" type="button" data-testid="rty-open" onClick={(e) => { e.stopPropagation(); openStages(t); }}
+          className="whitespace-nowrap rounded px-1 text-[#0E6E2E] underline decoration-dotted hover:bg-emerald-50" style={{ textUnderlineOffset: 3 }} title="Stage-wise FPY — RTY = FPY of every stage multiplied">
+          {yPct(t.rty ?? fpyOf(t))} ›</button>, '', false, 'RTY'],
         // 26-11-2026: the rework and what became of it in ONE row — reworked / passed after rework / dismantled (88 / 70 / 18)
         ['Rework / Passed / Dismantled', <span key="r" title={`${nf(t.rework || 0)} reworked: ${nf(Math.max(0, (t.rework || 0) - (t.dismantle || 0)))} passed after rework, ${nf(t.dismantle || 0)} dismantled`}>
           <span className={t.rework ? 'text-[#C00000]' : ''}>{nf(t.rework || 0)}</span><span className="text-[#999]"> / </span>

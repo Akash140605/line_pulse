@@ -3,7 +3,7 @@ import { useLastScans } from '../hooks/useLastScans';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, X, CalendarDays } from 'lucide-react';
 import MesDrawer from '../components/MesDrawer';
-import { KpiPanel } from '../components/OleApq';
+import { KpiPanel, StageFpyHost } from '../components/OleApq';
 import { PageLoader } from '../components/Loader';
 import { useAllLineSettings } from '../hooks/useLineSettings';
 import { serverToday } from '../utils/serverTime';
@@ -318,6 +318,7 @@ export default function OleCalendarPage() {
 
   return (
     <div className="flex flex-col gap-3" aria-label="OLE calendar">
+      <StageFpyHost />
       {slot ? createPortal(filters, slot) : <div className="flex min-w-0 flex-col gap-2">{filters}</div>}
       {D.err && <div role="alert" className="rounded-[3px] border border-slate-300 bg-slate-50 px-4 py-2 text-fs-13 font-semibold text-slate-700">{D.err}</div>}
       {future && <div className={`${card} px-4 py-6 text-center text-fs-14 text-slate-600`}>{MONTHS[m - 1]} {y} has not started yet.</div>}

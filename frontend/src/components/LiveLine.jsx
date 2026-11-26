@@ -1140,6 +1140,8 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
     ro.observe(el); return () => ro.disconnect();
   }, [wall, compact]);
   const tall = wbox.h > wbox.w * 0.62;
+  // 26-11-2026: a wide, low card (one line card a row on a laptop, Line 1 + 2 on one screen): more room for the bars
+  const wideLow = !tall && wbox.w > wbox.h * 3;
   let lpAll = (lp) => lp;   // wall tiles: one label size for all four (set where the tiles are drawn)
   // wall tiles: the text sizes come from the card's room; a last check after drawing shrinks a tile's text (--fit) when it
   // still does not fit its tile (17-11-2026: "Today" / "/599" / "no cycle time" were cut at some screen sizes)
@@ -1410,7 +1412,7 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
         // management TV wall: animation | numbers | models today, output by hour below — fills its part of the screen.
         // tall card (1–2 lines): animation + numbers on top, models today across, output by hour below, all bigger (k)
         <div ref={wallRef} className="flex-1 min-h-0 p-2 pt-1 flex flex-col gap-1.5">
-          <div className={`min-h-0 grid gap-1.5 ${tall ? 'flex-[1.15] grid-cols-[minmax(0,1fr)_minmax(0,1fr)]' : 'flex-[1.12] grid-cols-[minmax(0,0.85fr)_minmax(0,1.1fr)_minmax(0,1fr)]'}`}>
+          <div className={`min-h-0 grid gap-1.5 ${tall ? 'flex-[1.15] grid-cols-[minmax(0,1fr)_minmax(0,1fr)]' : 'flex-[1.12] grid-cols-[minmax(0,0.85fr)_minmax(0,1.1fr)_minmax(0,1fr)]'}`} style={wideLow ? { flex: '1.05 1 0%' } : undefined}>
             <div className="relative min-h-0 rounded-lg bg-gradient-to-b from-blue-800/70 to-blue-950 border border-white/10 overflow-hidden flex flex-col">
               <div role="button" tabIndex={0} onClick={() => model && setShowModel(true)} onKeyDown={(e) => e.key === 'Enter' && model && setShowModel(true)} aria-label={`Details of model ${model || ''}`} className="shrink-0 cursor-pointer px-1.5 pt-1 leading-tight" title={[company, model].filter(Boolean).join(' · ')}>
                 {(company || segment) && <div className="font-extrabold uppercase tracking-wide text-sky-200 break-words" style={px(14)}>{company}{company && segment ? ' · ' : ''}{segment && <span className="text-white" aria-label={`Segment ${segment}`}>{segment}</span>}</div>}
@@ -1442,7 +1444,7 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
               ].map(([lab, val, tgt, tone, hint], ti) => {
                 // sizes from the tile's own room (the card can be small on a page, big on a TV): never cut, never wrapped
                 const tW = tall ? (wbox.w - 22) / 4 - 14 : ((wbox.w - 28) * 1.1) / 2.95 / 2 - 14;
-                const tH0 = tall ? ((wbox.h - 20) * 1.15) / 3.35 / 2 - 8 : ((wbox.h - 14) * 1.12) / 2.12 / 2 - 8;
+                const tH0 = tall ? ((wbox.h - 20) * 1.15) / 3.35 / 2 - 8 : wideLow ? ((wbox.h - 14) * 1.05) / 2.25 / 2 - 8 : ((wbox.h - 14) * 1.12) / 2.12 / 2 - 8;
                 const tH = ti === 0 ? tH0 * 1.6 : tH0;   // Today takes the whole left column (with Achieved under it)
                 const lp = Math.max(14, Math.min(tall ? 20 : 18, tH * 0.3));
                 const head = String(lab).length * 0.66 * lp + (tgt != null ? (String(tgt).length + 5) * 0.62 * lp + 10 : 0);
@@ -1491,7 +1493,7 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
             {!tall && <TvModels sm list={modelsToday} running={model} total={total} />}
           </div>
           {tall && <div className="flex-[0.95] min-h-0 grid grid-cols-1 grid-rows-1"><TvModels list={modelsToday} running={model} total={total} cols={wbox.w > 760 ? 2 : 1} /></div>}
-          <div className={`${tall ? 'flex-[1.25]' : 'flex-1'} min-h-0 rounded-lg bg-white/[.07] border border-white/10 p-1.5 min-w-0`}>
+          <div className={`${tall ? 'flex-[1.25]' : 'flex-1'} min-h-0 rounded-lg bg-white/[.07] border border-white/10 p-1.5 min-w-0`} style={wideLow ? { flex: '1.2 1 0%' } : undefined}>
             <HourBars hours={hours} nowHour={nowHour} hourModels={hourModels} lunch={lunch} targetPph={null} hint={H.bars} hourTargets={hourTargets} hourNoTarget={hourNoTarget} small={!tall} std />
           </div>
         </div>

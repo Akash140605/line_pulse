@@ -12,7 +12,7 @@ import { LINE_COLOR, nf, dmy, p2, useOleLines, groupNameOf, useOleData, Gauge, b
 import { createPortal } from 'react-dom';
 import { X, ChevronRight, Maximize2, Minimize2, CalendarDays, Factory, ListTree } from 'lucide-react';
 import MesDrawer from '../components/MesDrawer';
-import { Factor, factorsOf, KpiPanel } from '../components/OleApq';
+import { Factor, factorsOf, KpiPanel, StageFpyHost } from '../components/OleApq';
 import { DayDrawer } from './OleCalendarPage';
 import { PeriodBar, periodKind } from '../components/PeriodBar';
 import { useHeaderSlot } from './CleanDashboardPage';
@@ -508,8 +508,8 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   const perf = useMemo(() => modelPerf(R, IDS), [R, IDS]);
   const Q = useMemo(() => qualityOf(rows, D.ent.reasons.station || []), [rows, D.ent.reasons]);
   // 26-11-2026: FPY / RTY on the Quality card of the plant and of every line (in place of Good Qty)
-  const TQ = useMemo(() => ({ ...T, fpy: Q.fpy, rty: Q.rty }), [T, Q]);
-  const lineTQ = useMemo(() => Object.fromEntries(IDS.map((l) => { const q = qualityOf(rowsOfLines([l]), D.ent.reasons.station || []); return [l, { ...lineT[l], fpy: q.fpy, rty: q.rty }]; })), [lineT, R, IDS, D.ent.reasons]); // eslint-disable-line react-hooks/exhaustive-deps
+  const TQ = useMemo(() => ({ ...T, fpy: Q.fpy, rty: Q.rty, rtyN: Q.rtyCount, fpyBad: Q.rej + Q.rwk, stages: Q.stations, title: group }), [T, Q]);
+  const lineTQ = useMemo(() => Object.fromEntries(IDS.map((l) => { const q = qualityOf(rowsOfLines([l]), D.ent.reasons.station || []); return [l, { ...lineT[l], fpy: q.fpy, rty: q.rty, rtyN: q.rtyCount, fpyBad: q.rej + q.rwk, stages: q.stations, title: `Line ${l}` }]; })), [lineT, R, IDS, D.ent.reasons]); // eslint-disable-line react-hooks/exhaustive-deps
   // 23-11-2026: no separate rejection — a defect is reworked or dismantled: the tables count rework (+ any old rejection)
   const QD = Q.rej + Q.rwk;
   // 26-11-2026: the pieces dismantled for each defect (written on its rework rows)
@@ -647,6 +647,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
 
   return (
     <div className="flex flex-col gap-3" aria-label="OLE overview">
+      <StageFpyHost />
       {/* 1 — filters: in the top bar on wide screens, on the page (wrapping) on phones and small laptops */}
       {(() => {
         const tabs = ALL.length > 1 && (

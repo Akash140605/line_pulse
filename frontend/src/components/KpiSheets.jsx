@@ -42,6 +42,13 @@ function Stat({ name, value, sub, cls = 'text-slate-900', testid }) {
   );
 }
 
+// 26-11-2026: RTY chart — a number only on a day below the target (red bar), written upright above the bar, so
+// neighbouring days never overlap (every day's "100.0" ran into one line); every day's value is in the tooltip
+const rtyLabel = ({ x, y, width, value }) => {
+  if (value == null || value >= KPI_RTY_T) return null;
+  const cx = x + width / 2;
+  return <text x={cx} y={y - 4} transform={`rotate(-90 ${cx} ${y - 4})`} fontSize={11} fontWeight={700} fill="#B91C1C">{Number(value).toFixed(1)}</text>;
+};
 /** 26-11-2026: the Summary sheet as a dashboard — day by day: production plan vs actual, UPH, UPPH, RTY and OS&D (from the same rows as the table) */
 function SummaryCharts({ S }) {
   const D = [...S].reverse().map((d) => ({ k: d.date.slice(8, 10), date: d.date, plan: d.total.plan, qty: d.total.qty, uphT: d.total.uphT, uphA: d.total.uphA, upphT: d.total.upphT, upphA: d.total.upphA,
@@ -80,7 +87,7 @@ function SummaryCharts({ S }) {
           <CartesianGrid stroke={G} vertical={false} /><XAxis dataKey="k" tick={tk} interval={0} /><YAxis tick={tk} width={44} domain={[(m) => Math.min(KPI_RTY_T - 1, Math.floor(m)), 100]} unit="%" />
           <Tooltip labelFormatter={(_, p) => lab(p)} formatter={(v) => [v == null ? '—' : `${v}%`, 'RTY']} />
           <ReferenceLine y={KPI_RTY_T} stroke="#DC2626" strokeDasharray="5 4" />
-          <Bar dataKey="rty" name="RTY" maxBarSize={18} isAnimationActive={false}>{D.map((d) => <Cell key={d.k} fill={d.rty == null ? '#CBD5E1' : d.rty >= KPI_RTY_T ? '#16A34A' : '#DC2626'} />)}<LabelList dataKey="rty" position="top" style={{ fontSize: 9.5, fill: '#334155' }} formatter={(v) => (v == null ? '' : v.toFixed(1))} /></Bar>
+          <Bar dataKey="rty" name="RTY" maxBarSize={18} isAnimationActive={false}>{D.map((d) => <Cell key={d.k} fill={d.rty == null ? '#CBD5E1' : d.rty >= KPI_RTY_T ? '#16A34A' : '#DC2626'} />)}<LabelList dataKey="rty" content={rtyLabel} /></Bar>
         </ComposedChart>
       ))}
       {box('OS&D (₹)', 'reported each day · month to date', (

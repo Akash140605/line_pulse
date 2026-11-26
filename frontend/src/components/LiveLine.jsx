@@ -849,7 +849,12 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
                   const lab = (i, v, f) => { const w = String(v).length * 0.6 * f, b = px(v) + 2; return { l: cx[i] - w / 2, r: cx[i] + w / 2, b, t: b + f }; };
                   const hit = (a, b) => a.l < b.r + 3 && b.l < a.r + 3 && a.b < b.t + 1 && b.b < a.t + 1;   // closer than 3 px reads as one number
                   const both = t != null && main > 0 && !(future && !r.quantity);
-                  const clash = both && hit(lab(0, t, FT), lab(1, main, FM));
+                  // 26-11-2026: an hour too narrow for the target and the made number side by side (2 cards a row on a laptop):
+                  // one number only — the pieces made, centred over the hour above the taller bar, never wider than the hour.
+                  // The target still shows as the grey bar and in the hour's popup. (Numbers ran into the next hour's.)
+                  const one = both && !split && S < (String(t).length * 0.6 * FT + String(main).length * 0.6 * FM + 12);
+                  const oneFs = Math.max(9, Math.min(FM, (S - 3) / (0.6 * String(main).length)));
+                  const clash = !one && both && hit(lab(0, t, FT), lab(1, main, FM));
                   const tIn = clash && main > t && px(t) >= FT + 6;
                   const mIn = clash && main <= t && px(main) >= FM + 6;
                   // the no-target number: over its bar; if it would touch the made number, upright inside its bar (when tall enough)
@@ -865,9 +870,10 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
                   const tip = `${r.label.includes(':') ? `${r.label}–${pad2(r.hour + 1)}:00 (${60 - lm} min after lunch: the target is for these minutes only)` : `${r.label}:00`}${r.hour === nowHour && t != null ? ' · running hour: target up to now' : ''}${t != null ? ` · target ${t} · made ${tq}${split ? ' with a target' : ''}` : ` · made ${r.quantity}`}${split ? ` · ${nt} of a model without a cycle time (own light-blue bar, not counted)` : std && nt > 0 ? ` · ${nt} of a model without a cycle time (light blue on top, not counted)` : ''}`;
                   return (
                     <div className="relative flex-1 min-h-0 w-full flex items-end justify-center" title={tip}>
+                      {one && <span className="pointer-events-none absolute inset-x-0 z-10 text-center font-mono font-extrabold leading-none tabular-nums tracking-tighter text-sky-100 whitespace-nowrap" data-testid="one-number" style={{ bottom: `calc(${(Math.max(t, main) / max) * TOP}% + 2px)`, fontSize: `${oneFs.toFixed(1)}px` }}>{main}</span>}
                       <div className={`h-full w-full ${split ? 'max-w-[190px]' : 'max-w-[150px]'} flex items-end justify-center ${small ? 'gap-[3px] px-[2px]' : 'gap-[5%] px-[5%]'}`}>
                         <div className="flex-1 min-w-0 h-full flex flex-col items-center justify-end" aria-label={t != null ? `Target ${t} pieces` : undefined}>
-                          {t != null && !tIn && <span className={`font-mono tabular-nums leading-none mb-0.5 whitespace-nowrap ${small ? `${nf} font-bold tracking-tighter text-slate-300` : 'text-fs-14 font-bold text-slate-200'}`} style={shrink ? { fontSize: `${Math.min(FT, fitPx(0, t, 99) - 0.5).toFixed(1)}px` } : undefined} aria-label={`Target ${t}`}>{t}</span>}
+                          {t != null && !tIn && !one && <span className={`font-mono tabular-nums leading-none mb-0.5 whitespace-nowrap ${small ? `${nf} font-bold tracking-tighter text-slate-300` : 'text-fs-14 font-bold text-slate-200'}`} style={shrink ? { fontSize: `${Math.min(FT, fitPx(0, t, 99) - 0.5).toFixed(1)}px` } : undefined} aria-label={`Target ${t}`}>{t}</span>}
                           {t != null && (
                             <div className="relative w-full rounded-t" style={{ height: `${(t / max) * TOP}%`, minHeight: 3, background: TGTc }}>
                               {tIn && <span className={`absolute left-1/2 top-0.5 z-10 font-mono tabular-nums leading-none whitespace-nowrap ${nf} font-extrabold tracking-tighter`} style={{ transform: 'translateX(-50%)', color: '#1C1917', fontSize: `${Math.min(FT, fitPx(0, t, 99)).toFixed(1)}px` }} data-testid="target-in-bar" aria-label={`Target ${t}`}>{t}</span>}
@@ -875,7 +881,7 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
                           )}
                         </div>
                         <div className="flex-1 min-w-0 h-full flex flex-col items-center justify-end">
-                          {!mIn && <span className={`font-mono tabular-nums leading-none mb-0.5 whitespace-nowrap font-extrabold ${small ? `${rows.length > 12 || tight ? 'text-fs-13' : 'text-fs-14'} tracking-tighter` : 'text-fs-14'} ${main ? 'text-sky-100' : 'text-slate-400'}`} style={shrink ? { fontSize: `${Math.min(FM, fitPx(1, main, 99) - 0.5).toFixed(1)}px` } : undefined} aria-label={split ? `${main} pieces with a target` : undefined}>{future && !r.quantity ? '' : main}</span>}
+                          {!mIn && !one && <span className={`font-mono tabular-nums leading-none mb-0.5 whitespace-nowrap font-extrabold ${small ? `${rows.length > 12 || tight ? 'text-fs-13' : 'text-fs-14'} tracking-tighter` : 'text-fs-14'} ${main ? 'text-sky-100' : 'text-slate-400'}`} style={shrink ? { fontSize: `${Math.min(FM, fitPx(1, main, 99) - 0.5).toFixed(1)}px` } : undefined} aria-label={split ? `${main} pieces with a target` : undefined}>{future && !r.quantity ? '' : main}</span>}
                           <div className={`relative w-full rounded-t transition-all duration-500 ${on ? 'ring-2 ring-white' : ''} ${cur ? 'lp-curbar' : ''}`}
                             style={{ height: `${mPct}%`, minHeight: main > 0 ? 3 : 0, background: col }}>
                             {ntTop > 0 && <div className="absolute inset-x-0 top-0 rounded-t" style={{ height: `${ntTop}%`, minHeight: 3, background: NO_CYCLE, borderBottom: '1px solid #fff' }} data-testid="no-cycle-top" aria-label={`${nt} pieces of a model without a cycle time`} />}
@@ -910,7 +916,7 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
                 })()}
                 {hourTargets && (() => { const t = tg(r.hour); const p = t ? ((r.quantity - ntOf(r)) / t) * 100 : null; const col = p == null ? null : p >= 100 ? PERF.ok : p >= PERF_AMBER ? PERF.watch : PERF.bad;
                   const pc = std && p != null ? achText(achColor(r.quantity - ntOf(r), t)) : null;
-                  if (outOfShift(r.hour) && t == null && r.quantity > 0 && ntOf(r) < r.quantity && !(nowHour != null && r.hour > nowHour)) return <span className={`mx-auto mt-0.5 rounded px-1 font-extrabold leading-tight text-white ${small ? 'text-fs-11' : 'text-fs-10'}`} style={{ background: EXTRA_C }} title="Extra hour: made outside the shift (no target)">EXTRA</span>;
+                  if (outOfShift(r.hour) && t == null && r.quantity > 0 && ntOf(r) < r.quantity && !(nowHour != null && r.hour > nowHour)) return <span className={`mx-auto mt-0.5 rounded px-1 font-extrabold leading-tight text-white ${small ? 'text-fs-11' : 'text-fs-10'}`} style={{ background: EXTRA_C }} title="Extra hour: made outside the shift (no target)">{slotOf(r) < 36 ? 'EX' : 'EXTRA'}</span>;
                   return <span className={`${small ? 'text-fs-14' : 'text-fs-12'} font-mono font-extrabold mt-0.5 leading-none text-center`} style={{ color: pc || (col ? 'var(--tv-pct, #CBD5E1)' : 'transparent') }} data-ach={pc || undefined}>{p != null ? `${p < 100 ? Math.floor(p) : Math.round(p)}%` : '·'}</span>; })()}
               </button>
             );

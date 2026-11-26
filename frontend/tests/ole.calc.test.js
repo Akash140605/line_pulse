@@ -38,8 +38,10 @@ describe('total time', () => {
 });
 
 describe('one line, one day', () => {
+  setCfg0({ pMode: 'std' });   // 26-11-2026: these cases check the std-time performance (Setup: Performance by std time)
   const d = oleLineDay({ hours, targets, entries: { 9: { stops: [{ reason: 'Tea break', min: 10 }], losses: [{ model: 'WT70', reason: 'Breakdown', min: 5 }], rejects: 4 }, 13: { stopMin: '', rejects: '' } } });
   const h9 = d.rows.find((r) => r.hour === 9), h13 = d.rows.find((r) => r.hour === 13), h10 = d.rows.find((r) => r.hour === 10);
+  setCfg0({ pMode: 'plan' });
   // 17-11-2026 (17:41): no planned stoppage any more — every minute entered (old "stops" too) is a loss
   // 18-11-2026: a loss written against a model is performance loss (stays in the run time); a row without a model is idle time
   it('planned time = total; actual = planned − idle time (rows without a model); A = actual ÷ planned; empty = 0', () => {
@@ -62,6 +64,7 @@ describe('one line, one day', () => {
   });
   it('hour without pieces: A 100 %, P 0 → OLE 0', () => { expect(h10.qty).toBe(0); expect(h10.P).toBe(0); expect(h10.ole).toBe(0); });
   it('day = sums of the hours, then the formulas; an hour after 21:00 with pieces is an extra hour that does not change OLE', () => {
+    setCfg0({ pMode: 'std' });
     const h21 = d.rows.find((r) => r.hour === 21);
     expect(h21.extra).toBe(true); expect(h21.qty).toBe(5); expect(h21.totalMin).toBeCloseTo(75 / 60, 1); expect(h21.P).toBeCloseTo(1, 1); expect(h21.A).toBe(1);
     expect(d.extraHours).toEqual([21]); expect(d.extraQty).toBe(5);
@@ -73,6 +76,7 @@ describe('one line, one day', () => {
     expect(d.total.ole).toBeCloseTo(shift.ole, 2);             // the extra hour leaves OLE (almost exactly) as it was
     expect(d.total.Q).toBeCloseTo(301 / 305);
     expect(d.outsideQty).toBe(0);
+    setCfg0({ pMode: 'plan' });
   });
   it('extra hour: entries are not used; an early hour counts its pieces', () => {
     const x = oleLineDay({ hours, targets, entries: { 21: { stops: [{ reason: 'No plan', min: 45 }] } } }).rows.find((r) => r.hour === 21);
@@ -484,5 +488,31 @@ describe('good pieces = what Quality counts', () => {
     setCfg0({ ...DEF0, qMode: 'rej' });
     expect(goodOf0({ qty: 1000, rejects: 2, rework: 5 })).toBe(998);
     setCfg0({ ...DEF0 });
+  });
+});
+
+// 26-11-2026 (plant): Performance = Actual Qty ÷ Plan Target Qty — the plant's case: 3,419 made of a plan of 3,581
+import { oleOf as oleOf3 } from '../src/utils/ole';
+describe('performance = actual ÷ plan target (default)', () => {
+  it('3,419 of a plan of 3,581 → 95.5 %, not 100 % because the line ran at std speed', () => {
+    setCfg0({ ...DEF0, pCap: true });
+    const t = oleOf3({ totalMin: 660, plannedMin: 660, lossMin: 30, actualMin: 630, qty: 3419, stdSec: 3419 * 11, planQty: 3581, noStdQty: 0, rejects: 0, rework: 0 });
+    expect(t.P).toBeCloseTo(3419 / 3581, 4);
+    expect(Math.round(t.P * 1000) / 10).toBe(95.5);
+    expect(t.ole).toBeCloseTo(t.A * t.P * t.Q, 6);
+  });
+  it('no plan (an extra hour): std time ÷ run time', () => {
+    setCfg0({ ...DEF0 });
+    const t = oleOf3({ totalMin: 60, plannedMin: 60, lossMin: 0, actualMin: 60, qty: 180, stdSec: 180 * 20, planQty: 0, noStdQty: 0, rejects: 0, rework: 0 });
+    expect(t.P).toBeCloseTo(1, 6);
+  });
+  it('a day: the P of every hour and of the day come from their plan', () => {
+    setCfg0({ ...DEF0 });
+    const hrs = [{ hour: 9, quantity: 150, models: [{ mmId: 7, model: 'WT70', quantity: 150 }] }, { hour: 10, quantity: 170, models: [{ mmId: 7, model: 'WT70', quantity: 170 }] }];
+    const d = oleLineDay({ hours: hrs, targets: { 7: { cycle: 20 } }, entries: {} });
+    const r9 = d.rows.find((r) => r.hour === 9);
+    expect(r9.planQty).toBeGreaterThan(0);
+    expect(r9.P).toBeCloseTo(150 / r9.planQty, 6);
+    expect(d.total.P).toBeCloseTo(d.total.qty / d.total.planQty, 6);
   });
 });

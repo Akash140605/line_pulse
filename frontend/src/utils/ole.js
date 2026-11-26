@@ -143,7 +143,7 @@ export const shiftHours = (s = OLE_SHIFT) => { s = oleShift(s); const out = []; 
  * The admin's OLE setup (Setup → Masters → OLE formulas); the standard is the first choice of each.
  * Manpower sync: the std cycle of a line-day × std manpower ÷ its manpower (morning entry) — fewer people, longer std cycle.
  */
-export const OLE_CFG_DEFAULT = { aEnd: 'lastScan', aLoss: 'all', lossIn: 'avail', aIdle: 'run', pBase: 'run', pCap: false, pNoStd: 'skip', qMode: 'rejRework', qStations: 'all', mpSync: false, mpUse: 'open', mpUp: false, stdMp: {}, good: 85, watch: 60, fewPcs: 5, timeFmt: 'h1' };
+export const OLE_CFG_DEFAULT = { pMode: 'plan', aEnd: 'lastScan', aLoss: 'all', lossIn: 'avail', aIdle: 'run', pBase: 'run', pCap: false, pNoStd: 'skip', qMode: 'rejRework', qStations: 'all', mpSync: false, mpUse: 'open', mpUp: false, stdMp: {}, good: 85, watch: 60, fewPcs: 5, timeFmt: 'h1' };
 let CFG = { ...OLE_CFG_DEFAULT };
 // the quality stations of the setup (Quality "Final check only" counts the rejections / rework of 'final' stations)
 let STATIONS = [];
@@ -182,7 +182,10 @@ export function oleOf(t) {
   // P is not capped (a line faster than its std shows above 100 %) unless the admin chooses "Max 100 %";
   // Praw = the uncapped value (the target pieces = pieces ÷ Praw). The time compared: run time (standard) or planned time.
   const pTime = CFG.pBase === 'planned' ? planned : t.actualMin;
-  const Praw = !(pTime > 0) ? null : t.qty === 0 ? 0 : covered > 0 ? t.stdSec / (pTime * 60 * covered) : null;
+  const PrawStd = !(pTime > 0) ? null : t.qty === 0 ? 0 : covered > 0 ? t.stdSec / (pTime * 60 * covered) : null;
+  // 26-11-2026 (plant): Performance = Actual Qty ÷ Plan Target Qty (the HPR / SAWM plan of the hours that ran), as the
+  // plant reads it — 3,419 made of a plan of 3,581 is 95.5 %. A total with no plan (an extra hour) keeps std time ÷ run time.
+  const Praw = CFG.pMode !== 'std' && t.planQty > 0 ? t.qty / t.planQty : PrawStd;
   const P = Praw != null && CFG.pCap ? Math.min(1, Praw) : Praw;
   // Quality: rejected pieces out (standard), or rejected and reworked pieces out
   const bad = t.rejects + (CFG.qMode === 'rejRework' ? (t.rework || 0) : 0);
@@ -283,7 +286,7 @@ export function oleLineDay({ hours = [], targets = {}, entries = {}, nowMin = nu
   let out = closed ? rows.map((r) => ({ ...r, closed: true, ...oleOf({ ...ZERO(), rejects: 0 }) })) : rows;
   // 25-11-2026: Plan Target Qty = the plan of the HPR / SAWM KPI (utils/dayPlan.js) — the same number on every screen
   const plan = closed ? null : dayPlanOf({ rows: out, targets, shift: shift || SHIFT_PLANT, endMin: nowMin != null ? nowMin : endMin });
-  if (plan) out = out.map((r) => (plan.byHour[r.hour] ? { ...r, planQty: plan.byHour[r.hour] } : r));
+  if (plan) out = out.map((r) => (plan.byHour[r.hour] ? oleOf({ ...r, planQty: plan.byHour[r.hour] }) : r));   // the hour's P from its plan too
   return {
     rows: out, total: oleSum(out), closed, shift: sh, dayOff: dayOff || null, dayOffIgnored: !!dayOff && !closed, plan,
     outsideQty: 0, extraHours: extraRows.map((r) => r.hour), extraQty: extraRows.reduce((a, r) => a + r.qty, 0),

@@ -133,13 +133,13 @@ export function factorsOf(t, zero = false) {
   return [
     { k: 'A', name: 'Availability', value: t.A, formula: 'Run Time ÷ Planned Time', lossName: 'Availability Loss', loss: t.A == null ? null : 1 - t.A,
       rows: [['Planned Time', hrs(t.plannedMin)], ['Run Time', hrs(t.actualMin)], ['Idle Time', hrs(t.lossMin), t.lossMin ? 'text-[#C00000]' : '']] },
-    { k: 'P', name: 'Performance', value: t.P, formula: 'Std Time Of Output ÷ Run Time', lossName: 'Performance Loss', loss: t.P == null ? null : Math.max(0, 1 - t.P),
+    { k: 'P', name: 'Performance', value: t.P, formula: oleConfig().pMode === 'std' ? 'Std Time Of Output ÷ Run Time' : 'Actual Qty ÷ Plan Target Qty', lossName: 'Performance Loss', loss: t.P == null ? null : Math.max(0, 1 - t.P),
       rows: [['Plan Target Qty', target == null ? '—' : nf(target)], ['Actual Qty', nf(t.qty)], [target != null && t.qty < target ? 'Short Qty' : 'Excess Qty', target == null ? '—' : nf(Math.abs(t.qty - target)), target != null && t.qty < target ? 'text-[#C00000]' : 'text-[#138A36]'],
         // 26-11-2026: why the plan was missed — the pieces the idle time cost (Availability) and the pieces lost to speed
         // (Performance). Performance is measured on run time only, so a line that stood still can be short and still at 100 %
         ...(shortSplit(t, target) ? [['Idle / Speed', <span key="ss" className="whitespace-nowrap" title={`Short ${nf(target - t.qty)} pcs = about ${nf(shortSplit(t, target).idle)} pcs not made while the line stood idle (${hrs(t.lossMin)} — Availability loss) + about ${nf(shortSplit(t, target).speed)} pcs lost to slower cycles while running (Performance loss)`}>
           <span className="text-[#C00000]">{nf(shortSplit(t, target).idle)}</span><span className="text-[#777]"> / </span><span className={shortSplit(t, target).speed > 0 ? 'text-[#C00000]' : 'text-[#138A36]'}>{nf(shortSplit(t, target).speed)}</span></span>, '', true, 'Idle / Speed']] : []),
-        ...(t.Praw != null && t.P != null && t.Praw > t.P + 0.0005 ? [['Actual speed', `${(Math.round(t.Praw * 1000) / 10).toFixed(1)}%`, 'text-[#138A36]', true, 'Speed']] : [])] },
+        ...(t.Praw != null && t.P != null && t.Praw > t.P + 0.0005 ? [['Achieved (no cap)', `${(Math.round(t.Praw * 1000) / 10).toFixed(1)}%`, 'text-[#138A36]', true, 'Achieved']] : [])] },
     // 23-11-2026: no rejection any more (a bad piece is reworked or dismantled) — the third row is the rework; an old
     // rejection still shows in its place when the period has one
     // 26-11-2026: the formula as it is counted — Good = Actual − Rework (− Rejected); setup "rejections only": Actual − Rejected

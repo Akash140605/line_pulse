@@ -165,7 +165,8 @@ function ui_hpr($h): array
  *   mpSync / mpUse / mpUp / stdMp   manpower sync of the std cycle · good / watch  OLE colours (%) · fewPcs · timeFmt 'h1' | 'hm'
  *   aEnd  'lastScan' | 'shiftEnd'   a finished day's time runs up to its last scan, or to the shift close
  *   aLoss 'all' | 'unplanned'       every minute entered is a loss, or old planned stops are taken out of the planned time
- *   pBase 'run' | 'planned'         Performance = std time ÷ run time, or ÷ planned time
+ *   pMode 'run' | 'plan' | 'std'    Performance = Actual ÷ target of the run time · Actual ÷ shift plan · std time ÷ run time
+ *   pBase 'run' | 'planned'         (std mode) std time against run time or planned time
  *   pCap  bool                      Performance at most 100 %
  *   qMode 'rej' | 'rejRework'       Quality = (made − rejected) ÷ made, or (made − rejected − rework) ÷ made
  */
@@ -183,7 +184,7 @@ function ui_ole($o): array
     $std = [];
     foreach (['1', '2', '3', '4'] as $l) { $n = $int(((array)($o['stdMp'] ?? []))[$l] ?? null, 0, 1000, 0); if ($n > 0) $std[$l] = $n; }
     return ['aEnd' => $pick('aEnd', ['lastScan', 'shiftEnd']), 'aLoss' => $pick('aLoss', ['all', 'unplanned']),
-        'lossIn' => $pick('lossIn', ['avail', 'perf']), 'aIdle' => $pick('aIdle', ['run', 'idle']), 'pBase' => $pick('pBase', ['run', 'planned']),
+        'lossIn' => $pick('lossIn', ['avail', 'perf']), 'aIdle' => $pick('aIdle', ['run', 'idle']), 'pMode' => $pick('pMode', ['run', 'plan', 'std']), 'pBase' => $pick('pBase', ['run', 'planned']),
         'pCap' => $old ? true : (bool)($o['pCap'] ?? false), 'pNoStd' => $pick('pNoStd', ['skip', 'avg']), 'qMode' => (int)($o['qV'] ?? 0) >= 2 ? $pick('qMode', ['rejRework', 'rej']) : 'rejRework', 'qV' => 2,   // 25-11-2026: quality counts the rework (no rejection since 23-11) — a setup saved before gets it once
         'qStations' => $pick('qStations', ['all', 'final']),
         // manpower sync: std cycle × std manpower ÷ the line's manpower of the day (morning entry)

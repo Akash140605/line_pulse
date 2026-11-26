@@ -81,7 +81,8 @@ const OLE_CHOICES = [
   { k: 'aLoss', group: 'Availability', name: 'Loss entry minutes', opts: [['all', 'All are loss'], ['unplanned', 'Old planned stop not loss']] },
   { k: 'lossIn', group: 'Availability', name: 'Loss written against a model', opts: [['avail', 'Availability loss'], ['perf', 'Performance loss']] },
   { k: 'aIdle', group: 'Availability', name: 'Hour without scans, nothing written', opts: [['run', 'Run time'], ['idle', 'Idle time']] },
-  { k: 'pBase', group: 'Performance', name: 'Std time against', opts: [['run', 'Run time'], ['planned', 'Planned time']] },
+  { k: 'pMode', group: 'Performance', name: 'Performance =', opts: [['run', 'Actual ÷ target of run time'], ['plan', 'Actual ÷ shift plan'], ['std', 'Std time ÷ run time']] },
+  { k: 'pBase', group: 'Performance', name: 'Std time against', opts: [['run', 'Run time'], ['planned', 'Planned time']], when: (f) => f.pMode === 'std' },
   { k: 'pCap', group: 'Performance', name: 'Above 100 %', opts: [[false, 'Show as it is'], [true, 'Max 100 %']] },
   { k: 'pNoStd', group: 'Performance', name: 'Model without std cycle', opts: [['skip', 'Left out'], ['avg', "Hour's average std"]] },
   { k: 'qMode', group: 'Quality', name: 'Qty out', opts: [['rejRework', 'Rejected + rework'], ['rej', 'Rejected only']] },
@@ -112,7 +113,7 @@ function OleFormulas({ ole, onSave }) {
   };
   const formula = {
     Availability: `${f.aLoss === 'unplanned' ? 'Run ÷ (Time − Planned stop)' : '(Time − Loss) ÷ Time'}${f.lossIn === 'perf' ? ' · model loss in P' : ''}${f.aIdle === 'idle' ? ' · empty hour idle' : ''}`,
-    Performance: `Std time ÷ ${f.pBase === 'planned' ? 'Planned time' : 'Run time'}${f.pCap ? ' · max 100 %' : ''}${f.pNoStd === 'avg' ? ' · no-std at average' : ''}`,
+    Performance: `${f.pMode === 'std' ? `Std time ÷ ${f.pBase === 'planned' ? 'Planned time' : 'Run time'}` : f.pMode === 'plan' ? 'Actual qty ÷ Plan target (whole shift — idle time lowers A and P)' : 'Actual qty ÷ Target of the run time (idle time only in A)'}${f.pCap ? ' · max 100 %' : ''}${f.pNoStd === 'avg' ? ' · no-std at average' : ''}`,
     Quality: `${f.qMode === 'rejRework' ? '(Made − Rejected − Rework) ÷ Made' : '(Made − Rejected) ÷ Made'}${f.qStations === 'final' ? ' · final check only' : ''}`,
     Manpower: f.mpSync ? `Std cycle × Std manpower ÷ ${f.mpUse === 'avg' ? 'Avg manpower' : 'Manpower'}` : 'Off',
     Display: `OLE good ≥ ${f.good}% · watch ≥ ${f.watch}% · A ≥ ${f.goodA}% · P ≥ ${f.goodP}% · Q ≥ ${f.goodQ}%`,

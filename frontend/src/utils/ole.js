@@ -143,7 +143,7 @@ export const shiftHours = (s = OLE_SHIFT) => { s = oleShift(s); const out = []; 
  * The admin's OLE setup (Setup → Masters → OLE formulas); the standard is the first choice of each.
  * Manpower sync: the std cycle of a line-day × std manpower ÷ its manpower (morning entry) — fewer people, longer std cycle.
  */
-export const OLE_CFG_DEFAULT = { pMode: 'plan', aEnd: 'lastScan', aLoss: 'all', lossIn: 'avail', aIdle: 'run', pBase: 'run', pCap: false, pNoStd: 'skip', qMode: 'rejRework', qStations: 'all', mpSync: false, mpUse: 'open', mpUp: false, stdMp: {}, good: 85, watch: 60, fewPcs: 5, timeFmt: 'h1' };
+export const OLE_CFG_DEFAULT = { pMode: 'run', aEnd: 'lastScan', aLoss: 'all', lossIn: 'avail', aIdle: 'run', pBase: 'run', pCap: false, pNoStd: 'skip', qMode: 'rejRework', qStations: 'all', mpSync: false, mpUse: 'open', mpUp: false, stdMp: {}, good: 85, watch: 60, fewPcs: 5, timeFmt: 'h1' };
 let CFG = { ...OLE_CFG_DEFAULT };
 // the quality stations of the setup (Quality "Final check only" counts the rejections / rework of 'final' stations)
 let STATIONS = [];
@@ -288,7 +288,7 @@ export function oleLineDay({ hours = [], targets = {}, entries = {}, nowMin = nu
   const plan = closed ? null : dayPlanOf({ rows: out, targets, shift: shift || SHIFT_PLANT, endMin: nowMin != null ? nowMin : endMin });
   // 26-11-2026 (plant): the target of an hour is for its RUN time — the plan of the working minutes × run ÷ planned (idle
   // minutes out): a stopped line is Availability loss only, Performance = pieces ÷ the pieces the run time could make
-  const runPlan = (r, hp) => (r.plannedMin > 0 ? Math.round((hp * Math.max(0, r.actualMin)) / r.plannedMin) : hp);
+  const runPlan = (r, hp) => (CFG.pMode === 'run' && r.plannedMin > 0 ? Math.round((hp * Math.max(0, r.actualMin)) / r.plannedMin) : hp);   // 'plan': the shift plan as it is
   if (plan) out = out.map((r) => (plan.byHour[r.hour] ? oleOf({ ...r, planQty: runPlan(r, plan.byHour[r.hour]), shiftPlanQty: plan.byHour[r.hour] }) : r));   // the hour's P from its plan too
   return {
     rows: out, total: oleSum(out), closed, shift: sh, dayOff: dayOff || null, dayOffIgnored: !!dayOff && !closed, plan,

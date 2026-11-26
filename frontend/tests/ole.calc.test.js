@@ -531,3 +531,10 @@ describe('target for the run time', () => {
     expect(d.total.planQty).toBe(135);
   });
 });
+describe('Performance mode (admin, Setup → OLE formulas)', () => {
+  const hrs = [{ hour: 10, quantity: 135, models: [{ mmId: 7, model: 'WT70', quantity: 135 }] }];
+  const day = () => oleLineDay({ hours: hrs, targets: { 7: { cycle: 20 } }, entries: { 10: { stops: [{ reason: 'No material', min: 15 }] } } }).rows.find((x) => x.hour === 10);
+  it('run (standard): target of the run time 135 → P 100 %', () => { setCfg0({ ...DEF0, pMode: 'run' }); const r = day(); expect(r.planQty).toBe(135); expect(r.P).toBeCloseTo(1, 6); });
+  it('plan: the shift plan 180 → P 75 %', () => { setCfg0({ ...DEF0, pMode: 'plan', pCap: true }); const r = day(); expect(r.planQty).toBe(180); expect(r.P).toBeCloseTo(0.75, 6); });
+  it('std: std time ÷ run time → 100 %', () => { setCfg0({ ...DEF0, pMode: 'std' }); const r = day(); expect(r.P).toBeCloseTo(1, 6); setCfg0({ ...DEF0 }); });
+});

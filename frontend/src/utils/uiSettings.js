@@ -161,7 +161,7 @@ export function normalizeHpr(h) {
   return { rate: num(x.rate, 0, 10000, HPR_DEFAULT.rate), otFrom: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(x.otFrom || '')) ? x.otFrom : HPR_DEFAULT.otFrom, otX: num(x.otX, 1, 5, HPR_DEFAULT.otX) };
 }
 /** OLE formulas chosen by the admin (mirrors ui_ole in backend/lib/ui.php); the first value of each is the standard. */
-export const OLE_DEFAULT = { aEnd: 'lastScan', aLoss: 'all', lossIn: 'avail', aIdle: 'run', pBase: 'run', pCap: true, pNoStd: 'skip', qMode: 'rejRework', qV: 2, qStations: 'all', mpSync: false, mpUse: 'open', mpUp: false, stdMp: {}, good: 95, watch: 85, fewPcs: 5, timeFmt: 'h1', goodA: 95, watchA: 85, goodP: 95, watchP: 85, goodQ: 95, watchQ: 85, bench: 2 };
+export const OLE_DEFAULT = { pMode: 'run', aEnd: 'lastScan', aLoss: 'all', lossIn: 'avail', aIdle: 'run', pBase: 'run', pCap: true, pNoStd: 'skip', qMode: 'rejRework', qV: 2, qStations: 'all', mpSync: false, mpUse: 'open', mpUp: false, stdMp: {}, good: 95, watch: 85, fewPcs: 5, timeFmt: 'h1', goodA: 95, watchA: 85, goodP: 95, watchP: 85, goodQ: 95, watchQ: 85, bench: 2 };
 export function normalizeOle(o) {
   const x = o && typeof o === 'object' ? o : {};
   const pick = (k, ok) => (ok.includes(x[k]) ? x[k] : ok[0]);
@@ -172,6 +172,7 @@ export function normalizeOle(o) {
   const stdMp = {};
   for (const l of ['1', '2', '3', '4']) { const n = int(x.stdMp?.[l], 0, 1000, 0); if (n > 0) stdMp[l] = n; }
   return { aEnd: pick('aEnd', ['lastScan', 'shiftEnd']), aLoss: pick('aLoss', ['all', 'unplanned']), lossIn: pick('lossIn', ['avail', 'perf']), aIdle: pick('aIdle', ['run', 'idle']),
+    pMode: pick('pMode', ['run', 'plan', 'std']),   // 26-11-2026: Performance = Actual ÷ run-time target · ÷ shift plan · std time ÷ run time
     pBase: pick('pBase', ['run', 'planned']), pCap: old ? true : !!x.pCap, pNoStd: pick('pNoStd', ['skip', 'avg']), qMode: Number(x.qV) >= 2 ? pick('qMode', ['rejRework', 'rej']) : 'rejRework', qV: 2,   // 25-11-2026: Good = Actual − Rework (no rejection since 23-11); mirrors ui_ole
     qStations: pick('qStations', ['all', 'final']),
     mpSync: !!x.mpSync, mpUse: pick('mpUse', ['open', 'avg']), mpUp: !!x.mpUp, stdMp, good, watch: old ? Math.min(85, good) : int(x.watch, 0, good, Math.min(85, good)), ...apqBench(x, int), fewPcs: int(x.fewPcs, 1, 100, 5), timeFmt: pick('timeFmt', ['h1', 'hm']), bench: 2 };

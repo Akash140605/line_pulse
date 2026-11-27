@@ -48,9 +48,9 @@ function LoginPage() {
   const STATS = [[ALL_LINE_IDS.length, '', 'Lines live'], [50, '+', 'Screens & reports'], [24, '×7', 'Always on']];
   const DOTS = useState(() => Array.from({ length: 22 }, () => ({ l: Math.random() * 100, d: 6 + Math.random() * 9, s: 2 + Math.random() * 4, w: Math.random() * 8 })))[0];
   return (
-    <div className="lp-login min-h-screen grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] bg-[#F3F6FB]">
+    <div className="lp-login lp-login-fit min-h-screen grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] bg-[#F3F6FB]">
       {/* left: what the system is — animated (moving gradient, a running line, rising hour bars); phones show only the form */}
-      <aside onMouseMove={onMove} onMouseLeave={() => setTilt({ x: 0, y: 0 })} className="lp-login-hero relative hidden overflow-hidden px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between" style={{ '--tx': tilt.x, '--ty': tilt.y }}>
+      <aside onMouseMove={onMove} onMouseLeave={() => setTilt({ x: 0, y: 0 })} className="lp-login-hero relative hidden overflow-hidden px-12 py-10 lg:h-screen text-white lg:flex lg:flex-col lg:justify-between" style={{ '--tx': tilt.x, '--ty': tilt.y }}>
         <span aria-hidden className="lp-login-grid" />
         <span aria-hidden className="lp-login-orb lp-login-orb1" />
         <span aria-hidden className="lp-login-orb lp-login-orb2" />
@@ -75,9 +75,9 @@ function LoginPage() {
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/40 bg-emerald-400/10 px-3 py-1 text-fs-12 font-bold uppercase tracking-wider text-emerald-200">
             <span className="lp-login-live" aria-hidden /> Live · Washing machine assembly
           </div>
-          <h2 className="mt-4 text-fs-40 font-extrabold leading-[1.1]">Every line.<br /><span className="lp-login-shine">Every hour. Every piece.</span></h2>
-          <p className="mt-3 max-w-xl text-fs-16 text-sky-100/90">Live output, OLE, losses and root cause of every line — one screen for supervisors and management.</p>
-          <div className="mt-5 flex max-w-xl gap-3">
+          <h2 className="lp-login-h2 mt-4 text-fs-40 font-extrabold leading-[1.1]">Every line.<br /><span className="lp-login-shine">Every hour. Every piece.</span></h2>
+          <p className="lp-login-lead mt-3 max-w-xl text-fs-16 text-sky-100/90">Live output, OLE, losses and root cause of every line — one screen for supervisors and management.</p>
+          <div className="lp-login-stats mt-5 flex max-w-xl gap-3">
             {STATS.map(([n, suf, lab]) => (
               <div key={lab} className="lp-login-stat flex-1 rounded-xl border border-white/15 bg-white/[.07] px-3 py-2">
                 <div className="font-mono text-fs-24 font-extrabold leading-none text-white">{Math.round(ease(cnt) * n)}{suf}</div>
@@ -85,15 +85,15 @@ function LoginPage() {
               </div>))}
           </div>
           {/* the running line: hour bars rising against the target, boxes moving on the conveyor */}
-          <div className="lp-login-card mt-7 max-w-xl rounded-2xl border border-white/15 bg-white/[.06] p-4 backdrop-blur" aria-hidden>
+          <div className="lp-login-card lp-login-chart mt-7 max-w-xl rounded-2xl border border-white/15 bg-white/[.06] p-4 backdrop-blur" aria-hidden>
             <div className="mb-2 flex items-center justify-between text-fs-12 font-bold uppercase tracking-wider text-sky-100/80"><span>Output by hour</span><span className="text-emerald-300">104%</span></div>
-            <div className="relative flex h-28 items-end gap-2">
+            <div className="lp-login-bars relative flex h-28 items-end gap-2">
               <span className="absolute inset-x-0 border-t-2 border-dashed border-white/40" style={{ bottom: '72%' }} />
               {BARS.map((h, k) => <span key={k} className="lp-login-bar flex-1 rounded-t-md" style={{ height: `${h}%`, animationDelay: `${k * 0.12}s`, background: h >= 72 ? 'linear-gradient(180deg,#34D399,#059669)' : 'linear-gradient(180deg,#FBBF24,#D97706)' }} />)}
             </div>
             <div className="lp-login-belt mt-3 h-3 rounded-full">{[0, 1, 2, 3].map((k) => <span key={k} className="lp-login-box" style={{ animationDelay: `${k * 1.1}s` }} />)}</div>
           </div>
-          <ul className="mt-7 grid max-w-xl grid-cols-2 gap-3">
+          <ul className="lp-login-feats mt-7 grid max-w-xl grid-cols-2 gap-3">
             {FEAT.map(([Icon, t, d], k) => (
               <li key={t} className="lp-login-feat flex items-start gap-3 rounded-xl border border-white/10 bg-white/[.05] p-3" style={{ animationDelay: `${0.3 + k * 0.1}s` }}>
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-sky-400/30 to-indigo-400/20 text-sky-100"><Icon size={18} aria-hidden /></span>

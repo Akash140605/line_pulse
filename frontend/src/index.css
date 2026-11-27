@@ -965,3 +965,27 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 
 /* 27-11-2026: a factor clicked — its own meter beside its figures */
 @media (min-width: 768px) { .lp-kpi-only { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr); } }
+
+/* 27-11-2026: the login page fits the screen (never cut / scrolled) — the left side gets more compact on a short screen */
+@media (min-width: 1024px) {
+  .lp-login-fit { height: 100vh; min-height: 0 !important; overflow: hidden; }
+  .lp-login-fit .lp-login-hero { height: 100vh; padding-top: clamp(16px, 3.2vh, 40px) !important; padding-bottom: clamp(14px, 2.6vh, 40px) !important; }
+  .lp-login-fit > div:last-child { height: 100vh; overflow-y: auto; }
+}
+@media (min-width: 1024px) and (max-height: 900px) {
+  .lp-login-h2 { font-size: 34px !important; margin-top: 10px !important; }
+  .lp-login-lead { margin-top: 8px !important; font-size: 15px !important; }
+  .lp-login-stats { margin-top: 12px !important; }
+  .lp-login-chart { margin-top: 14px !important; padding: 12px !important; }
+  .lp-login-bars { height: 84px !important; }
+  .lp-login-feats { margin-top: 14px !important; gap: 8px !important; }
+  .lp-login-feats > li { padding: 8px !important; }
+}
+@media (min-width: 1024px) and (max-height: 760px) {
+  .lp-login-feats { display: none !important; }
+  .lp-login-h2 { font-size: 30px !important; }
+  .lp-login-bars { height: 70px !important; }
+}
+@media (min-width: 1024px) and (max-height: 600px) {
+  .lp-login-chart, .lp-wm-wrap { display: none !important; }
+}

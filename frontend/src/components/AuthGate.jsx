@@ -45,7 +45,7 @@ function LoginPage() {
   const [cnt, setCnt] = useState(0);
   useEffect(() => { let f = 0; const id = setInterval(() => { f += 1; setCnt(Math.min(1, f / 40)); if (f >= 40) clearInterval(id); }, 30); return () => clearInterval(id); }, []);
   const ease = (v) => 1 - (1 - v) ** 3;
-  const STATS = [[ALL_LINE_IDS.length, '', 'Lines live'], [50, '+', 'Screens & reports'], [24, '×7', 'Always on']];
+  const STATS = [[ALL_LINE_IDS.length, '', 'Lines live'], [50, '+', 'Screens & reports']];   // 27-11-2026: "24×7 Always on" taken off (as asked)
   const DOTS = useState(() => Array.from({ length: 22 }, () => ({ l: Math.random() * 100, d: 6 + Math.random() * 9, s: 2 + Math.random() * 4, w: Math.random() * 8 })))[0];
   return (
     <div className="lp-login lp-login-fit min-h-screen grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] bg-[#F3F6FB]">

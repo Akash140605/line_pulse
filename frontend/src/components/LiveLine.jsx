@@ -1441,92 +1441,41 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
                 <Scene uid={uid} compact lite active={running} hourQty={hourShown} cartons={cartons} flashKey={last.key} deltaN={last.n} onDone={removeCarton} model={model} company={company} loaded={shown} />
               </div>
             </div>
-            <div ref={tilesRef} className={`lp-fit grid gap-1 min-h-0 ${wideLow ? 'grid-cols-3 grid-rows-1' : 'grid-cols-2 grid-rows-2'}`}>
-              {(() => { const T = [['Today', dayTarget > 0 ? Math.round(dayTarget) : null], ['This hour', hourTarget], ['Cycle', tcTxt]];
-                // one label size for every card on the wall (a target of up to 5 characters assumed), so the cards look the same
-                lpAll = (lp, tW) => Math.max(12, Math.min(...T.map(([l]) => { const head = l.length * 0.66 * lp + 6 * 0.62 * lp + 10; return head > tW ? lp * (tW / head) : lp; })));
-                return null; })()}
-              {[
-                // actual against target (13-11-2026): green when the target is met, red when behind; white without a target
-                ['Today', shown, dayTarget > 0 ? Math.round(dayTarget) : null, 'text-white', todayHint],
-                ['This hour', hourShown ?? '—', hourTarget, 'text-white', H.hour],
-                ['Cycle', fmtSeconds(cyc), tcTxt || '—', 'text-white', tcTxt ? H.cycle : 'No target cycle for this model yet — set it in Line target method / Standard cycle time'],
-              ].map(([lab, val, tgt, tone, hint], ti) => {
-                // sizes from the tile's own room (the card can be small on a page, big on a TV): never cut, never wrapped
-                const tW = tall ? (wbox.w - 22) / 4 - 14 : wideLow ? ((wbox.w - 28) * 1.1) / 2.95 / 3 - 10 : ((wbox.w - 28) * 1.1) / 2.95 / 2 - 14;
-                const tH0 = tall ? ((wbox.h - 20) * 1.15) / 3.35 / 2 - 8 : wideLow ? ((wbox.h - 14) * 1.05) / 2.25 - 10 : ((wbox.h - 14) * 1.12) / 2.12 / 2 - 8;
-                const tH = tH0;   // 27-11-2026: Today is the top row (a 3-column table), This hour + Cycle under it
-                const lp = Math.max(14, Math.min(tall ? 20 : 18, tH * 0.3));
-                const head = String(lab).length * 0.66 * lp + (tgt != null ? (String(tgt).length + 5) * 0.62 * lp + 10 : 0);
-                const lpx = lpAll(lp, tW);   // label + target on one line, the same size in all four tiles
-                const withFoot = false;   // TV: no line average under the model's cycle (14-11-2026)
-                // 23-11-2026: the TV writes "Target 61" too (was "/61"); 19-11-2026 (pages): the target on its own line under the number — "Target 1407"
-                const tLine = tgt != null;   // 23-11-2026: TV too — "Target N" on its own line under the number (on the label line it got cut on a narrow tile)
-                const vpx = Math.max(16, Math.min(tall ? 50 : 40, (tW - 6) / (0.66 * Math.max(2, String(val).length) + (String(val).includes('%') ? 0.25 : 0)), tH - lpx * (withFoot || tLine ? 2 : 1) - (withFoot || tLine ? 10 : 6)));   // % is wider than a digit
+            {/* 27-11-2026: Today, This hour and Cycle in one table — Target · Actual · Achieved (as asked) */}
+            <div ref={tilesRef} className="lp-fit lp-tgt-table min-h-0 min-w-0 overflow-hidden rounded-lg border border-white/10 bg-white/[.07]" data-testid="today-table">
+              {(() => {
+                const tWall = (wbox.w - 28) * 1.1 / 2.95 - 10;               // the tiles' room (width)
+                const hWall = tall ? ((wbox.h - 20) * 1.15) / 3.35 - 8 : wideLow ? ((wbox.h - 14) * 1.05) / 2.25 - 10 : ((wbox.h - 14) * 1.12) / 2.12 - 8;
+                const hourAch = hourTarget > 0 && hourShown != null ? Math.round((Number(hourShown) / hourTarget) * 1000) / 10 : null;
+                const cycAch = Number(targetCycle) > 0 && cyc > 0 ? Math.round((Number(targetCycle) / cyc) * 1000) / 10 : null;
+                const rows = [
+                  ['Today', dayTarget > 0 ? Math.round(dayTarget) : '—', shown, achDay == null ? null : Number(achDay), todayHint],
+                  ['This hour', hourTarget ?? '—', hourShown ?? '—', hourAch, H.hour],
+                  ['Cycle', tcTxt || '—', fmtSeconds(cyc), cycAch, tcTxt ? `${H.cycle}\nAchieved = target cycle ÷ actual cycle` : 'No target cycle for this model yet — set it in Line target method / Standard cycle time'],
+                ];
+                const rowH = Math.max(18, (hWall - 6) / 3.9);
+                const colW = (tWall - 12) / 3.4;
+                const longest = Math.max(...rows.flatMap(([, t, a, c]) => [String(t).length, String(a).length, c == null ? 1 : String(c).length]));
+                const vz = Math.max(12, Math.min(rowH * 0.62, colW / (0.64 * Math.max(3, longest))));
+                const hz = Math.max(9, Math.min(vz * 0.62, rowH * 0.45, colW / (0.62 * 8.5)));
                 const fz = (n) => ({ fontSize: `calc(${Math.round(n)}px * var(--fs-tv, 1) * var(--fit, 1))` });
-                // 27-11-2026: Today as a 3-column table — Target · Actual · Achieved % (as asked)
-                if (ti === 0) {
-                  const cells = [['Target', tgt != null ? tgt : '—'], ['Actual', val], ['Achieved', achDay == null ? '—' : `${achDay}%`]];
-                  const colW = ((wideLow ? tW : tW * 2 + 14) + 8) / 3 - 14;   // Today spans the tiles' whole width (top row)
-                  const hz = Math.max(9, Math.min(lpx * 0.8, (colW - 6) / (0.64 * 8.5)));
-                  const showLab = tH >= 78;   // a short tile: no "Today" line (the table says what it is)
-                  const vz = Math.max(12, Math.min((tH - hz * 1.3 - (showLab ? lpx * 0.9 + 4 : 0) - 22 - (noTgtDay > 0 ? lpx * 0.75 : 0)) / 1.1, ...cells.map(([, v]) => colW / (0.64 * Math.max(2, String(v).length) + (String(v).includes('%') ? 0.3 : 0)))));
-                  return (
-                    <div key={lab} title={hint} data-testid="today-table" className={`rounded-lg bg-white/[.07] border border-white/10 min-w-0 min-h-0 overflow-hidden px-2 py-1 flex flex-col justify-center gap-1 ${!wideLow ? 'col-span-2' : ''}`}>
-                      {showLab && <span className="leading-none font-extrabold uppercase tracking-wide text-sky-100 whitespace-nowrap" style={fz(lpx * 0.9)}>Today</span>}
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {cells.map(([h, v], i) => {
-                          const pill = i === 2 && achDay != null;
-                          const bg = achDay >= 100 ? '#059669' : achDay >= 90 ? '#D97706' : '#DC2626';
-                          return (
-                            <div key={h} className="lp-today-cell flex min-w-0 flex-col items-center justify-center gap-1 rounded-md border border-white/15 bg-white/[.06] px-1 py-1" title={h === 'Achieved' ? 'Achieved % = pieces with a target ÷ target so far' : `${h} today`}>
-                              <span className="font-bold uppercase leading-none tracking-wide text-sky-100 whitespace-nowrap" style={fz(hz)}>{h}</span>
-                              {pill
-                                ? <span className="rounded-full px-2 py-0.5 font-mono font-extrabold tabular-nums leading-none whitespace-nowrap" style={{ ...fz(vz * 0.86), background: bg, color: '#fff', boxShadow: `0 4px 12px -4px ${bg}` }}>{v}</span>
-                                : <span className={`font-mono font-extrabold tabular-nums leading-none whitespace-nowrap ${i === 0 ? 'text-sky-100' : 'text-white'}`} style={fz(vz)}>{v}</span>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {noTgtDay > 0 && <span className="leading-tight font-bold text-sky-100 whitespace-nowrap" style={fz(Math.max(10, Math.min(lpx * 0.75, (tW - 2) / (0.6 * `${noTgtDay} no cycle time`.length))))} data-testid="no-target-day" title={`${noTgtDay} pcs of models without a cycle time — not counted in Achieved`}>{noTgtDay} no cycle time</span>}
-                    </div>
-                  );
-                }
+                const pill = (v) => { const bg = v >= 100 ? '#059669' : v >= 90 ? '#D97706' : '#DC2626'; return <span className="rounded-full px-1.5 py-[1px] font-mono font-extrabold tabular-nums leading-none whitespace-nowrap" style={{ ...fz(vz * 0.82), background: bg, color: '#fff' }}>{v}%</span>; };
                 return (
-                  <div key={lab} title={hint} className={`rounded-lg bg-white/[.07] border border-white/10 min-w-0 min-h-0 overflow-hidden px-2 py-1 flex flex-col justify-center gap-1 ${ti === 0 && !wideLow ? 'row-span-2' : ''}`}>
-                    <div className="flex items-center justify-between gap-1 min-w-0">
-                      <span className="leading-none font-extrabold uppercase tracking-wide text-sky-100 whitespace-nowrap" style={fz(lpx)}>{lab}</span>
-                      {tgt != null && !tLine && <span className="shrink-0 whitespace-nowrap rounded bg-white px-1 font-mono font-extrabold leading-tight text-dixon-navy" style={fz(lpx)} title={lab === 'Cycle' ? 'Target cycle' : 'Target so far'}><span className="mr-1 font-sans font-bold uppercase" style={{ fontSize: '0.62em' }}>Target</span>{tgt}</span>}
-                    </div>
-                    <span className={`font-mono tabular-nums font-extrabold leading-none whitespace-nowrap ${tone}`} style={fz(vpx)}>{val}</span>
-                    {tLine && <span className="flex min-w-0 items-center gap-1 whitespace-nowrap leading-none" style={fz(lpx * 0.9)} title={lab === 'Cycle' ? 'Target cycle' : 'Target so far'} data-testid="tile-target">
-                      <span className="font-bold text-sky-100">Target</span><span className="rounded bg-white px-1 font-mono font-extrabold text-dixon-navy">{tgt}</span></span>}
-                    {withFoot && <span className="leading-none font-bold text-sky-100 whitespace-nowrap" style={fz(lpx * 0.9)} title="Whole line today (every stop counts)">{lineFoot}</span>}
-                    {ti === 0 && (() => {
-                      // Achieved sits with Today: pieces of models with a target ÷ target so far (no-target pieces left out)
-                      const ach = achDay;
-                      return (
-                        <div className="mt-0.5 flex flex-col gap-0.5 border-t border-white/15 pt-1" title={noTgtDay > 0 ? `${tgtTotal} pcs with a target ÷ target ${Math.round(dayTarget)} · ${noTgtDay} pcs without a target not counted` : 'Produced today ÷ target so far'}>
-                          <span className="leading-none font-extrabold uppercase tracking-wide text-sky-100 whitespace-nowrap" style={fz(lpx)}>Achieved</span>
-                          <span className={`font-mono tabular-nums font-extrabold leading-none whitespace-nowrap ${'text-white'}`}
-                            style={fz(Math.max(14, Math.min(vpx * 0.7, (tW - 6) / (0.66 * String(ach ?? '—').length + 0.9))))}>{ach == null ? '—' : `${ach}%`}</span>
-                          {noTgtDay > 0 && (() => {
-                            // one line when it fits the tile, else "N pcs" over "no cycle time" (never cut at the tile edge)
-                            const f0 = Math.max(11, lpx * 0.8), txt = `${noTgtDay} no cycle time`;
-                            const f1 = Math.min(f0, (tW - 2) / (0.6 * txt.length)), one = f1 >= 10;   // one line down to 10 px
-                            const f = one ? f1 : Math.max(10, Math.min(f0, (tW - 2) / (0.6 * 13)));
-                            return (
-                              <span className="leading-tight font-bold text-sky-100 whitespace-nowrap" style={fz(f)} data-testid="no-target-day" title={`${noTgtDay} pcs of models without a cycle time — not counted in Achieved`}>
-                                {one ? txt : <>{noTgtDay} pcs<br />no cycle time</>}
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      );
-                    })()}
+                  <div className="grid h-full w-full" style={{ gridTemplateColumns: 'minmax(0,1.05fr) repeat(3, minmax(0,1fr))', gridTemplateRows: `auto repeat(3, minmax(0,1fr))` }}>
+                    {['', 'Target', 'Actual', 'Achieved'].map((h, i) => (
+                      <span key={`h${i}`} className={`flex items-center ${i ? 'justify-center' : ''} border-b border-white/15 bg-white/10 px-1.5 py-0.5 font-bold uppercase tracking-wide leading-tight text-sky-100 whitespace-nowrap`} style={fz(hz)}>{h}</span>))}
+                    {rows.map(([lab, t, a, c, hint], r) => (
+                      <React.Fragment key={lab}>
+                        <span title={hint} className={`flex items-center px-1.5 font-extrabold uppercase tracking-wide leading-none text-sky-100 whitespace-nowrap ${r < 2 ? 'border-b border-white/10' : ''}`} style={fz(hz * 1.05)}>{lab}</span>
+                        <span title={hint} className={`flex items-center justify-center font-mono font-bold tabular-nums leading-none text-sky-100 whitespace-nowrap ${r < 2 ? 'border-b border-white/10' : ''}`} style={fz(vz * 0.92)}>{t}</span>
+                        <span title={hint} className={`flex items-center justify-center font-mono font-extrabold tabular-nums leading-none text-white whitespace-nowrap ${r < 2 ? 'border-b border-white/10' : ''}`} style={fz(vz)}>{a}</span>
+                        <span title={hint} className={`flex items-center justify-center ${r < 2 ? 'border-b border-white/10' : ''}`}>{c == null ? <span className="font-mono font-bold text-sky-100" style={fz(vz * 0.8)}>—</span> : pill(c)}</span>
+                      </React.Fragment>
+                    ))}
                   </div>
                 );
-              })}
+              })()}
+              {noTgtDay > 0 && <span className="sr-only">{noTgtDay} pcs of models without a cycle time — not counted in Achieved</span>}
             </div>
             {!tall && <TvModels sm list={modelsToday} running={model} total={total} />}
           </div>

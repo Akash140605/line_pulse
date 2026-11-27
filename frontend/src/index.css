@@ -907,3 +907,23 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 .lp-login .lp-login-stat { border-radius: 12px !important; transition: transform .2s ease, background .2s ease; }
 @media (max-width: 1700px) { .lp-wm-wrap { transform: scale(.6) !important; transform-origin: top right; right: 2% !important; top: 14% !important; } }
 @media (max-width: 1250px) { .lp-wm-wrap { display: none; } }
+
+/* 27-11-2026 How it is calculated: Print / Save as PDF (whole page or one section) */
+.lp-print-only { display: none; }
+@media print {
+  .lp-print-only { display: block !important; }
+  .lp-fx-ph-t { font-size: 18px; font-weight: 800; color: #0F172A; }
+  .lp-fx-ph-s { font-size: 11px; color: #475569; margin: 2px 0 8px; padding-bottom: 6px; border-bottom: 2px solid #1D4ED8; }
+  .lp-fx { gap: 8px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .lp-fx .lp-card { box-shadow: none !important; padding: 10px 12px !important; border-color: #CBD5E1 !important; height: auto !important; }
+  .lp-fx .lp-card-head, .lp-fx .lp-fx-item, .lp-fx tr { break-inside: avoid; page-break-inside: avoid; }
+  .lp-fx .lp-card-head { break-after: avoid; page-break-after: avoid; }
+  .lp-fx .lp-fx-grid { display: block !important; column-count: 2; column-gap: 10px; }
+  .lp-fx .lp-fx-grid > section { display: block; margin-bottom: 10px; }
+  .lp-fx-printing .lp-fx-grid:has(> section:only-child) { column-count: 1; }
+  .lp-fx table { min-width: 0 !important; }
+  .lp-fx .xl\:grid-cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  /* only the page itself: no filter bar, toast, footer or side panel around it */
+  body:has(.lp-fx) :not(:has(.lp-fx)):not(.lp-fx):not(.lp-fx *) { display: none !important; }
+  body:has(.lp-fx) :has(.lp-fx) { position: static !important; overflow: visible !important; height: auto !important; max-height: none !important; padding: 0 !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; background: #fff !important; }
+}

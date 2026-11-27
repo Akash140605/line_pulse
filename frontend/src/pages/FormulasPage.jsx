@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/UiKit';
 import { windowHours } from '../utils/analysis';
 import { fmtSeconds, LINE_IDS } from '../api';
@@ -33,7 +33,7 @@ const SECTIONS = [
     ['Shift time', 'shift end − shift start', 'From the line\'s shift master — or, for one day, from that day\'s Morning entry of the line.', 'Setup → Masters → Shift & lunch · Morning entry'],
     ['Working time', 'shift time − lunch − tea breaks', 'Lunch and tea breaks are no working time: no target, not in OLE planned time (they never lower Availability).', 'Setup → Masters → Shift & lunch'],
     ['Working minutes of an hour', '60 − lunch / break minutes inside that hour (today: only up to now)', 'e.g. tea 11:00–11:10 → the 11:00 hour has 50 working minutes.', ''],
-    ['Extra hour', 'a clock hour outside the shift with scans (early start / overtime)', 'Its pieces count in production and quality. It does not move OLE: its time = the std time of its pieces.', ''],
+    ['Extra hour (EXTRA)', 'a clock hour before the shift start or after the shift end with scans (default before 09:00 / after 21:00)', 'Only outside the shift — an hour inside the shift is never EXTRA, even with no target. Its pieces count in production and quality. It does not move OLE: its time = the std time of its pieces.', 'Setup → Masters → Shift & lunch'],
     ['Today in OLE', 'time of today ends at the line\'s last scan (never after now)', 'So an hour still running does not count as lost before it is over.', ''],
   ]),
   S('daily', 'Morning entry, loss analysis & HPR', 'The supervisor\'s morning entry, the management loss Pareto and the plant HPR Excel.', [
@@ -71,21 +71,29 @@ const SECTIONS = [
     ['Total time', 'working time of the shift (lunch and tea breaks out)', 'Today: up to the last scan. A finished day: OLE_AEND', 'Setup → Masters → Shift & lunch / OLE formulas'],
     ['Idle time (loss)', 'OLE_ALOSS', 'Each reason has its department.', 'Loss entry'],
     ['Run time', 'OLE_RUN', '', ''],
+    ['Plan Target Qty (shift)', 'Σ hour plans of the shift (working seconds × share ÷ target cycle)', 'The same plan as the HPR / SAWM KPI report.', ''],
+    ['Target Qty (run time)', 'hour plan × run minutes ÷ working minutes of the hour', 'Minutes the line stood (idle) come off the target, so a stop lowers only Availability. e.g. 15 min idle in a 60 min hour with plan 180 → target 135.', ''],
     ['Ideal (std) time', 'Σ pieces of each model × its target cycle', 'Pieces of a model without a target cycle are left out of Performance.', ''],
     ['Availability  A', 'OLE_A', '', 'Setup → Masters → OLE formulas'],
-    ['Performance  P', 'OLE_P', '(only the share of the time of the pieces with a target cycle)', 'Setup → Masters → OLE formulas'],
+    ['Performance  P', 'OLE_P', 'OLE_PNOTE', 'Setup → Masters → OLE formulas → Performance ='],
     ['Quality  Q', 'OLE_Q', '', 'Setup → Masters → OLE formulas'],
     ['OLE', 'A × P × Q', '', ''],
-    ['Performance loss', 'OLE_PLOSS', 'The model ran below its std: stays in the run time, lowers Performance (not Availability).', 'Loss entry · Setup → OLE formulas'],
-    ['Slow running', 'run time − ideal time', 'All the performance loss of the hour, written or not — it lowers Performance.', ''],
+    ['Performance loss', '100 % − Performance', 'Slow cycles and short stops not written on Loss entry. Time the line stood is not here — it is Availability loss. Click Performance for the hour-wise and model-wise loss (Target, Produced, Short, Actual CT vs Std CT).', ''],
+    ['Loss written against a model', 'OLE_PLOSS', 'The model ran below its std: stays in the run time, lowers Performance (not Availability).', 'Loss entry · Setup → OLE formulas'],
+    ['Slow running', 'OLE_SLOW', 'All the performance loss of the hour, written or not — it lowers Performance.', ''],
     ['Lost time', 'idle time + slow running', '', ''],
     ['Day, line, month, year', 'add the minutes and pieces first, then the same formulas', 'Never an average of percentages, so a short day weighs less than a full day.', ''],
     ['Closed day', 'no pieces and (line off all day or nothing entered) → no OLE', 'A day with no pieces but idle time entered counts: OLE 0 %.', 'Loss entry'],
+    ['Plant Efficiency trend', 'one point per day of the month of the chosen date', 'The trend always shows the whole month; every other card shows the chosen day.', 'Plant Efficiency page'],
+    ['Monthly OLE (year)', 'financial year: April → March', 'e.g. FY 2026-27 = Apr 2026 … Mar 2027.', 'Monthly OLE page'],
   ], 'OLE'),
-  S('quality', 'Quality — FPY / RTY', 'From the rejection and rework rows of Loss entry (station = where it was caught).', [
+  S('quality', 'Quality — Good Qty, Rework, FPY / RTY', 'From the rejection and rework rows of Loss entry (station = where it was caught).', [
+    ['Actual Qty', 'COUNT of good scans (pieces made)', '', ''],
+    ['Good Qty', 'OLE_GOOD', 'The pieces that count as good in Quality — the same as the Q of OLE.', 'Setup → Masters → OLE formulas'],
+    ['Rework [Passed + Dism.]', 'rework = reworked and passed + dismantled', 'Shown as "36 [28 + 8]": 36 reworked, 28 passed after rework, 8 dismantled.', 'Loss entry'],
     ['FPY — first-pass yield', '(input − rejected − reworked) ÷ input', 'Right first time.', ''],
     ['Station FPY', '(input − rejected there − reworked there) ÷ input', '', 'Setup → Quality stations'],
-    ['RTY — rolled throughput yield', 'Π station FPY of the stations counted in RTY', 'The chance a piece passes every station right first time.', 'Setup → Quality stations'],
+    ['RTY — rolled throughput yield', 'Π station FPY of the stations counted in RTY', 'The chance a piece passes every station right first time. Click RTY on the OLE card for the stage-wise FPY: defect pcs, FPY, top defect and the weakest stage.', 'Setup → Quality stations'],
     ['Final yield', '(input − rejected) ÷ input', '', ''],
     ['Rejection rate', 'false scans ÷ (good + false scans) × 100', 'Rejections page.', ''],
   ], 'Quality'),
@@ -135,12 +143,17 @@ function Examples() {
     const shift = { start: '09:00', end: '21:00', lunchStart: '13:00', lunchEnd: '13:30', breaks: [{ name: 'Tea', start: '11:00', end: '11:10' }, { name: 'Tea', start: '17:00', end: '17:10' }] };
     const n = normShift(shift);
     const work = n.end - n.start - n.off.reduce((a, [x, y]) => a + (y - x), 0);
-    const o = oleOf({ totalMin: work, stopMin: 0, plannedMin: work, lossMin: 70, actualMin: work - 70, qty: 1500, stdSec: 1500 * 22, noStdQty: 0, rejects: 15, rework: 0 });
+    const pMode = oleConfig().pMode || 'run';
+    const shiftPlan = Math.round((work * 60) / 22), runPlan = Math.round(((work - 70) * 60) / 22);
+    const planQty = pMode === 'run' ? runPlan : pMode === 'plan' ? shiftPlan : 0;
+    const o = oleOf({ totalMin: work, stopMin: 0, plannedMin: work, lossMin: 70, actualMin: work - 70, qty: 1500, stdSec: 1500 * 22, noStdQty: 0, rejects: 15, rework: 0, planQty });
     const hourSec = workSecInHour(shift, 11);
     const cyc = realCycleSec(shift, '2026-11-16 10:00:00', '2026-11-16 11:20:00', 201);
-    return { work, o, hourSec, cyc };
-  }, []);
-  const { work, o, hourSec, cyc } = ex;
+    return { work, o, hourSec, cyc, pMode, planQty };
+  }, [JSON.stringify(oleConfig())]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { work, o, hourSec, cyc, pMode, planQty } = ex;
+  const n0 = (v) => Math.round(v).toLocaleString('en-IN');
+  const short = Math.max(0, planQty - 1500);
   const Step = ({ k, f, v }) => (
     <div className="grid grid-cols-[7.5rem_minmax(0,1fr)_auto] items-baseline gap-x-3 py-1.5">
       <span className="text-fs-13 font-bold text-slate-900">{k}</span>
@@ -154,13 +167,18 @@ function Examples() {
         <div className="mt-2 divide-y divide-slate-100">
           <Step k="Total time" f="720 − 30 − 10 − 10" v={`${work} min`} />
           <Step k="Run time" f={`${work} − 70 idle time`} v={`${o.actualMin} min`} />
-          <Step k="Ideal time" f="1 500 × 22 s ÷ 60" v={`${o.stdSec / 60} min`} />
+          {pMode === 'std' && <Step k="Ideal time" f="1 500 × 22 s ÷ 60" v={`${o.stdSec / 60} min`} />}
+          {pMode !== 'std' && <Step k={pMode === 'run' ? 'Target (run)' : 'Plan target'} f={`${pMode === 'run' ? o.actualMin : work} min × 60 ÷ 22 s`} v={`${n0(planQty)} pcs`} />}
           <Step k="Availability" f={`${o.actualMin} ÷ ${o.plannedMin}`} v={pc(o.A)} />
-          <Step k="Performance" f={`${o.stdSec / 60} ÷ ${oleConfig().pBase === 'planned' ? o.plannedMin : o.actualMin}`} v={pc(o.P)} />
+          <Step k="Performance" f={pMode === 'std' ? `${o.stdSec / 60} ÷ ${oleConfig().pBase === 'planned' ? o.plannedMin : o.actualMin}` : `1 500 ÷ ${n0(planQty)}`} v={pc(o.P)} />
           <Step k="Quality" f="(1 500 − 15) ÷ 1 500" v={pc(o.Q)} />
           <Step k="OLE" f="A × P × Q" v={pc(o.ole)} />
-          <Step k="Slow running" f={`${o.actualMin} − ${o.stdSec / 60}`} v={`${Math.round(o.speedMin)} min`} />
-          <Step k="Lost time" f={`70 + ${Math.round(o.speedMin)}`} v={`${70 + Math.round(o.speedMin)} min`} />
+          <Step k="Perf. loss" f={`100 % − ${pc(o.P)}`} v={pc(o.P != null ? Math.max(0, 1 - o.P) : null)} />
+          {pMode === 'std'
+            ? <Step k="Slow running" f={`${o.actualMin} − ${o.stdSec / 60}`} v={`${Math.round(o.speedMin)} min`} />
+            : <Step k="Pieces short" f={`${n0(planQty)} − 1 500`} v={`${n0(short)} pcs`} />}
+          {pMode === 'run' && <Step k="Lost time" f={`70 idle + ${n0(short)} × 22 s ÷ 60`} v={`${70 + Math.round((short * 22) / 60)} min`} />}
+          {pMode === 'std' && <Step k="Lost time" f={`70 + ${Math.round(o.speedMin)}`} v={`${70 + Math.round(o.speedMin)} min`} />}
         </div>
       </Card>
       <Card title="Example · hour target" sub="The 11:00 hour with tea 11:00–11:10, model target cycle 20 s">
@@ -262,23 +280,43 @@ function LineParams({ takt, outlier, minQty }) {
 
 export default function FormulasPage({ takt = null, outlier = null, minQty = null, line = null }) {
   const [q, setQ] = useState('');
-  const query = q.trim().toLowerCase();
+  const [only, setOnly] = useState(null);   // print: null = screen, 'all' = whole page, a section key = that section only
+  const query = only ? '' : q.trim().toLowerCase();
+  useEffect(() => {
+    if (!only) return undefined;
+    const done = () => setOnly(null);
+    window.addEventListener('afterprint', done);
+    const t = setTimeout(() => { try { window.print(); } catch { done(); } }, 120);
+    return () => { clearTimeout(t); window.removeEventListener('afterprint', done); };
+  }, [only]);
+  const printNow = (k) => setOnly(k);
+  const stamp = new Date().toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-');
   const cfg = oleConfig();
+  const pMode = cfg.pMode || 'run';
   const fill = (t) => String(t)
     .replace('OLE_AEND', cfg.aEnd === 'shiftEnd' ? 'up to the shift close.' : 'up to its last scan (hours after the last piece with no loss written are not counted).')
     .replace('OLE_PLOSS', cfg.lossIn === 'avail' ? 'off (admin choice: model loss counts in Availability)' : 'minutes entered on Loss entry against a model')
     .replace('OLE_ALOSS', `${cfg.lossIn === 'avail' ? 'every minute entered on Loss entry' : 'minutes entered on Loss entry without a model (line stood)'}${cfg.aLoss === 'unplanned' ? ' (old planned stops come off the time first)' : ' + planned stops'}${cfg.aIdle === 'idle' ? ' + hours without scans and nothing written' : ''}`)
     .replace('OLE_RUN', cfg.aLoss === 'unplanned' ? 'total time − planned stop − loss' : 'total time − loss')
     .replace('OLE_A', cfg.aLoss === 'unplanned' ? 'run time ÷ (total time − planned stop)' : 'run time ÷ total time')
-    .replace('OLE_P', `ideal time ÷ ${cfg.pBase === 'planned' ? 'planned time' : 'run time'}${cfg.pCap ? ' (max 100 %)' : ''}${cfg.pNoStd === 'avg' ? '; pieces without a std cycle take the hour\'s average std' : ''}`)
+    .replace('OLE_PNOTE', pMode === 'run' ? 'Admin choice "Actual ÷ target of run time": a stop lowers only Availability, Performance shows only slow running.' : pMode === 'plan' ? 'Admin choice "Actual ÷ shift plan": a stop lowers Availability and Performance both.' : 'Admin choice "Std time ÷ run time" (only the share of the time of the pieces with a target cycle).')
+    .replace('OLE_SLOW', pMode === 'std' ? 'run time − ideal time' : `${pMode === 'run' ? 'Target Qty (run time)' : 'Plan Target Qty'} − Actual Qty (pieces short; × target cycle = minutes)`)
+    .replace('OLE_GOOD', cfg.qMode === 'rejRework' ? 'Actual Qty − rejected − rework' : 'Actual Qty − rejected')
+    .replace('OLE_P', `${pMode === 'run' ? 'Actual Qty ÷ Target Qty (run time)' : pMode === 'plan' ? 'Actual Qty ÷ Plan Target Qty (shift)' : `ideal time ÷ ${cfg.pBase === 'planned' ? 'planned time' : 'run time'}`}${cfg.pCap ? ' (max 100 %)' : ''}${pMode === 'std' && cfg.pNoStd === 'avg' ? '; pieces without a std cycle take the hour\'s average std' : ''}`)
     .replace('OLE_Q', `${cfg.qMode === 'rejRework' ? '(pieces − rejected − rework) ÷ pieces' : '(pieces − rejected) ÷ pieces'}${cfg.qStations === 'final' ? ' (only what final-check stations found)' : ''}`);
   const SECT = SECTIONS.map((s) => ({ ...s, items: s.items.map((it) => it.map(fill)) }));
-  const shown = useMemo(() => SECT.map((s) => ({ ...s, items: query ? s.items.filter((it) => it.join(' ').toLowerCase().includes(query) || s.title.toLowerCase().includes(query)) : s.items })).filter((s) => s.items.length), [query, JSON.stringify(cfg)]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shown0 = useMemo(() => SECT.map((s) => ({ ...s, items: query ? s.items.filter((it) => it.join(' ').toLowerCase().includes(query) || s.title.toLowerCase().includes(query)) : s.items })).filter((s) => s.items.length), [query, JSON.stringify(cfg)]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = only && only !== 'all' ? shown0.filter((s) => s.key === only) : shown0;
+  const whole = !query && (!only || only === 'all');
   const lines = line && LINE_IDS.includes(String(line)) ? [String(line)] : LINE_IDS;
   const go = (k) => { try { document.getElementById(`calc-${k}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* old browser */ } };
   return (
-    <div className="flex flex-col gap-3" role="region" aria-label="How it is calculated">
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+    <div className={`lp-fx flex flex-col gap-3${only ? ' lp-fx-printing' : ''}`} role="region" aria-label="How it is calculated">
+      <div className="lp-print-only">
+        <div className="lp-fx-ph-t">Line Pulse — How it is calculated{only && only !== 'all' ? ` · ${shown[0]?.title || ''}` : ''}</div>
+        <div className="lp-fx-ph-s">{line ? `Line ${line}` : `Lines ${lines.join(', ')}`} · printed {stamp}{window.__LP_BUILD__ ? ` · build ${window.__LP_BUILD__}` : ''} · formulas as set by the admin at print time</div>
+      </div>
+      <div className="no-print flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search a number — e.g. OLE, idle, target, cycle"
           aria-label="Search the formulas" className="h-9 w-full sm:w-80 rounded-lg border border-slate-300 bg-white px-3 text-fs-14 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
         <nav className="flex flex-wrap gap-1.5" aria-label="Sections">
@@ -286,18 +324,27 @@ export default function FormulasPage({ takt = null, outlier = null, minQty = nul
             <button key={s.key} type="button" onClick={() => go(s.key)} className="rounded-full border border-slate-300 bg-slate-50 px-2.5 py-1 text-fs-12 font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300">{s.short}</button>
           ))}
         </nav>
+        <button type="button" onClick={() => printNow('all')} data-testid="fx-print" title="Print / Save as PDF — the whole page"
+          className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg bg-blue-700 px-3 text-fs-13 font-bold text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-200">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
+          Print
+        </button>
       </div>
-      {!query && <InForce lines={lines} />}
-      {!query && takt && outlier && <LineParams takt={takt} outlier={outlier} minQty={minQty} />}
-      {!query && <Examples />}
+      {whole && <InForce lines={lines} />}
+      {whole && takt && outlier && <LineParams takt={takt} outlier={outlier} minQty={minQty} />}
+      {whole && <Examples />}
       {query && !shown.length && <div className="rounded-xl border border-slate-200 bg-white py-10 text-center text-fs-14 font-semibold text-slate-600">Nothing found for “{q}”.</div>}
-      <div className="grid gap-3 xl:grid-cols-2">
+      <div className="lp-fx-grid grid gap-3 xl:grid-cols-2">
         {shown.map((s) => (
           <section key={s.key} id={`calc-${s.key}`} className="scroll-mt-20" aria-label={s.title}>
-            <Card title={s.title} sub={s.sub} className="h-full">
+            <Card title={s.title} sub={s.sub} className="h-full"
+              right={<button type="button" onClick={() => printNow(s.key)} data-testid={`fx-print-${s.key}`} title={`Print only “${s.title}”`} aria-label={`Print ${s.title}`}
+                className="no-print inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 text-fs-12 font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
+                Print</button>}>
               <div className="mt-1 divide-y divide-slate-100">
                 {s.items.map(([n, f, note, where]) => (
-                  <div key={n} className="py-2">
+                  <div key={n} className="lp-fx-item py-2">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <div className="text-fs-14 font-extrabold text-slate-900">{n}</div>
                       {where && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-fs-11 font-bold text-slate-600">Set in: {where}</span>}

@@ -949,6 +949,9 @@ function TvModels({ list, running, total, sm = false, cols = 1 }) {
   const [roll, setRoll] = useState(false);
   const [clipH, setClipH] = useState(null);   // whole rows only: the box is cut to the rows that fit completely
   const [availH, setAvailH] = useState(null);   // room for the rows (rolling: the clip follows the rows now on top)
+  // 27-11-2026: big rows only while every model still fits — otherwise compact rows, so all the models show at once
+  const [dense, setDense] = useState(false);
+  useEffect(() => { setDense(false); }, [list.length, sm]);
   useEffect(() => {
     const box = boxRef.current, ul = listRef.current;
     if (!box || !ul) return undefined;
@@ -958,6 +961,7 @@ function TvModels({ list, running, total, sm = false, cols = 1 }) {
       const h = firsts.reduce((a, el) => a + el.offsetHeight, 0) + Math.max(0, firsts.length - 1) * g;
       const avail = box.parentElement ? box.parentElement.clientHeight - (box.offsetTop - box.parentElement.offsetTop) - (sm ? 4 : 8) : box.clientHeight;
       const over = h > avail + 1;
+      if (over && !dense && list.length <= 3) { setDense(true); return; }   // try compact rows first, then roll
       setRoll(over); setAvailH(avail);
       if (over && firsts.length) {
         let used = 0, n = 0;
@@ -967,9 +971,9 @@ function TvModels({ list, running, total, sm = false, cols = 1 }) {
     };
     check();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(check) : null;
-    ro?.observe(box); if (box.parentElement) ro?.observe(box.parentElement);
+    ro?.observe(box); ro?.observe(ul); if (box.parentElement) ro?.observe(box.parentElement);
     return () => ro?.disconnect();
-  }, [list.length, sm, cols]);
+  }, [list.length, sm, cols, dense]);
   const rowCount = Math.ceil(list.length / cols);
   // more models than fit: one row up every 3 s (whole rows, never half a row moving), and round again
   const [step, setStep] = useState(0);
@@ -996,10 +1000,26 @@ function TvModels({ list, running, total, sm = false, cols = 1 }) {
   }
   const top = Math.max(1, ...list.map((m) => m.qty));
   const all = Math.max(1, Number(total ?? list.reduce((a, m) => a + m.qty, 0)));   // 27-11-2026: share of the day's pieces
-  const big = !sm && list.length <= 3;   // few models: bigger rows, so the panel has no empty space
-  const smBig = sm && list.length <= 3;   // wall card with few models: bigger rows too
+  const big = !dense && !sm && list.length <= 3;   // few models: bigger rows, so the panel has no empty space
+  const smBig = !dense && sm && list.length <= 3;   // wall card with few models: bigger rows too
   const row = (m, k) => {
     const on = running && m.name === running;
+    // 27-11-2026: a small card with several models — one line a model (company · model ... pcs · %), so more of them show at once
+    if ((sm && !smBig) || (!sm && !big)) {
+      const pct = Math.round((m.qty / all) * 100);
+      return (
+        <li key={k} className={`rounded-md shrink-0 ${sm ? 'px-1.5 py-[1px]' : 'px-2 py-1'} ${on ? 'bg-sky-400/15 ring-1 ring-sky-300/70' : 'bg-white/[.04]'}`} title={[m.company, m.name].filter(Boolean).join(' · ') + ` — ${m.qty} pcs (${pct}%)`}>
+          <div className="flex items-baseline gap-1.5 min-w-0">
+            <span className="min-w-0 flex-1 truncate leading-tight">
+              {m.company && <span className={`mr-1 font-sans font-extrabold uppercase tracking-wide text-sky-300 ${sm ? 'text-fs-10' : 'text-fs-12'}`}>{m.company}</span>}
+              <span className={`font-mono font-bold text-slate-100 ${sm ? 'text-fs-12' : m.name.length > 18 ? 'text-fs-15' : 'text-fs-17'}`}>{on ? '▶ ' : ''}{m.name}</span>
+            </span>
+            <span className="shrink-0 whitespace-nowrap leading-none"><span className={`font-mono tabular-nums font-extrabold text-white ${sm ? 'text-fs-14' : 'text-fs-20'}`}>{m.qty.toLocaleString('en-IN')}</span><span className={`ml-0.5 font-bold text-sky-200 ${sm ? 'text-fs-10' : 'text-fs-12'}`}>pcs</span><span className={`ml-1.5 font-mono font-bold tabular-nums text-sky-200 ${sm ? 'text-fs-10' : 'text-fs-12'}`}>{pct}%</span></span>
+          </div>
+          <div className={`${sm ? 'mt-px h-[2px]' : 'mt-0.5 h-1'} rounded-full bg-white/10 overflow-hidden`} aria-hidden><div className="h-full rounded-full" style={{ width: `${(m.qty / top) * 100}%`, background: on ? 'linear-gradient(90deg,#38BDF8,#34D399)' : 'linear-gradient(90deg,#2E75B6,#7DD3FC)' }} /></div>
+        </li>
+      );
+    }
     return (
       <li key={k} className={`rounded-md shrink-0 ${smBig ? 'px-2 py-1.5' : sm ? 'px-1.5 py-[3px]' : big ? 'px-3 py-2.5' : 'px-2 py-1'} ${on ? 'bg-sky-400/15 ring-1 ring-sky-300/70' : 'bg-white/[.04]'}`}>
         <div className="flex items-center gap-1.5 min-w-0">

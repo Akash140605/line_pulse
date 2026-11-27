@@ -22,7 +22,7 @@
  *        admin, or a line login that the admin allowed to fill entries — only for its own lines
  * POST { action:'reasons', reasons:{stop, loss, reject, rework, station, quality} }   admin only (station list and quality targets
  *        optional: kept when not sent; station rows: see OLE_DEFAULT_STATIONS)
- * POST { action:'rca', items:[{date, line, kind, reason, rootCause, whys, action, preventive, owner, targetDate, closeDate, status, evidence:[{id}], capa:{…} }] }
+ * POST { action:'rca', items:[{date, line, kind, reason, cat (6M), rootCause, whys, action, preventive, owner, targetDate, closeDate, status, evidence:[{id}], capa:{…} }] }
  *      capa (24-11-2026, the paper CAPA form): equip, hall, problem, correction, whyQ[5], caTarget, caResp, paTarget, paResp, implemented, verifiedBy, verifyDate, verifyNote
  *        evidence = photos / files uploaded through files.php (20-11-2026)
  *        RCA of one loss (one reason of one kind on one line and day): admin, or a login of the responsible department
@@ -456,7 +456,9 @@ try {
             $rc = ole_txt($it['rootCause'] ?? '', 1000);
             if ($rc === '' && $whys) { $nz = array_values(array_filter($whys, fn($w) => $w !== '')); $rc = $nz ? end($nz) : ''; }   // the last why is the root cause
             $capa = capa_clean($it['capa'] ?? null);   // 24-11-2026: the CAPA form (null: not sent — the saved one is kept)
-            $clean[] = ['date' => $d, 'line' => $line, 'kind' => $kind, 'reason' => $reason, 'dept' => $dept, 'capa' => $capa,
+            // 27-11-2026: the 6M category of the root cause (Man · Machine · Material · Method · Measurement · Environment)
+            $cat = in_array($it['cat'] ?? '', ['Man', 'Machine', 'Material', 'Method', 'Measurement', 'Environment'], true) ? $it['cat'] : '';
+            $clean[] = ['date' => $d, 'line' => $line, 'kind' => $kind, 'reason' => $reason, 'dept' => $dept, 'capa' => $capa, 'cat' => $cat,
                 'rootCause' => $rc, 'whys' => $whys, 'action' => ole_txt($it['action'] ?? '', 1000), 'preventive' => ole_txt($it['preventive'] ?? '', 1000),
                 'owner' => ole_txt($it['owner'] ?? '', 60), 'targetDate' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $td) ? $td : '', 'closeDate' => $cd, 'status' => $status, 'evidence' => array_key_exists('evidence', $it) ? $ev : null];
             if ($clean[count($clean) - 1]['rootCause'] === '') store_fail(400, 'Write the root cause.');

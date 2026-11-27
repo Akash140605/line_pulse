@@ -10,6 +10,7 @@ import { useAllLineSettings } from '../hooks/useLineSettings';
 import { serverToday } from '../utils/serverTime';
 import { oleRange, issuesOf, rcaStatus, KIND_TEXT, needsRca, RCA_FROM } from '../utils/ole';
 import { deptName } from '../utils/lossan';
+import { RCA_CATS, RCA_CAT_HINT, guessRcaCat, guessDept } from '../utils/deptRules';
 import { nf, dmy, p2, inp, card, StatusChip, useOleLines, monthOf, monthRange, useOleData } from '../components/OleParts';
 
 /**
@@ -86,7 +87,7 @@ export default function RcaPage({ isAdmin = false, myDept = '' }) {
                         <td className="px-2 py-2 font-mono whitespace-nowrap">{[...i.hours].sort((a, b) => a - b).map((h) => `${p2(h)}`).join(', ')}</td>
                         <td className="px-2 py-2">{i.models.join(', ') || '—'}</td>
                         <td className="px-2 py-2"><StatusChip st={st} /></td>
-                        <td className="px-2 py-2 text-fs-13 text-slate-700 min-w-[200px]">{x ? <><b>Cause:</b> {x.rootCause}{x.action && <><br /><b>Action:</b> {x.action}</>}{(x.owner || x.targetDate || x.closeDate) && <div className="text-slate-500">{x.owner}{x.targetDate ? ` · by ${dmy(x.targetDate)}` : ''}{x.closeDate ? ` · closed ${dmy(x.closeDate)}` : ''}</div>}{x.evidence?.length > 0 && <div className="font-semibold text-blue-800">📎 {x.evidence.length} evidence</div>}</> : '—'}</td>
+                        <td className="px-2 py-2 text-fs-13 text-slate-700 min-w-[200px]">{x ? <>{x.cat && <span className="mr-1 rounded-full bg-blue-50 px-2 py-0.5 text-fs-11 font-bold text-blue-800">{x.cat}</span>}<b>Cause:</b> {x.rootCause}{x.action && <><br /><b>Action:</b> {x.action}</>}{(x.owner || x.targetDate || x.closeDate) && <div className="text-slate-500">{x.owner}{x.targetDate ? ` · by ${dmy(x.targetDate)}` : ''}{x.closeDate ? ` · closed ${dmy(x.closeDate)}` : ''}</div>}{x.evidence?.length > 0 && <div className="font-semibold text-blue-800">📎 {x.evidence.length} evidence</div>}</> : '—'}</td>
                         <td className="px-2 py-1.5">
                           <button type="button" onClick={() => setOpen(i)} aria-label={`${canWrite(i) ? (x ? 'Edit' : 'Write') : 'View'} RCA ${dmy(i.date)} Line ${i.line} ${i.reason}`}
                             className={`h-8 rounded-lg px-2.5 text-fs-13 font-bold whitespace-nowrap ${canWrite(i) && !x ? 'bg-blue-700 text-white' : 'border border-slate-300 bg-white text-slate-800'}`}>{canWrite(i) ? (x ? 'Edit RCA' : 'Write RCA') : 'View'}</button>
@@ -107,7 +108,7 @@ export default function RcaPage({ isAdmin = false, myDept = '' }) {
 
 export function RcaDialog({ i, x, canWrite, isAdmin, onClose, onSaved }) {
   const head = useMemo(() => capaHead(savedUi().capa), []);
-  const [f, setF] = useState({ rootCause: x?.rootCause || '', whys: [0, 1, 2, 3, 4].map((k) => x?.whys?.[k] || ''), action: x?.action || '', preventive: x?.preventive || '', owner: x?.owner || '', targetDate: x?.targetDate || '', closeDate: x?.closeDate || '', status: x?.status || 'submitted', evidence: x?.evidence || [],
+  const [f, setF] = useState({ cat: x?.cat || guessRcaCat(i.reason, i.dept || x?.dept), rootCause: x?.rootCause || '', whys: [0, 1, 2, 3, 4].map((k) => x?.whys?.[k] || ''), action: x?.action || '', preventive: x?.preventive || '', owner: x?.owner || '', targetDate: x?.targetDate || '', closeDate: x?.closeDate || '', status: x?.status || 'submitted', evidence: x?.evidence || [],
     // 24-11-2026: the paper CAPA form (Corrective and Preventive Action Plan)
     capa: { ...EMPTY_CAPA, hall: head.hall, ...(x?.capa || {}), whyQ: [0, 1, 2, 3, 4].map((k) => x?.capa?.whyQ?.[k] || '') } });
   const [busy, setBusy] = useState(false);
@@ -122,6 +123,7 @@ export function RcaDialog({ i, x, canWrite, isAdmin, onClose, onSaved }) {
     const lastWhy = [...f.whys].reverse().find((w) => w.trim()) || '';
     const rootCause = f.rootCause.trim() || lastWhy.trim();
     if (!rootCause) { setErr('Write the root cause (or the 5 whys).'); return; }
+    if (!RCA_CATS.includes(f.cat)) { setErr('Choose the category of the root cause (6M).'); return; }
     if (status === 'closed' && !f.action.trim()) { setErr('Write the corrective action before closing.'); return; }
     setBusy(true);
     try { await api.saveRca([{ date: i.date, line: Number(i.line), kind: i.kind, reason: i.reason, ...f, rootCause, whys: f.whys.map((w) => w.trim()), evidence: f.evidence.map((e) => ({ id: e.id })), closeDate: status === 'closed' ? (f.closeDate || serverToday()) : '', status }]); onSaved(); }
@@ -139,13 +141,24 @@ export function RcaDialog({ i, x, canWrite, isAdmin, onClose, onSaved }) {
   const hrs = [...(i.hours || [])].sort((a, b) => a - b);
   return (
     <MesDrawer title={<>{KIND_TEXT[i.kind]} · {i.reason}{i.value != null ? <> — {nf(i.value)} {i.unit}</> : null}</>}
-      sub={<>Line {i.line} · {dmy(i.date)}{hrs.length ? <> · {hrs.length > 1 ? 'Hours' : 'Hour'} {hrs.map((h) => `${p2(h)}–${p2(h + 1)}`).join(', ')}</> : null}{i.models?.length ? ` · ${i.models.join(', ')}` : ''} · <b>{deptName(i.dept || x?.dept)}</b></>}
+      sub={<>Line {i.line} · {dmy(i.date)}{hrs.length ? <> · {hrs.length > 1 ? 'Hours' : 'Hour'} {hrs.map((h) => `${p2(h)}–${p2(h + 1)}`).join(', ')}</> : null}{i.models?.length ? ` · ${i.models.join(', ')}` : ''} · <b>{deptName(i.dept || x?.dept) || guessDept(i.kind, i.reason)}</b></>}
       icon={Wrench} onClose={onClose} label="RCA" method="center" width={58} canExpand={false}>
         <div className="p-4 grid gap-3">
           <div className="flex flex-wrap items-center gap-2 text-fs-13 text-slate-600">
             {x && <><StatusChip st={rcaStatus(x)} /> by {x.updatedBy} · {x.updatedAt}{x.closedBy ? ` · closed by ${x.closedBy}` : ''}</>}
             <span className="ml-auto rounded bg-slate-100 px-2 py-0.5 text-fs-12 font-semibold text-slate-600">{head.title} · Doc {head.docNo}</span>
           </div>
+          {/* 27-11-2026: the 6M category of the root cause — one click, required */}
+          <fieldset className="grid gap-1.5" aria-label="Category of the root cause (6M)">
+            <legend className="text-fs-13 font-bold text-slate-700">Category <span className="font-normal text-slate-500">(6M — what kind of cause)</span></legend>
+            <div className="flex flex-wrap gap-1.5" role="radiogroup">
+              {RCA_CATS.map((c) => (
+                <button key={c} type="button" role="radio" aria-checked={f.cat === c} disabled={!canWrite} title={RCA_CAT_HINT[c]} data-testid={`rca-cat-${c}`}
+                  onClick={() => set('cat', c)}
+                  className={`h-9 rounded-full border px-3.5 text-fs-13 font-bold transition ${f.cat === c ? 'border-blue-700 bg-blue-700 text-white shadow' : 'border-slate-300 bg-white text-slate-700 hover:border-blue-400 hover:bg-blue-50'}`}>{c}</button>))}
+            </div>
+            <span className="text-fs-12 text-slate-500">{RCA_CAT_HINT[f.cat] || ''}</span>
+          </fieldset>
           <div className="grid gap-3 sm:grid-cols-3">
             <label className={L}>Equipment<input disabled={!canWrite} className={inp} value={f.capa.equip} maxLength={80} onChange={(e) => setC('equip', e.target.value)} placeholder="Machine / station" aria-label="Equipment" /></label>
             <label className={L}>Hall no.<input disabled={!canWrite} className={inp} value={f.capa.hall} maxLength={40} onChange={(e) => setC('hall', e.target.value)} aria-label="Hall no" /></label>

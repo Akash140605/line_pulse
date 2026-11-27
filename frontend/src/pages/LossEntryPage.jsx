@@ -23,6 +23,7 @@ import { Save, Plus, Trash2, X, ListChecks, ChevronLeft, ChevronRight, Copy, Pen
 import useMediaQuery from '../hooks/useMediaQuery';
 import { api } from '../api';
 import { DEPTS } from '../components/AuthGate';
+import { guessDept } from '../utils/deptRules';
 const PLANT_DEPTS = DEPTS;   // the departments of the RCA logins (the HourDialog has its own DEPTS of the reason master)
 import { useAllLineSettings } from '../hooks/useLineSettings';
 import { addDays } from '../utils/mainFilter';
@@ -332,7 +333,8 @@ function ReworkGrid({ L, line, date, reasons, onClose, onSaved, model0 = '', kin
     if (st?.defects?.length) return all.filter((x) => own.includes(x.reason)).concat(own.filter((d) => !all.some((x) => x.reason === d)).map((d) => ({ reason: d, dept: st.dept })));
     return own.map((d) => all.find((x) => x.reason.toLowerCase() === d.toLowerCase()) || { reason: d, dept: st?.dept || 'Prod' });
   };
-  const deptOfRow = (g) => (defectsAt(g.station).find((x) => x.reason === String(g.reason || '').trim()) || {}).dept || '';
+  // 27-11-2026: never empty — the defect master's department, else the rule (category, then the words of the defect)
+  const deptOfRow = (g) => (defectsAt(g.station).find((x) => x.reason === String(g.reason || '').trim()) || {}).dept || guessDept(kind, g.reason, g.cat);
   const start = useMemo(() => gridFromRows(L.rows, kind), []); // eslint-disable-line react-hooks/exhaustive-deps
   const seq = useRef(start.length);
   // 25-11-2026: one model at a time (chips above the grid): only its rows and only the hours it ran — many hours at once
@@ -443,6 +445,7 @@ function ReworkGrid({ L, line, date, reasons, onClose, onSaved, model0 = '', kin
               <th className={`${th} text-left`} style={{ minWidth: 136 }}>Model</th>
               <th className={`${th} text-left`} style={{ minWidth: 92 }}>Category</th>
               <th className={`${th} text-left`} style={{ minWidth: 150 }}>Defect</th>
+              <th className={`${th} text-left`} style={{ minWidth: 112 }} title="Department responsible — filled from the defect, change it if needed">Department</th>
               <th className={`${th} text-left`} style={{ minWidth: 104 }}>Cause</th>
               <th className={`${th} text-left`} style={{ minWidth: 104 }}>Action</th>
               {cols.map((h) => <th key={h} className={`${th} text-center font-mono`} style={{ minWidth: 40 }} title={`${p2(h)}:00–${p2(h + 1)}:00 · ${nf(fm ? mq[fm]?.[h] || 0 : made[h])} pcs ${fm ? `of ${fm} ` : ''}made`}>{p2(h)}<div className="text-fs-10 font-semibold text-slate-500">{nf(fm ? mq[fm]?.[h] || 0 : made[h])}</div></th>)}
@@ -479,6 +482,14 @@ function ReworkGrid({ L, line, date, reasons, onClose, onSaved, model0 = '', kin
                     <input aria-label={`Row ${i + 1} defect`} title={g.reason} list={`rg-def-${g.id}`} value={g.reason} placeholder="Defect…" onChange={(e) => pickDefect(i, e.target.value)} className={`${sel} ${bad(i) && !String(g.reason || '').trim() ? 'border-red-500 bg-red-50' : ''}`} />
                     <datalist id={`rg-def-${g.id}`}>{defs.map((d) => <option key={d.reason} value={d.reason} />)}</datalist>
                   </td>
+                  <td className="px-0.5 py-0.5">
+                    {/* 27-11-2026: department of the row — compulsory; starts from the defect (master / rule) */}
+                    {(() => { const dv = g.dept || (String(g.reason || '').trim() ? deptOfRow(g) : ''); return (
+                      <select aria-label={`Row ${i + 1} department`} data-testid="rg-dept" value={dv} title={g.dept ? 'Department chosen' : dv ? 'Department from the defect — change it if needed' : 'Choose the defect first'} onChange={(e) => set(i, { dept: e.target.value, deptPick: true })} className={`${sel} ${g.dept ? '' : 'text-slate-600'}`}>
+                        <option value="">Department…</option>
+                        {[...new Set([...PLANT_DEPTS, dv].filter(Boolean))].map((d) => <option key={d} value={d}>{d}</option>)}
+                      </select>); })()}
+                  </td>
                   <td className="px-0.5 py-0.5"><input aria-label={`Row ${i + 1} cause`} title={g.cause} list={`rg-cause-${g.id}`} value={g.cause} placeholder="Cause…" onChange={(e) => set(i, { cause: e.target.value })} className={sel} />
                     <datalist id={`rg-cause-${g.id}`}>{rcaSuggest(g.reason, 'cause', grid).map((t) => <option key={t} value={t} />)}</datalist></td>
                   <td className="px-0.5 py-0.5"><input aria-label={`Row ${i + 1} action`} title={g.action} list={`rg-action-${g.id}`} value={g.action} placeholder="Action…" onChange={(e) => set(i, { action: e.target.value })} className={sel} />
@@ -513,7 +524,7 @@ function ReworkGrid({ L, line, date, reasons, onClose, onSaved, model0 = '', kin
           </tbody>
           <tfoot>
             <tr className="bg-slate-50">
-              <td colSpan={7} className="px-2 py-1 text-right text-fs-12 font-extrabold uppercase text-slate-600">{KL} of the hour</td>
+              <td colSpan={8} className="px-2 py-1 text-right text-fs-12 font-extrabold uppercase text-slate-600">{KL} of the hour</td>
               {cols.map((h) => <td key={h} className={`px-0.5 py-1 text-center font-mono text-fs-13 font-extrabold ${colSum(h) ? 'text-red-700' : 'text-slate-400'}`}>{colSum(h) || '–'}</td>)}
               <td className="px-1.5 py-1 text-right font-mono font-extrabold text-red-700">{nf(total)}</td>
               <td colSpan={2} />
@@ -1207,7 +1218,7 @@ function HourDialog({ autoNo = false, L, r, date, reasons, prev, next, onClose, 
                       <span className="col-span-5 break-words text-fs-13 sm:col-span-1" title="Responsible department (from the reason master)"><span aria-label={`${title} ${i + 1} department`} className="font-semibold text-slate-700">{masterDept}</span></span>
                       ) : (
                       // 25-11-2026: the reason has no department in the master → write it here, with the plant's departments suggested
-                      <input aria-label={`${title} ${i + 1} department`} value={row.dept || ''} maxLength={40} list="le-depts" placeholder="Department…"
+                      <input aria-label={`${title} ${i + 1} department`} value={row.dept || ''} maxLength={40} list="le-depts" placeholder={row.reason ? `${guessDept(key, row.reason, row.cat)} (auto)` : 'Department…'}
                         title="This reason has no department in the master — pick one from the list or write it"
                         onChange={(e) => setRow(key, i, 'dept', e.target.value)}
                         className={`${cell} col-span-5 text-fs-13 sm:col-span-1 ${row.reason && Number(row[num]) > 0 && !String(row.dept || '').trim() ? 'border-amber-400 bg-amber-50/50' : ''}`} />

@@ -10,6 +10,7 @@ import { deptName } from '../utils/lossan';
 import { nf, dmy, useOleData, useOleLines, groupNameOf, StatusChip } from '../components/OleParts';
 import { exportPanel } from '../utils/domExcel';
 import { rcaRows, rcaTotals, rcaByDept, rcaAgeing } from '../utils/rcaDash';
+import { RCA_CATS, RCA_CAT_HINT } from '../utils/deptRules';
 import RcaEffect from '../components/RcaEffect';
 
 /**
@@ -127,6 +128,18 @@ export default function RcaDashboardPage({ onOpen = null, canOpen = [] }) {
                   <tbody>{byKind.map((k) => <tr key={k.k} className="text-center"><td className={`${td} text-left font-bold`}>{KIND_TEXT[k.k]}</td><td className={`${td} font-mono`}>{k.n}</td><td className={`${td} font-mono`}>{k.pending + k.submitted}</td><td className={`${td} font-mono`}>{k.closed}</td><td className={`${td} font-mono font-bold`}>{pc(k.closure)}</td></tr>)}</tbody>
                 </table>
               )}
+              {/* 27-11-2026: the 6M category of the root causes written */}
+              {(() => {
+                const done = rows.filter((r) => r.rec?.cat);
+                if (!done.length) return <p className="mt-3 text-fs-12 text-slate-500">Category (6M): none written yet — chosen on the RCA form.</p>;
+                const by = RCA_CATS.map((c) => { const rs = done.filter((r) => r.rec.cat === c); return { c, n: rs.length, closed: rs.filter((r) => r.st === 'closed').length }; }).filter((x) => x.n);
+                return (
+                  <table className="mt-3 w-full border-collapse text-fs-13 tabular-nums" aria-label="RCA by category">
+                    <thead><tr className="bg-[#DDEBF7] text-center text-fs-12 text-[#1F3864]">{['Category (6M)', 'RCAs', 'Closed', 'Share'].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
+                    <tbody>{by.map((k) => <tr key={k.c} className="text-center" title={RCA_CAT_HINT[k.c]}><td className={`${td} text-left font-bold`}>{k.c}</td><td className={`${td} font-mono`}>{k.n}</td><td className={`${td} font-mono`}>{k.closed}</td><td className={`${td} font-mono font-bold`}>{pc(k.n / done.length)}</td></tr>)}</tbody>
+                  </table>
+                );
+              })()}
             </section>
           </div>
 

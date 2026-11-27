@@ -6,6 +6,7 @@
  * Pure: issues = issuesOf(…).filter(needsRca), rca = { key: record }, deptOf = (dept) => display name.
  */
 import { rcaStatus } from './ole';
+import { guessDept } from './deptRules';
 
 export const daysBetween = (a, b) => (a && b ? Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000) : null);
 export const AGE_BUCKETS = [['0–2 days', 0, 2], ['3–7 days', 3, 7], ['8–15 days', 8, 15], ['16+ days', 16, Infinity]];
@@ -37,7 +38,7 @@ export function rcaTotals(rows) {
 /** by department: totals of each, most open first */
 export function rcaByDept(rows, deptOf = (d) => d) {
   const m = new Map();
-  for (const r of rows) { const k = deptOf(r.dept) || 'Not set'; (m.get(k) || m.set(k, []).get(k)).push(r); }
+  for (const r of rows) { const k = deptOf(r.dept) || guessDept(r.kind, r.reason); (m.get(k) || m.set(k, []).get(k)).push(r); }
   return [...m.entries()].map(([dept, rs]) => ({ dept, ...rcaTotals(rs) })).sort((a, b) => (b.pending + b.submitted) - (a.pending + a.submitted) || b.n - a.n || a.dept.localeCompare(b.dept));
 }
 

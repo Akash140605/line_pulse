@@ -6,6 +6,7 @@
  * → plain objects, no React (tests/factorDash.calc.test.js)
  */
 import { oleSum, normEntry, modelPerf, planTargetOf, oleConfig, goodOf } from './ole';
+import { deptOfRow } from './deptRules';
 
 const ranT = (t) => !!t && ((t.plannedMin || 0) > 0 || (t.qty || 0) > 0);
 const top = (m) => [...m.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
@@ -42,7 +43,7 @@ export function availDash(R, ids0) {
     for (const x of [...e.stops, ...e.losses]) {
       const min = Number(x.min) || 0; if (!min) continue;
       const L = lines[l]; stops += 1; written += min; L.stops += 1; L.written += min;
-      const k = x.reason || 'Not given', dk = x.dept || 'Not set';
+      const k = x.reason || 'Not given', dk = deptOfRow(x, 'stop');
       add(L.reasons, k, min); add(L.depts, dk, min);
       const o = reasons.get(k) || { name: k, dept: dk, min: 0, n: 0, lines: new Set(), models: new Map() };
       o.min += min; o.n += 1; o.lines.add(l); if (x.model) add(o.models, x.model, min); reasons.set(k, o);

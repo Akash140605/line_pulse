@@ -18,6 +18,7 @@ import { normEntry, RCA_FROM } from './ole';
 import { lossRs, deptName } from './lossan';
 import { hprHours } from './hpr';
 import { shiftOfDay, SHIFT_PLANT } from './shift';
+import { deptOfRow } from './deptRules';
 
 const pad = (n) => String(n).padStart(2, '0');
 const tidy = (s) => String(s ?? '').trim();
@@ -102,7 +103,7 @@ export function buildFacts({ entries = {}, start = '', end = '', ids = null, set
         const rec = rca?.[rk] || null;
         const f = {
           id: `${key}|${kind}|${n++}`, date, line: String(line), hour, kind, unit: num === 'min' ? 'min' : 'pcs',
-          reason, dept: deptName(x.dept) || 'Not set', owner: tidy(x.owner) || ownerOfReason(kind, reason), model: tidy(x.model), part: tidy(x.part),
+          reason, dept: deptOfRow(x, kind, deptName), owner: tidy(x.owner) || ownerOfReason(kind, reason), model: tidy(x.model), part: tidy(x.part),
           station: tidy(x.station), cat: x.cat || '', cause: tidy(x.cause), action: tidy(x.action), dismantle: Number(x.dismantle) || 0, value, mp: mp == null || mp === '' ? null : Number(mp),
           rs: num === 'min' ? lossRs(value, mp, hour, hpr) : null, hpr: null,
           rcaKey: rk, rca: kind === 'stop' || date < RCA_FROM ? 'na' : !rec ? 'pending' : rec.status === 'closed' ? 'closed' : 'submitted', rcaRec: rec,

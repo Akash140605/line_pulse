@@ -17,6 +17,7 @@
  * Units stay apart: minutes for time losses, pieces for rejection / rework.
  */
 import { normEntry } from './ole';
+import { deptOfRow } from './deptRules';
 
 export const EFFECT_STATUS = {
   not: { label: 'Not effective', tone: 'bg-red-100 text-red-800 ring-red-300', order: 0 },
@@ -55,7 +56,7 @@ export function rcaEffect({ entries = {}, rca = {}, start, end, ids = null, win 
         const v = Number(x[num]) || 0; if (!(v > 0)) continue;
         const reason = x.reason || 'Not given';
         const gk = gKey(kind, reason, line);
-        const g = G.get(gk) || { key: gk, kind, reason, unit: num === 'min' ? 'min' : 'pcs', dept: x.dept || 'Not set', lines: new Set(), byDay: new Map(), actions: [] };
+        const g = G.get(gk) || { key: gk, kind, reason, unit: num === 'min' ? 'min' : 'pcs', dept: deptOfRow(x, kind), lines: new Set(), byDay: new Map(), actions: [] };
         g.lines.add(String(line));
         g.byDay.set(date, (g.byDay.get(date) || 0) + v);
         G.set(gk, g);
@@ -71,7 +72,7 @@ export function rcaEffect({ entries = {}, rca = {}, start, end, ids = null, win 
     const at = actionDate(rec);
     if (!at || at > end) continue;
     const gk = gKey(kind, reason, line);
-    const g = G.get(gk) || { key: gk, kind, reason, unit: kind === 'loss' ? 'min' : 'pcs', dept: rec.dept || 'Not set', lines: new Set([String(line)]), byDay: new Map(), actions: [] };
+    const g = G.get(gk) || { key: gk, kind, reason, unit: kind === 'loss' ? 'min' : 'pcs', dept: deptOfRow({ dept: rec.dept, reason }, kind), lines: new Set([String(line)]), byDay: new Map(), actions: [] };
     g.actions.push({ at, lossDate: date, line: String(line), action: String(rec.action || '').trim(), rootCause: String(rec.rootCause || '').trim(), status: rec.status || 'submitted', by: rec.updatedBy || rec.submittedBy || '' });
     G.set(gk, g);
   }

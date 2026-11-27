@@ -12,6 +12,7 @@
  * not known (noMpMin says how many minutes are without ₹).
  */
 import { normEntry } from './ole';
+import { deptOfRow } from './deptRules';
 
 export const LOSS_KINDS = [
   { id: 'loss', label: 'Idle time', list: 'losses', num: 'min', unit: 'min' },
@@ -57,7 +58,7 @@ export function lossAnalysis({ entries = {}, start, end, ids = null, kind = 'los
       const value = Number(x[K.num]) || 0;
       if (value <= 0) continue;
       const reason = tidy(x.reason) || 'Not given';
-      const dept = deptName(x.dept) || 'Not set';
+      const dept = deptOfRow(x, kind, deptName);
       rows.push({
         date, line: String(line), hour: Number(h), reason, dept, owner: tidy(x.owner) || ownerFrom(reasons, kind, reason),
         model: tidy(x.model), part: tidy(x.part), value, rs: K.num === 'min' ? lossRs(value, mp, Number(h), hpr) : null,

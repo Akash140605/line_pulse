@@ -28,6 +28,7 @@ import { targetOf } from './targets';
 import { masterTargetOf } from './targetMethods';   // 21-11-2026: Method D target from the master when a line's set is missing
 import { normShift, offMinOf, shiftOfDay, SHIFT_PLANT } from './shift';
 import { dayPlanOf } from './dayPlan';   // 25-11-2026: one plan of a line-day (screens = reports)
+import { deptOfRow } from './deptRules';
 
 /** Fallback shift (minutes) when a line has none saved: 09:00–21:00, lunch 13:00–13:30. */
 export const OLE_SHIFT = { start: 9 * 60, end: 21 * 60, lunchStart: 13 * 60, lunchEnd: 13 * 60 + 30, breaks: [], off: [[13 * 60, 13 * 60 + 30]] };
@@ -88,10 +89,10 @@ export function lossSummary(rows, stationList = null) {
       [e.rejects, 'rejQty', 'qty', 'Rejection'], [e.rework, 'rwQty', 'qty', 'Rework']]) {
       for (const x of list) {
         const kind = list === e.losses && x.model && CFG.lossIn !== 'avail' ? 'Performance loss' : kind0;
-        add(dept, x.dept || 'Not set', f, x[num]);
+        add(dept, deptOfRow(x, kind), f, x[num]);
         add(model, x.model || 'Model not given', f, x[num]);
         const k = `${kind}|${x.reason || 'Not given'}`;
-        const o = reason.get(k) || { kind, name: x.reason || 'Not given', dept: x.dept || 'Not set', value: 0, unit: num === 'min' ? 'min' : 'pcs', byModel: new Map() };
+        const o = reason.get(k) || { kind, name: x.reason || 'Not given', dept: deptOfRow(x, kind), value: 0, unit: num === 'min' ? 'min' : 'pcs', byModel: new Map() };
         o.value += x[num]; reason.set(k, o);
         if (x.model) o.byModel.set(x.model, (o.byModel.get(x.model) || 0) + x[num]);   // 20-11-2026: the models the reason was written on
         if (num === 'qty') {
@@ -375,7 +376,7 @@ export function issuesOf(days) {
           for (const x of list) {
             const it = { date: d.date, line: String(line), kind, reason: x.reason || 'Not given' };
             const k = rcaKey(it);
-            const o = m.get(k) || { ...it, key: k, dept: x.dept || 'Not set', value: 0, unit: num === 'min' ? 'min' : 'pcs', hours: [], models: [] };
+            const o = m.get(k) || { ...it, key: k, dept: deptOfRow(x, kind), value: 0, unit: num === 'min' ? 'min' : 'pcs', hours: [], models: [] };
             o.value += x[num];
             if (!o.hours.includes(r.hour)) o.hours.push(r.hour);
             if (x.model && !o.models.includes(x.model)) o.models.push(x.model);

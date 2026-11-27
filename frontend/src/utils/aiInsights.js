@@ -6,6 +6,7 @@
  */
 import { normEntry, rcaStatus, RCA_FROM } from './ole';
 import { rcaEffect, addDaysYmd } from './rcaEffect';
+import { deptOfRow } from './deptRules';
 
 const KINDS = [['losses', 'min', 'loss'], ['rejects', 'qty', 'reject'], ['rework', 'qty', 'rework']];
 
@@ -21,7 +22,7 @@ export function entryInsights({ entries = {}, rca = {}, today, ids = null, back 
       for (const x of e[field] || []) {
         const v = Number(x[num]) || 0; if (!(v > 0)) continue;
         const key = `${kind}|${String(x.reason || 'Not given').toLowerCase()}`;
-        const o = agg.get(key) || { kind, reason: x.reason || 'Not given', dept: x.dept || 'Not set', unit: num === 'min' ? 'min' : 'pcs', now: 0, prev: 0, lines: new Set(), stations: new Map(), dismantle: 0 };
+        const o = agg.get(key) || { kind, reason: x.reason || 'Not given', dept: deptOfRow(x, kind), unit: num === 'min' ? 'min' : 'pcs', now: 0, prev: 0, lines: new Set(), stations: new Map(), dismantle: 0 };
         if (date >= w1) { o.now += v; o.lines.add(String(line)); if (x.station) o.stations.set(x.station, (o.stations.get(x.station) || 0) + v); o.dismantle += Number(x.dismantle) || 0; }
         else if (date <= w0e) o.prev += v;
         agg.set(key, o);

@@ -54,7 +54,7 @@ export function reworkOfHour(grid, h, deptOf = () => '') {
     if (!qty) continue;
     const dismantle = disOf(g)[h] || 0;
     out.push({
-      station: g.station || '', model: g.model || '', reason: String(g.reason || '').trim(), dept: (g.dept && g.orig === `${g.station || ''}|${g.reason || ''}` ? g.dept : deptOf(g) || g.dept) || '', qty,
+      station: g.station || '', model: g.model || '', reason: String(g.reason || '').trim(), dept: (g.deptPick && g.dept ? g.dept : g.dept && g.orig === `${g.station || ''}|${g.reason || ''}` ? g.dept : deptOf(g) || g.dept) || '', qty,   // 27-11-2026: a department chosen in the grid wins
       ...(g.owner ? { owner: g.owner } : {}), ...(g.part ? { part: g.part } : {}),
       ...(g.cat ? { cat: g.cat } : {}), ...(g.cause ? { cause: g.cause } : {}), ...(g.action ? { action: g.action } : {}),
       ...(dismantle > 0 ? { dismantle } : {}),

@@ -21,6 +21,10 @@ import { exportPanel } from '../utils/domExcel';
 import { addDaysYmd } from '../utils/rcaEffect';
 
 const RTY_MIN = 0.97;
+// 27-11-2026: why-why on the sheet too — 3 at least, '+ Why' up to 7 (as the CAPA form)
+const MIN_WHY = 3, MAX_WHY = 7;
+const whys0 = (w) => { const a = (Array.isArray(w) ? w : []).slice(0, MAX_WHY).map((v) => String(v || '')); while (a.length < MIN_WHY) a.push(''); return a; };
+const whyAsk = (prev) => (String(prev || '').trim() ? `Why ${String(prev).trim().replace(/[.?!]+$/, '')}?` : '');
 const TOP = 5;
 const tidy = (s) => String(s ?? '').trim();
 const pc = (v) => (v == null ? '—' : `${(v * 100).toFixed(2)}%`);
@@ -38,11 +42,14 @@ function topOf(rows, kind, limit = TOP) {
         const v = Number(x[num]) || 0; if (!(v > 0)) continue;
         const reason = tidy(x.reason) || 'Not given';
         const key = `${k}|${reason}`;
-        const o = m.get(key) || { kind: k, reason, value: 0, dis: 0, hours: new Map(), stages: new Map(), models: new Map(), cause: '', action: '', owner: '', dept: '', cat: '' };
+        const o = m.get(key) || { kind: k, reason, value: 0, dis: 0, hours: new Map(), stages: new Map(), models: new Map(), guessed: new Set(), cause: '', action: '', owner: '', dept: '', cat: '' };
         o.value += v; o.dis += Number(x.dismantle) || 0; o.hours.set(r.hour, (o.hours.get(r.hour) || 0) + v);   // 27-11-2026: how much in which hour
         if (x.station) o.stages.set(x.station, (o.stages.get(x.station) || 0) + v);
         if (!o.owner && tidy(x.owner)) o.owner = tidy(x.owner);
-        if (x.model) o.models.set(x.model, (o.models.get(x.model) || 0) + v);
+        // 27-11-2026: no model written on the row → the model the line was making in that hour (the most pieces)
+        let md = tidy(x.model);
+        if (!md) { const run = [...(r.models || [])].sort((a, b) => (Number(b.quantity) || 0) - (Number(a.quantity) || 0))[0]; md = tidy(run?.model); if (md) o.guessed.add(md); }
+        if (md) o.models.set(md, (o.models.get(md) || 0) + v);
         if (!o.cause && tidy(x.cause)) o.cause = tidy(x.cause);
         if (!o.action && tidy(x.action)) o.action = tidy(x.action);
         if (!o.dept) o.dept = deptOfRow(x, k, deptName);
@@ -97,7 +104,7 @@ export default function DailyCapaPage({ kind = 'rework', isAdmin = true, myDept 
     const o = {};
     for (const t of top) {
       const x = D.ent.rca?.[rcaKey(t)] || null;
-      if (x) { o[rcaKey(t)] = { cat: x.cat || guessRcaCat(t.reason, t.dept), rootCause: x.rootCause || '', action: x.action || '', preventive: x.preventive || '', owner: x.owner || '', targetDate: x.targetDate || '', status: rcaStatus(x), saved: true, dirty: false, from: {} }; continue; }
+      if (x) { o[rcaKey(t)] = { cat: x.cat || guessRcaCat(t.reason, t.dept), rootCause: x.rootCause || '', whys: whys0(x.whys), action: x.action || '', preventive: x.preventive || '', owner: x.owner || '', targetDate: x.targetDate || '', status: rcaStatus(x), saved: true, dirty: false, from: {} }; continue; }
       // 27-11-2026: not saved yet → everything that is known fills itself: the grid's cause / action / owner, else the
       // last RCA of the same reason, the owner of the department last time, and a target date a week after the day
       const L = lastOf.reason(t), from = {};
@@ -107,7 +114,8 @@ export default function DailyCapaPage({ kind = 'rework', isAdmin = true, myDept 
       if (!owner) { owner = lastOf.owner(t.dept); if (owner) from.owner = `${t.dept} owner last time`; }
       const cat = t.cat && RCA_CATS.includes(t.cat) ? t.cat : L?.cat && RCA_CATS.includes(L.cat) ? (from.cat = 'Last time', L.cat) : guessRcaCat(t.reason, t.dept);
       const targetDate = addDaysYmd(date, 7); from.targetDate = 'A week after the day';
-      o[rcaKey(t)] = { cat, rootCause, action, preventive, owner, targetDate, status: 'pending', saved: false, dirty: !!rootCause, auto: !!rootCause, from };
+      const whys = whys0(L?.whys); if (L?.whys?.some((w) => tidy(w))) from.whys = `Last time (${dmy(L.date)}, Line ${L.line})`;
+      o[rcaKey(t)] = { cat, rootCause, whys, action, preventive, owner, targetDate, status: 'pending', saved: false, dirty: !!rootCause, auto: !!rootCause, from };
     }
     // a row someone is typing in is kept when the day is read again (every 20 s for today)
     setF((prev) => { for (const k of Object.keys(o)) if (prev[k]?.dirty && !prev[k]?.auto && !o[k].saved) o[k] = prev[k]; return o; });
@@ -123,15 +131,18 @@ export default function DailyCapaPage({ kind = 'rework', isAdmin = true, myDept 
     const items = [], skipped = [];
     for (const t of (close ? top : dirty)) {
       const r = f[rcaKey(t)]; if (!r || !canWrite(t)) continue;
-      if (!tidy(r.rootCause)) { if (r.dirty) skipped.push(t.reason); continue; }
-      items.push({ date, line: Number(line), kind: t.kind, reason: t.reason, cat: r.cat, rootCause: tidy(r.rootCause), action: tidy(r.action), preventive: tidy(r.preventive),
+      const ws = (r.whys || []).map((w) => tidy(w));
+      const rc = tidy(r.rootCause) || [...ws].reverse().find(Boolean) || '';   // the last why is the root cause when the box is empty
+      if (ws.filter(Boolean).length < MIN_WHY || !rc) { if (r.dirty) skipped.push(t.reason); continue; }
+      while (ws.length && !ws[ws.length - 1]) ws.pop();
+      items.push({ date, line: Number(line), kind: t.kind, reason: t.reason, cat: r.cat, rootCause: rc, whys: ws, action: tidy(r.action), preventive: tidy(r.preventive),
         owner: tidy(r.owner), targetDate: r.targetDate, status: close && tidy(r.action) ? 'closed' : (r.status === 'closed' ? 'closed' : 'submitted') });
     }
-    if (!items.length) { setMsg({ bad: true, text: skipped.length ? `Write the root cause first: ${skipped.join(', ')}` : 'Nothing changed.' }); return; }
+    if (!items.length) { setMsg({ bad: true, text: skipped.length ? `Write ${MIN_WHY} whys first: ${skipped.join(', ')}` : 'Nothing changed.' }); return; }
     setBusy(true);
     try {
       await api.saveRca(items);
-      setMsg({ bad: false, text: `${items.length} saved as RCA${skipped.length ? ` · without a root cause, not saved: ${skipped.join(', ')}` : ''}` });
+      setMsg({ bad: false, text: `${items.length} saved as RCA${skipped.length ? ` · less than ${MIN_WHY} whys, not saved: ${skipped.join(', ')}` : ''}` });
       D.reloadEnt?.();
     } catch (e) { setMsg({ bad: true, text: e?.message || 'Could not save.' }); }
     setBusy(false);
@@ -186,8 +197,8 @@ export default function DailyCapaPage({ kind = 'rework', isAdmin = true, myDept 
 
         {top.length > 0 && (
           <section className={`${card} overflow-x-auto`} aria-label="CAPA rows">
-            <table className="w-full border-collapse" style={{ minWidth: kind === 'rework' ? 1500 : 1350 }} data-testid="capa-table">
-              <thead><tr>{['#', kind === 'rework' ? 'Defect' : 'Reason', ...(kind === 'rework' ? ['Rework', 'Passed', 'Dismantle', 'Stage'] : ['Idle time']), 'Model', 'Hour', 'Department', 'Category (6M)', 'Root cause', 'Corrective action', 'Preventive action', 'Responsibility', 'Target date', 'Status'].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
+            <table className="w-full border-collapse" style={{ minWidth: kind === 'rework' ? 1730 : 1580 }} data-testid="capa-table">
+              <thead><tr>{['#', kind === 'rework' ? 'Defect' : 'Reason', ...(kind === 'rework' ? ['Rework', 'Passed', 'Dismantle', 'Stage'] : ['Idle time']), 'Model', 'Hour', 'Department', 'Category (6M)', `Why-why (${MIN_WHY} at least)`, 'Root cause', 'Corrective action', 'Preventive action', 'Responsibility', 'Target date', 'Status'].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
               <tbody>
                 {top.map((t, i) => {
                   const k = rcaKey(t), r = f[k] || {}, can = canWrite(t);
@@ -201,7 +212,7 @@ export default function DailyCapaPage({ kind = 'rework', isAdmin = true, myDept 
                         <td className={`${td} whitespace-nowrap text-right font-mono text-fs-14 font-bold ${t.dis ? 'text-amber-700' : 'text-slate-400'}`} data-testid="capa-dis">{t.dis ? nf(t.dis) : '0'}</td>
                         <td className={`${td} text-fs-12 text-slate-700`} style={{ minWidth: 120 }}>{[...t.stages.entries()].sort((a, b) => b[1] - a[1]).map(([st, v]) => <div key={st} className="font-semibold">{st}{t.stages.size > 1 && <span className="font-mono text-slate-500"> · {v}</span>}</div>)}{!t.stages.size && <span className="text-slate-400">—</span>}</td>
                       </>}
-                      <td className={`${td} text-fs-12 text-slate-700`} style={{ minWidth: 170 }}>{[...t.models.entries()].sort((a, b) => b[1] - a[1]).map(([m, v]) => <div key={m} className="flex justify-between gap-2"><span className="font-mono">{m}</span><b className="font-mono">{unit === 'min' ? hm(v) : nf(v)}</b></div>)}{!t.models.size && <span className="text-slate-400">—</span>}</td>
+                      <td className={`${td} text-fs-12 text-slate-700`} style={{ minWidth: 170 }}>{[...t.models.entries()].sort((a, b) => b[1] - a[1]).map(([m, v]) => <div key={m} className="flex justify-between gap-2"><span className="font-mono" title={t.guessed.has(m) ? 'Not written on the loss entry — the model running in that hour' : ''}>{m}{t.guessed.has(m) && <span className="ml-1 text-fs-10 font-sans font-semibold text-slate-500">(running)</span>}</span><b className="font-mono">{unit === 'min' ? hm(v) : nf(v)}</b></div>)}{!t.models.size && <span className="text-slate-400">—</span>}</td>
                       <td className={`${td} whitespace-nowrap text-fs-12 text-slate-700`} data-testid="capa-hours">{[...t.hours.entries()].sort((a, b) => a[0] - b[0]).map(([h, v]) => <div key={h} className="flex justify-between gap-2"><span className="font-mono">{hh(h)}</span><b className="font-mono">{unit === 'min' ? hm(v) : nf(v)}</b></div>)}</td>
                       <td className={`${td} whitespace-nowrap text-fs-13 font-semibold`}>{t.dept}</td>
                       <td className={`${td} min-w-[120px]`}>
@@ -209,9 +220,25 @@ export default function DailyCapaPage({ kind = 'rework', isAdmin = true, myDept 
                           {RCA_CATS.map((c) => <option key={c} value={c}>{c}</option>)}
                         </select>
                       </td>
+                      <td className={td} style={{ minWidth: 230 }} data-testid="capa-whys">
+                        {(r.whys || []).map((w, j) => (
+                          <div key={j} className="mb-1 flex items-center gap-1">
+                            <span className="w-6 shrink-0 text-fs-11 font-extrabold text-[#1F3864]">W{j + 1}</span>
+                            <input aria-label={`Row ${i + 1} why ${j + 1}`} disabled={!can} maxLength={300} value={w}
+                              placeholder={j === 0 ? 'Why did it happen?' : whyAsk(r.whys[j - 1]) || `Why? (from W${j})`}
+                              onChange={(e) => setF((o) => ({ ...o, [k]: { ...o[k], whys: o[k].whys.map((v, z) => (z === j ? e.target.value : v)), dirty: true, auto: false, from: { ...(o[k].from || {}), whys: undefined } } }))}
+                              className={`${inp} ${j < MIN_WHY && r.dirty && !r.auto && msg?.bad && !tidy(w) ? 'border-red-500 bg-red-50' : r.from?.whys ? 'lp-autofill' : ''}`} />
+                          </div>))}
+                        <div className="flex items-center gap-2">
+                          {can && <button type="button" disabled={(r.whys || []).length >= MAX_WHY} data-testid="capa-why-add" onClick={() => setF((o) => ({ ...o, [k]: { ...o[k], whys: [...o[k].whys, ''] } }))} className="text-fs-12 font-bold text-blue-800 hover:underline disabled:opacity-40">+ Why</button>}
+                          {can && (r.whys || []).length > MIN_WHY && <button type="button" onClick={() => setF((o) => ({ ...o, [k]: { ...o[k], whys: o[k].whys.slice(0, -1) } }))} className="text-fs-12 font-bold text-slate-500 hover:underline">− last</button>}
+                          <span className={`ml-auto text-fs-11 font-bold ${(r.whys || []).filter((w) => tidy(w)).length >= MIN_WHY ? 'text-emerald-700' : 'text-slate-500'}`}>{(r.whys || []).filter((w) => tidy(w)).length}/{MIN_WHY}</span>
+                        </div>
+                        {r.from?.whys && <div className="text-fs-10 text-slate-500">{r.from.whys}</div>}
+                      </td>
                       {['rootCause', 'action', 'preventive'].map((fl) => (
                         <td key={fl} className={`${td} min-w-[170px]`}><textarea aria-label={`Row ${i + 1} ${fl}`} disabled={!can} rows={2} maxLength={1000} value={r[fl] || ''} onChange={(e) => set(k, fl, e.target.value)}
-                          placeholder={fl === 'rootCause' ? 'Why did it happen?' : fl === 'action' ? 'What was done / will be done' : 'So it does not come again'} title={r.from?.[fl] || ''} className={`${inp} ${fl === 'rootCause' && r.dirty && !tidy(r.rootCause) ? 'border-red-500 bg-red-50' : r.from?.[fl] ? 'lp-autofill' : ''}`} />{r.from?.[fl] && <div className="text-fs-10 text-slate-500">{r.from[fl]}</div>}</td>))}
+                          placeholder={fl === 'rootCause' ? 'The last why if left empty' : fl === 'action' ? 'What was done / will be done' : 'So it does not come again'} title={r.from?.[fl] || ''} className={`${inp} ${r.from?.[fl] ? 'lp-autofill' : ''}`} />{r.from?.[fl] && <div className="text-fs-10 text-slate-500">{r.from[fl]}</div>}</td>))}
                       <td className={`${td} min-w-[120px]`}><input aria-label={`Row ${i + 1} responsibility`} disabled={!can} maxLength={60} value={r.owner || ''} onChange={(e) => set(k, 'owner', e.target.value)} placeholder="Name" title={r.from?.owner || ''} className={`${inp} ${r.from?.owner ? 'lp-autofill' : ''}`} />{r.from?.owner && <div className="text-fs-10 text-slate-500">{r.from.owner}</div>}</td>
                       <td className={td} style={{ minWidth: 130 }}><input type="date" aria-label={`Row ${i + 1} target date`} disabled={!can} value={r.targetDate || ''} onChange={(e) => set(k, 'targetDate', e.target.value)} title={r.from?.targetDate || ''} className={`${inp} ${r.from?.targetDate ? 'lp-autofill' : ''}`} /></td>
                       <td className={`${td} whitespace-nowrap`}>{r.auto && r.dirty ? <span className="rounded bg-sky-100 px-1.5 py-0.5 text-fs-12 font-bold text-sky-800" title="Filled from what is already known — check and save">auto-filled · check</span> : r.dirty ? <span className="rounded bg-amber-100 px-1.5 py-0.5 text-fs-12 font-bold text-amber-800">not saved</span> : <StatusChip st={r.status || 'pending'} />}</td>

@@ -200,58 +200,88 @@ export default function DailyCapaPage({ kind = 'rework', isAdmin = true, myDept 
         {D.al && !top.length && <div className={`${card} text-fs-14 font-semibold text-slate-600`}>No {kind === 'rework' ? 'rework or rejection' : 'idle time'} written for Line {line} on {dmy(date)}.</div>}
 
         {top.length > 0 && (
-          <section className={`${card} overflow-x-auto`} aria-label="CAPA rows">
-            <table className="w-full border-collapse" style={{ minWidth: kind === 'rework' ? 1730 : 1580 }} data-testid="capa-table">
-              <thead><tr>{['#', kind === 'rework' ? 'Defect' : 'Reason', ...(kind === 'rework' ? ['Rework', 'Passed', 'Dismantle', 'Stage'] : ['Idle time']), 'Model', 'Hour', 'Department', 'Category (6M)', `Why-why (${MIN_WHY} at least)`, 'Root cause', 'Corrective action', 'Preventive action', 'Responsibility', 'Target date', 'Status'].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
-              <tbody>
-                {top.map((t, i) => {
-                  const k = rcaKey(t), r = f[k] || {}, can = canWrite(t);
-                  return (
-                    <tr key={k} className={i % 2 ? 'bg-slate-50/60' : ''} data-testid="capa-row">
-                      <td className={`${td} text-center font-mono text-fs-13 text-slate-500`}>{i + 1}</td>
-                      <td className={`${td} min-w-[150px]`}><div className="text-fs-13 font-bold text-slate-900">{t.reason}</div><div className="text-fs-11 font-semibold uppercase text-slate-500">{t.kind === 'reject' ? 'Rejection' : t.kind === 'rework' ? 'Rework' : t.kind === 'stop' ? 'Stoppage' : 'Idle time'}</div></td>
-                      <td className={`${td} whitespace-nowrap text-right font-mono text-fs-14 font-extrabold text-red-700`} data-testid="capa-qty">{unit === 'min' ? hm(t.value) : nf(t.value)}</td>
-                      {kind === 'rework' && <>
-                        <td className={`${td} whitespace-nowrap text-right font-mono text-fs-14 font-bold text-emerald-700`} data-testid="capa-pass">{nf(Math.max(0, t.value - t.dis))}</td>
-                        <td className={`${td} whitespace-nowrap text-right font-mono text-fs-14 font-bold ${t.dis ? 'text-amber-700' : 'text-slate-400'}`} data-testid="capa-dis">{t.dis ? nf(t.dis) : '0'}</td>
-                        <td className={`${td} text-fs-12 text-slate-700`} style={{ minWidth: 120 }}>{[...t.stages.entries()].sort((a, b) => b[1] - a[1]).map(([st, v]) => <div key={st} className="font-semibold">{st}{t.stages.size > 1 && <span className="font-mono text-slate-500"> · {v}</span>}</div>)}{!t.stages.size && <span className="text-slate-400">—</span>}</td>
-                      </>}
-                      <td className={`${td} text-fs-12 text-slate-700`} style={{ minWidth: 170 }}>{[...t.models.entries()].sort((a, b) => b[1] - a[1]).map(([m, v]) => <div key={m} className="flex justify-between gap-2"><span className="font-mono" title={t.guessed.has(m) ? 'Not written on the loss entry — the model running in that hour' : ''}>{m}{t.guessed.has(m) && <span className="ml-1 text-fs-10 font-sans font-semibold text-slate-500">(running)</span>}</span><b className="font-mono">{unit === 'min' ? hm(v) : nf(v)}</b></div>)}{!t.models.size && <span className="text-slate-400">—</span>}</td>
-                      <td className={`${td} whitespace-nowrap text-fs-12 text-slate-700`} data-testid="capa-hours">{[...t.hours.entries()].sort((a, b) => a[0] - b[0]).map(([h, v]) => <div key={h} className="flex justify-between gap-2"><span className="font-mono">{hh(h)}</span><b className="font-mono">{unit === 'min' ? hm(v) : nf(v)}</b></div>)}</td>
-                      <td className={`${td} whitespace-nowrap text-fs-13 font-semibold`}>{t.dept}</td>
-                      <td className={`${td} min-w-[120px]`}>
+          <section className="flex flex-col gap-2" aria-label="CAPA rows" data-testid="capa-table">
+            {/* 27-11-2026: one card per defect / reason — the facts on top, the form below (no side scrolling) */}
+            {top.map((t, i) => {
+              const k = rcaKey(t), r = f[k] || {}, can = canWrite(t);
+              const nW = (r.whys || []).filter((w) => tidy(w)).length;
+              const miss = r.dirty ? missingOf(r) : [];
+              const facts = 'text-fs-11 font-bold uppercase tracking-wide text-slate-500';
+              return (
+                <article key={k} className={`lp-capa-card ${r.dirty ? 'lp-capa-dirty' : r.saved ? 'lp-capa-saved' : ''}`} data-testid="capa-row">
+                  <header className="lp-capa-head">
+                    <span className="lp-capa-no">{i + 1}</span>
+                    <div className="min-w-0" style={{ flex: '1 1 220px' }}>
+                      <div className="text-fs-15 font-extrabold text-slate-900">{t.reason}</div>
+                      <div className="text-fs-12 font-semibold text-slate-500">{t.kind === 'reject' ? 'Rejection' : t.kind === 'rework' ? 'Rework' : t.kind === 'stop' ? 'Stoppage' : 'Idle time'} · <b className="text-slate-700">{t.dept}</b></div>
+                    </div>
+                    <div className="lp-capa-fact"><div className={facts}>{kind === 'rework' ? 'Rework' : 'Idle time'}</div><b className="font-mono text-fs-16 text-red-700" data-testid="capa-qty">{unit === 'min' ? hm(t.value) : nf(t.value)}</b></div>
+                    {kind === 'rework' && <>
+                      <div className="lp-capa-fact"><div className={facts}>Passed</div><b className="font-mono text-fs-16 text-emerald-700" data-testid="capa-pass">{nf(Math.max(0, t.value - t.dis))}</b></div>
+                      <div className="lp-capa-fact"><div className={facts}>Dismantle</div><b className={`font-mono text-fs-16 ${t.dis ? 'text-amber-700' : 'text-slate-400'}`} data-testid="capa-dis">{t.dis ? nf(t.dis) : '0'}</b></div>
+                      <div className="lp-capa-fact" style={{ minWidth: 120 }}><div className={facts}>Stage</div><div className="text-fs-13 font-semibold">{[...t.stages.entries()].sort((a, b) => b[1] - a[1]).map(([st, v]) => <div key={st}>{st}{t.stages.size > 1 && <span className="font-mono text-slate-500"> · {v}</span>}</div>)}{!t.stages.size && '—'}</div></div>
+                    </>}
+                    <div className="lp-capa-fact" style={{ minWidth: 170 }}><div className={facts}>Model</div><div className="text-fs-13">{[...t.models.entries()].sort((a, b) => b[1] - a[1]).map(([m, v]) => <div key={m} className="flex justify-between gap-2"><span className="font-mono" title={t.guessed.has(m) ? 'Not written on the loss entry — the model running in that hour' : ''}>{m}{t.guessed.has(m) && <span className="ml-1 text-fs-10 font-sans font-semibold text-slate-500">(running)</span>}</span><b className="font-mono">{unit === 'min' ? hm(v) : nf(v)}</b></div>)}{!t.models.size && '—'}</div></div>
+                    <div className="lp-capa-fact" data-testid="capa-hours"><div className={facts}>Hour</div><div className="text-fs-13">{[...t.hours.entries()].sort((a, b) => a[0] - b[0]).map(([h, v]) => <div key={h} className="flex justify-between gap-2"><span className="font-mono">{hh(h)}</span><b className="font-mono">{unit === 'min' ? hm(v) : nf(v)}</b></div>)}</div></div>
+                    <div className="ml-auto self-start text-right">
+                      {r.dirty ? <span className="rounded bg-amber-100 px-1.5 py-0.5 text-fs-12 font-bold text-amber-800">not saved</span> : r.auto && !r.saved ? <span className="rounded bg-sky-100 px-1.5 py-0.5 text-fs-12 font-bold text-sky-800" title="Suggestions from the loss entry / last time — complete it, then save">suggested · complete it</span> : <StatusChip st={r.status || 'pending'} />}
+                      {miss.length > 0 && <div className="mt-1 text-fs-12 font-semibold text-red-700" data-testid="capa-missing">Fill: {miss.join(', ')}</div>}
+                    </div>
+                  </header>
+                  <div className="lp-capa-form">
+                    <div className="lp-capa-col">
+                      <label className="lp-capa-lbl">Category (6M)
                         <select aria-label={`Row ${i + 1} category`} disabled={!can} value={r.cat || ''} title={RCA_CAT_HINT[r.cat] || ''} onChange={(e) => set(k, 'cat', e.target.value)} className={inp}>
                           {RCA_CATS.map((c) => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                      </td>
-                      <td className={td} style={{ minWidth: 230 }} data-testid="capa-whys">
-                        {(r.whys || []).map((w, j) => (
-                          <div key={j} className="mb-1 flex items-center gap-1">
-                            <span className="w-6 shrink-0 text-fs-11 font-extrabold text-[#1F3864]">W{j + 1}</span>
-                            <input aria-label={`Row ${i + 1} why ${j + 1}`} disabled={!can} maxLength={300} value={w}
-                              placeholder={j === 0 ? 'Why did it happen?' : whyAsk(r.whys[j - 1]) || `Why? (from W${j})`}
-                              onChange={(e) => setF((o) => ({ ...o, [k]: { ...o[k], whys: o[k].whys.map((v, z) => (z === j ? e.target.value : v)), dirty: true, auto: false, from: { ...(o[k].from || {}), whys: undefined } } }))}
-                              className={`${inp} ${j < MIN_WHY && r.dirty && !r.auto && msg?.bad && !tidy(w) ? 'border-red-500 bg-red-50' : r.from?.whys ? 'lp-autofill' : ''}`} />
-                          </div>))}
-                        <div className="flex items-center gap-2">
-                          {can && <button type="button" disabled={(r.whys || []).length >= MAX_WHY} data-testid="capa-why-add" onClick={() => setF((o) => ({ ...o, [k]: { ...o[k], whys: [...o[k].whys, ''] } }))} className="text-fs-12 font-bold text-blue-800 hover:underline disabled:opacity-40">+ Why</button>}
-                          {can && (r.whys || []).length > MIN_WHY && <button type="button" onClick={() => setF((o) => ({ ...o, [k]: { ...o[k], whys: o[k].whys.slice(0, -1) } }))} className="text-fs-12 font-bold text-slate-500 hover:underline">− last</button>}
-                          <span className={`ml-auto text-fs-11 font-bold ${(r.whys || []).filter((w) => tidy(w)).length >= MIN_WHY ? 'text-emerald-700' : 'text-slate-500'}`}>{(r.whys || []).filter((w) => tidy(w)).length}/{MIN_WHY}</span>
-                        </div>
-                        {r.from?.whys && <div className="text-fs-10 text-slate-500">{r.from.whys}</div>}
-                      </td>
+                        </select></label>
+                      <label className="lp-capa-lbl">Responsibility
+                        <input aria-label={`Row ${i + 1} responsibility`} disabled={!can} maxLength={60} value={r.owner || ''} onChange={(e) => set(k, 'owner', e.target.value)} placeholder="Name" title={r.from?.owner || ''} className={`${inp} ${r.from?.owner ? 'lp-autofill' : ''} ${miss.includes('responsibility') ? 'lp-capa-miss' : ''}`} />
+                        {r.from?.owner && <span className="text-fs-10 font-normal text-slate-500">{r.from.owner}</span>}</label>
+                      <label className="lp-capa-lbl">Target date
+                        <input type="date" aria-label={`Row ${i + 1} target date`} disabled={!can} value={r.targetDate || ''} onChange={(e) => set(k, 'targetDate', e.target.value)} title={r.from?.targetDate || ''} className={`${inp} ${r.from?.targetDate ? 'lp-autofill' : ''}`} /></label>
+                    </div>
+                    <fieldset className="lp-capa-col" data-testid="capa-whys">
+                      <legend className="lp-capa-lbl">Why-why <span className={`font-mono ${nW >= MIN_WHY ? 'text-emerald-700' : 'text-red-700'}`}>{nW}/{MIN_WHY}</span></legend>
+                      {(r.whys || []).map((w, j) => (
+                        <div key={j} className="flex items-center gap-1">
+                          <span className="w-7 shrink-0 text-fs-12 font-extrabold text-[#1F3864]">W{j + 1}</span>
+                          <input aria-label={`Row ${i + 1} why ${j + 1}`} disabled={!can} maxLength={300} value={w}
+                            placeholder={j === 0 ? 'Why did it happen?' : whyAsk(r.whys[j - 1]) || `Why? (from W${j})`}
+                            onChange={(e) => setF((o) => ({ ...o, [k]: { ...o[k], whys: o[k].whys.map((v, z) => (z === j ? e.target.value : v)), dirty: true, auto: false, from: { ...(o[k].from || {}), whys: undefined } } }))}
+                            className={`${inp} ${j < MIN_WHY && r.dirty && !tidy(w) ? 'lp-capa-miss' : r.from?.whys ? 'lp-autofill' : ''}`} />
+                        </div>))}
+                      <div className="flex items-center gap-3">
+                        {can && <button type="button" disabled={(r.whys || []).length >= MAX_WHY} data-testid="capa-why-add" onClick={() => setF((o) => ({ ...o, [k]: { ...o[k], whys: [...o[k].whys, ''] } }))} className="text-fs-13 font-bold text-blue-800 hover:underline disabled:opacity-40">+ Why</button>}
+                        {can && (r.whys || []).length > MIN_WHY && <button type="button" onClick={() => setF((o) => ({ ...o, [k]: { ...o[k], whys: o[k].whys.slice(0, -1) } }))} className="text-fs-13 font-bold text-slate-500 hover:underline">− last</button>}
+                        {r.from?.whys && <span className="text-fs-10 text-slate-500">{r.from.whys}</span>}
+                      </div>
+                    </fieldset>
+                    <div className="lp-capa-col">
                       {['rootCause', 'action', 'preventive'].map((fl) => (
-                        <td key={fl} className={`${td} min-w-[170px]`}><textarea aria-label={`Row ${i + 1} ${fl}`} disabled={!can} rows={2} maxLength={1000} value={r[fl] || ''} onChange={(e) => set(k, fl, e.target.value)}
-                          placeholder={fl === 'rootCause' ? 'The last why if left empty' : fl === 'action' ? 'What was done / will be done' : 'So it does not come again'} title={r.from?.[fl] || ''} className={`${inp} ${r.from?.[fl] ? 'lp-autofill' : ''}`} />{r.from?.[fl] && <div className="text-fs-10 text-slate-500">{r.from[fl]}</div>}</td>))}
-                      <td className={`${td} min-w-[120px]`}><input aria-label={`Row ${i + 1} responsibility`} disabled={!can} maxLength={60} value={r.owner || ''} onChange={(e) => set(k, 'owner', e.target.value)} placeholder="Name" title={r.from?.owner || ''} className={`${inp} ${r.from?.owner ? 'lp-autofill' : ''}`} />{r.from?.owner && <div className="text-fs-10 text-slate-500">{r.from.owner}</div>}</td>
-                      <td className={td} style={{ minWidth: 130 }}><input type="date" aria-label={`Row ${i + 1} target date`} disabled={!can} value={r.targetDate || ''} onChange={(e) => set(k, 'targetDate', e.target.value)} title={r.from?.targetDate || ''} className={`${inp} ${r.from?.targetDate ? 'lp-autofill' : ''}`} /></td>
-                      <td className={`${td} whitespace-nowrap`}>{r.dirty ? <><span className="rounded bg-amber-100 px-1.5 py-0.5 text-fs-12 font-bold text-amber-800">not saved</span>{missingOf(r).length > 0 && <div className="mt-1 text-fs-11 font-semibold text-red-700" data-testid="capa-missing">Fill: {missingOf(r).join(', ')}</div>}</> : r.auto && !r.saved ? <span className="rounded bg-sky-100 px-1.5 py-0.5 text-fs-12 font-bold text-sky-800" title="Suggestions from the loss entry / last time — complete the row, then save">suggested · complete it</span> : <StatusChip st={r.status || 'pending'} />}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
+                        <label key={fl} className="lp-capa-lbl">{fl === 'rootCause' ? 'Root cause' : fl === 'action' ? 'Corrective action' : 'Preventive action'}
+                          <textarea aria-label={`Row ${i + 1} ${fl}`} disabled={!can} rows={2} maxLength={1000} value={r[fl] || ''} onChange={(e) => set(k, fl, e.target.value)}
+                            placeholder={fl === 'rootCause' ? 'The last why if left empty' : fl === 'action' ? 'What was done / will be done on the line' : 'So it does not come again'} title={r.from?.[fl] || ''}
+                            className={`${inp} ${r.from?.[fl] ? 'lp-autofill' : ''} ${fl === 'action' && miss.includes('corrective action') ? 'lp-capa-miss' : ''}`} />
+                          {r.from?.[fl] && <span className="text-fs-10 font-normal text-slate-500">{r.from[fl]}</span>}</label>))}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+            {/* the same sheet as one table — for Print and Excel */}
+            <table className="lp-print-only w-full border-collapse" aria-label="Daily CAPA sheet">
+              <thead><tr>{['#', kind === 'rework' ? 'Defect' : 'Reason', ...(kind === 'rework' ? ['Rework', 'Passed', 'Dismantle', 'Stage'] : ['Idle time']), 'Model', 'Hour', 'Department', '6M', 'Why-why', 'Root cause', 'Corrective action', 'Preventive action', 'Responsibility', 'Target date', 'Status'].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
+              <tbody>{top.map((t, i) => { const r = f[rcaKey(t)] || {}; return (
+                <tr key={rcaKey(t)}>
+                  <td className={td}>{i + 1}</td><td className={td}>{t.reason}</td><td className={td}>{unit === 'min' ? hm(t.value) : nf(t.value)}</td>
+                  {kind === 'rework' && <><td className={td}>{nf(Math.max(0, t.value - t.dis))}</td><td className={td}>{nf(t.dis)}</td><td className={td}>{[...t.stages.keys()].join(', ')}</td></>}
+                  <td className={td}>{[...t.models.entries()].map(([m, v]) => `${m} ${unit === 'min' ? hm(v) : nf(v)}`).join(', ')}</td>
+                  <td className={td}>{[...t.hours.entries()].sort((a, b) => a[0] - b[0]).map(([h, v]) => `${hh(h)} ${unit === 'min' ? hm(v) : nf(v)}`).join(', ')}</td>
+                  <td className={td}>{t.dept}</td><td className={td}>{r.cat}</td><td className={td}>{(r.whys || []).filter((w) => tidy(w)).map((w, j) => `W${j + 1}: ${w}`).join(' | ')}</td>
+                  <td className={td}>{r.rootCause}</td><td className={td}>{r.action}</td><td className={td}>{r.preventive}</td><td className={td}>{r.owner}</td><td className={td}>{r.targetDate ? dmy(r.targetDate) : ''}</td><td className={td}>{r.saved ? r.status : 'not saved'}</td>
+                </tr>); })}</tbody>
             </table>
-            <div className="mt-3 flex flex-wrap items-center gap-2 no-print">
+            <div className="lp-capa-bar no-print">
               <button type="button" disabled={busy || !dirty.length} onClick={save} data-testid="capa-save" className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-blue-800 px-4 text-fs-14 font-bold text-white hover:bg-blue-900 disabled:opacity-50"><Save size={16} />Save sheet{dirty.length ? ` (${dirty.length})` : ''}</button>
               {msg && <span role="status" className={`text-fs-13 font-semibold ${msg.bad ? 'text-red-700' : 'text-emerald-700'}`}>{msg.text}</span>}
               <span className="ml-auto text-fs-12 text-slate-500">Saved as the RCA of each {kind === 'rework' ? 'defect' : 'reason'} — the RCA dashboard and the CAPA register show it too.</span>

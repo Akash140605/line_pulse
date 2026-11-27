@@ -999,39 +999,36 @@ function TvModels({ list, running, total, sm = false, cols = 1 }) {
     if (n) clipNow = used;
   }
   const top = Math.max(1, ...list.map((m) => m.qty));
-  const all = Math.max(1, Number(total ?? list.reduce((a, m) => a + m.qty, 0)));   // 27-11-2026: share of the day's pieces
   const big = !dense && !sm && list.length <= 3;   // few models: bigger rows, so the panel has no empty space
   const smBig = !dense && sm && list.length <= 3;   // wall card with few models: bigger rows too
   const row = (m, k) => {
     const on = running && m.name === running;
     // 27-11-2026: a small card with several models — one line a model (company · model ... pcs · %), so more of them show at once
     if ((sm && !smBig) || (!sm && !big)) {
-      const pct = Math.round((m.qty / all) * 100);
       return (
-        <li key={k} className={`rounded-md shrink-0 ${sm ? 'px-1.5 py-[1px]' : 'px-2 py-1'} ${on ? 'bg-sky-400/15 ring-1 ring-sky-300/70' : 'bg-white/[.04]'}`} title={[m.company, m.name].filter(Boolean).join(' · ') + ` — ${m.qty} pcs (${pct}%)`}>
+        <li key={k} className={`lp-mrow rounded-md shrink-0 ${sm ? 'px-1.5 py-[1px]' : 'px-2 py-1'} ${on ? 'lp-mrow-on bg-sky-400/15 ring-1 ring-sky-300/70' : 'bg-white/[.04]'}`} title={[m.company, m.name].filter(Boolean).join(' · ') + ` — ${m.qty} pcs`}>
           <div className="flex items-baseline gap-1.5 min-w-0">
             <span className="min-w-0 flex-1 truncate leading-tight">
               {m.company && <span className={`mr-1 font-sans font-extrabold uppercase tracking-wide text-sky-300 ${sm ? 'text-fs-10' : 'text-fs-12'}`}>{m.company}</span>}
-              <span className={`font-mono font-bold text-slate-100 ${sm ? 'text-fs-12' : m.name.length > 18 ? 'text-fs-15' : 'text-fs-17'}`}>{on ? '▶ ' : ''}{m.name}</span>
+              <span className={`font-mono font-bold text-slate-100 ${sm ? 'text-fs-12' : m.name.length > 18 ? 'text-fs-15' : 'text-fs-17'}`}>{m.name}</span>{on && <span className="lp-run-badge ml-1.5 align-middle">RUNNING</span>}
             </span>
-            <span className="shrink-0 whitespace-nowrap leading-none"><span className={`font-mono tabular-nums font-extrabold text-white ${sm ? 'text-fs-14' : 'text-fs-20'}`}>{m.qty.toLocaleString('en-IN')}</span><span className={`ml-0.5 font-bold text-sky-200 ${sm ? 'text-fs-10' : 'text-fs-12'}`}>pcs</span><span className={`ml-1.5 font-mono font-bold tabular-nums text-sky-200 ${sm ? 'text-fs-10' : 'text-fs-12'}`}>{pct}%</span></span>
+            <span className="shrink-0 whitespace-nowrap leading-none"><span className={`font-mono tabular-nums font-extrabold text-white ${sm ? 'text-fs-14' : 'text-fs-20'}`}>{m.qty.toLocaleString('en-IN')}</span><span className={`ml-0.5 font-bold text-sky-200 ${sm ? 'text-fs-10' : 'text-fs-12'}`}>pcs</span></span>
           </div>
           <div className={`${sm ? 'mt-px h-[2px]' : 'mt-0.5 h-1'} rounded-full bg-white/10 overflow-hidden`} aria-hidden><div className="h-full rounded-full" style={{ width: `${(m.qty / top) * 100}%`, background: on ? 'linear-gradient(90deg,#38BDF8,#34D399)' : 'linear-gradient(90deg,#2E75B6,#7DD3FC)' }} /></div>
         </li>
       );
     }
     return (
-      <li key={k} className={`rounded-md shrink-0 ${smBig ? 'px-2 py-1.5' : sm ? 'px-1.5 py-[3px]' : big ? 'px-3 py-2.5' : 'px-2 py-1'} ${on ? 'bg-sky-400/15 ring-1 ring-sky-300/70' : 'bg-white/[.04]'}`}>
+      <li key={k} className={`lp-mrow rounded-md shrink-0 ${on ? 'lp-mrow-on' : ''} ${smBig ? 'px-2 py-1.5' : sm ? 'px-1.5 py-[3px]' : big ? 'px-3 py-2.5' : 'px-2 py-1'} ${on ? 'bg-sky-400/15 ring-1 ring-sky-300/70' : 'bg-white/[.04]'}`}>
         <div className="flex items-center gap-1.5 min-w-0">
           {/* company above the full model name (smaller when long, wraps instead of being cut off) */}
           <span className="min-w-0 flex-1 flex flex-col leading-[1.1]" title={[m.company, m.name].filter(Boolean).join(' · ')}>
             {m.company && <span className={`font-sans font-extrabold uppercase tracking-wide text-sky-300 break-words ${sm ? 'text-fs-12' : big ? 'text-fs-16' : 'text-fs-12'}`}>{m.company}</span>}
-            <span className={`font-mono font-bold break-words text-slate-100 ${sm ? (smBig ? (m.name.length > 18 ? 'text-fs-14' : 'text-fs-16') : m.name.length > 18 ? 'text-fs-12' : 'text-fs-13') : big ? (m.name.length > 18 ? 'text-fs-20' : 'text-fs-24') : m.name.length > 22 ? 'text-fs-14' : m.name.length > 14 ? 'text-fs-16' : 'text-fs-18'}`}>{on ? '▶ ' : ''}{wrapCode(m.name)}</span>
+            <span className={`font-mono font-bold break-words text-slate-100 ${sm ? (smBig ? (m.name.length > 18 ? 'text-fs-14' : 'text-fs-16') : m.name.length > 18 ? 'text-fs-12' : 'text-fs-13') : big ? (m.name.length > 18 ? 'text-fs-20' : 'text-fs-24') : m.name.length > 22 ? 'text-fs-14' : m.name.length > 14 ? 'text-fs-16' : 'text-fs-18'}`}>{wrapCode(m.name)}{on && <span className="lp-run-badge ml-2 align-middle">RUNNING</span>}</span>
           </span>
           {/* 27-11-2026: how many of each model — the pieces, "pcs" and its share of the day */}
           <span className="shrink-0 flex flex-col items-end leading-none">
             <span className="whitespace-nowrap"><span className={`font-mono tabular-nums ${sm ? (smBig ? 'text-fs-22' : 'text-fs-16') : big ? 'text-fs-34' : 'text-fs-24'} font-extrabold text-white`}>{m.qty.toLocaleString('en-IN')}</span><span className={`ml-0.5 font-bold text-sky-200 ${sm ? 'text-fs-10' : 'text-fs-12'}`}>pcs</span></span>
-            <span className={`mt-0.5 font-mono font-bold tabular-nums text-sky-200 ${sm ? 'text-fs-10' : big ? 'text-fs-14' : 'text-fs-12'}`}>{Math.round((m.qty / all) * 100)}%</span>
           </span>
         </div>
         <div className={`${smBig ? 'mt-1 h-1.5' : sm ? 'mt-[2px] h-[3px]' : big ? 'mt-2 h-2' : 'mt-1 h-1.5'} rounded-full bg-white/10 overflow-hidden`} aria-hidden><div className="h-full rounded-full" style={{ width: `${(m.qty / top) * 100}%`, background: on ? 'linear-gradient(90deg,#38BDF8,#34D399)' : 'linear-gradient(90deg,#2E75B6,#7DD3FC)' }} /></div>
@@ -1333,38 +1330,32 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
   // actual against target: green when met, red when behind (white when there is no target)
   const vsT = () => 'text-white';   // 14-11-2026: numbers stay plain (black on the light look); the colour is on the hour bars only
   const achTv = achDay;
-  const tilesTv = tv && (
-    <>
-      {/* Today, like the 4-line wall: label with the target so far, the big number, Achieved under it */}
-      <div title={todayHint} className="row-span-2 min-w-0 min-h-0 overflow-hidden rounded-xl bg-white/[.07] border border-white/10 px-4 py-3 flex flex-col justify-center gap-3" style={{ containerType: 'inline-size' }} aria-label="Produced today">
-        <span className="text-fs-22 font-extrabold uppercase tracking-wide text-sky-100 whitespace-nowrap truncate">Today</span>
-        {/* 23-11-2026: the big number on its own line, the target under it across the tile — a 4-digit day total
-            (afternoon) left no room for the target beside it and cut it off */}
-        {/* the size also follows the tile's width (container units): a long number on a small screen shrinks, never cut */}
-        {/* 25-11-2026: a TV browser without container units (cqw) dropped the whole size and showed the number tiny — the plain
-            size comes first in the CSS (.lp-tv-today), the width-fitted one after it is used only where it is understood */}
-        <div className="lp-tv-today font-mono tabular-nums font-extrabold leading-none whitespace-nowrap text-white" style={{ '--tvn': `${String(shown ?? '').length > 4 ? 56 : 68}px`, '--tvw': `${(100 / (Math.max(3, String(shown ?? '').length) * 0.64)).toFixed(1)}cqw` }}>{shown ?? '—'}</div>
-        {dayTarget > 0 && (
-          <div className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-2 leading-none" title="Target so far" data-testid="tv-today-target">
-            <span className="text-fs-15 font-bold text-sky-100">Target</span>
-            <span className={`whitespace-nowrap font-mono tabular-nums font-extrabold text-sky-300 ${String(Math.round(dayTarget)).length > 4 ? 'text-fs-20' : 'text-fs-22'}`}>{Math.round(dayTarget)}</span>
-            {(() => { const v = Number(String(shown).replace(/[^0-9.-]/g, '')); const d = Math.round(v - Math.round(dayTarget)); return Number.isFinite(v) && shown != null && shown !== '—'
-              ? <span className={`whitespace-nowrap font-mono tabular-nums text-fs-15 font-extrabold ${d >= 0 ? 'text-emerald-300' : 'text-red-300'}`} title={d >= 0 ? 'ahead of target so far' : 'behind target so far'}>{d >= 0 ? `+${d}` : `−${Math.abs(d)}`}</span> : null; })()}
-          </div>
-        )}
-        <div className="flex flex-col gap-1 border-t border-white/15 pt-3">
-          <span className="text-fs-22 font-extrabold uppercase tracking-wide text-sky-100">Achieved</span>
-          <span className="font-mono tabular-nums font-extrabold leading-none text-white" style={{ fontSize: 'calc(46px * var(--fs, 1))' }}>{achTv == null ? '—' : `${achTv}%`}</span>
-          {noTgtDay > 0 && <span className="text-fs-18 font-bold text-sky-100 whitespace-nowrap" title={`${noTgtDay} pcs of models without a cycle time — not counted in Achieved`}>{noTgtDay} no cycle time</span>}
-        </div>
+  // 27-11-2026: TV — Today, This hour and Cycle in one table (Target · Actual · Achieved), as on the 4-line wall
+  const tilesTv = tv && (() => {
+    const hourAch = hourTarget > 0 && hourShown != null ? Math.round((Number(hourShown) / hourTarget) * 1000) / 10 : null;
+    const cycAch = Number(targetCycle) > 0 && cyc > 0 ? Math.round((Number(targetCycle) / cyc) * 1000) / 10 : null;
+    const rows = [
+      ['Today', dayTarget > 0 ? Math.round(dayTarget) : '—', shown ?? '—', achTv == null ? null : Number(achTv), todayHint],
+      ['This hour', hourTarget ?? '—', hourShown ?? '—', hourAch, H.hour],
+      ['Cycle', tcTxt || '—', fmtSeconds(cyc), cycAch, tcTxt ? `${H.cycle}\nAchieved = target cycle ÷ actual cycle` : 'No target cycle for this model yet'],
+    ];
+    const f = (n) => ({ fontSize: `calc(${n}px * var(--fs-tv, 1))` });
+    const pill = (v) => <span className="lp-tvt-pill" style={{ ...f(30), background: v >= 100 ? '#059669' : v >= 90 ? '#D97706' : '#DC2626' }}>{v}%</span>;
+    return (
+      <div className="lp-tvt col-span-2 row-span-2 rounded-xl bg-white/[.07] border border-white/10" data-testid="today-table" aria-label="Target, actual and achieved">
+        {['', 'Target', 'Actual', 'Achieved'].map((h, i) => <span key={`h${i}`} className={`lp-tvt-h bg-white/10 border-b border-white/15 text-sky-100 ${i ? 'lp-tvt-c' : ''}`} style={f(17)}>{h}</span>)}
+        {rows.map(([lab, t, a, c, hint], r) => (
+          <React.Fragment key={lab}>
+            <span title={hint} className={`lp-tvt-lab text-sky-100 ${r < 2 ? 'border-b border-white/10' : ''}`} style={f(22)}>{lab}</span>
+            <span title={hint} className={`lp-tvt-c lp-tvt-t font-mono tabular-nums text-sky-300 ${r < 2 ? 'border-b border-white/10' : ''}`} style={f(String(t).length > 4 ? 30 : 36)} data-testid={r === 0 ? 'tv-today-target' : undefined}>{t}</span>
+            <span title={hint} className={`lp-tvt-c lp-tvt-a font-mono tabular-nums text-white ${r < 2 ? 'border-b border-white/10' : ''}`} style={f(String(a).length > 4 ? 40 : 50)}>{a}</span>
+            <span title={hint} className={`lp-tvt-c ${r < 2 ? 'border-b border-white/10' : ''}`}>{c == null ? <span className="font-mono font-bold text-sky-100" style={f(26)}>—</span> : pill(c)}</span>
+          </React.Fragment>
+        ))}
+        {noTgtDay > 0 && <span className="lp-tvt-foot text-sky-100" style={f(14)}>{noTgtDay} pcs without a cycle time — not counted in Achieved</span>}
       </div>
-      <Tile tv hint={H.hour} label={hourLabel ? `Hour ${hourLabel}` : 'This hour'} value={hourShown ?? '—'} target={hourTarget != null ? hourTarget : null} targetLabel="Target" gap
-        gapValue={hourShown} foot={hourNt > 0 ? `${hourNt} no cycle time` : null}
-        tone={vsT(hourTarget > 0 && hourShown != null ? hourShown >= hourTarget : null)} />
-      <Tile tv hint={H.cycle} label="Model cycle" value={fmtSeconds(cyc)} target={tcTxt} targetLabel="Target"
-        tone={vsT(tcTxt && cyc != null ? cyc <= Number(targetCycle) : null)} />
-    </>
-  );
+    );
+  })();
 
   return (
     <>

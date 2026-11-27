@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import MesDrawer from './MesDrawer';
-import { UserPlus, Search, ShieldCheck, ShieldAlert, X, KeyRound, Pencil, Trash2, Tv, User, Users, Building2, UserRound, History } from 'lucide-react';
+import { UserPlus, Search, ShieldCheck, ShieldAlert, X, KeyRound, Pencil, Trash2, Tv, User, Users, Building2, UserRound, History, Power } from 'lucide-react';
 import { api } from '../api';
 import { useAuth, linesText, PRESETS, LinePick, DeptInput, OleEditBox, PasswordForm } from './AuthGate';
 import { MGMT_CATALOG, RETIRED_PAGES } from '../utils/uiSettings';
@@ -19,6 +19,20 @@ const KIND_CLS = { admin: 'bg-dixon-navy text-white', sup: 'bg-amber-100 text-am
 const FILTERS = [['all', 'All'], ['admin', 'Admin'], ['sup', 'Supervisor'], ['view', 'View'], ['dept', 'Department'], ['tv', 'TV'], ['off', 'Switched off']];
 const inp = 'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-fs-14 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100';
 const btn = 'inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 text-fs-13 font-bold text-slate-700 hover:bg-slate-50';
+const ico = 'inline-grid h-8 w-8 place-items-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50';   // 27-11-2026: icon buttons (name on hover)
+
+/** 27-11-2026: the pages of a login — the first few, the rest on a click (no wall of text) */
+function PagesCell({ names }) {
+  const [open, setOpen] = useState(false);
+  if (!Array.isArray(names)) return <span className="text-slate-600">{names}</span>;
+  const few = open ? names : names.slice(0, 3);
+  return (
+    <div className="flex flex-wrap items-center gap-1" title={names.join(', ')}>
+      {few.map((n) => <span key={n} className="rounded-md bg-slate-100 px-1.5 py-0.5 text-fs-12 font-semibold text-slate-700 whitespace-nowrap">{n}</span>)}
+      {names.length > 3 && <button type="button" onClick={() => setOpen((o) => !o)} className="rounded-md px-1.5 py-0.5 text-fs-12 font-bold text-blue-700 hover:bg-blue-50">{open ? 'less' : `+${names.length - 3} more`}</button>}
+    </div>
+  );
+}
 
 // the MES drawer (components/MesDrawer.jsx): a form opens as the small window in the middle
 function Modal({ title, onClose, children, wide = false }) {
@@ -145,7 +159,7 @@ export default function UserManager({ onActivity = null }) {
   useEffect(() => { load(); }, []);
   const done = (text) => { setEdit(null); setTv(false); setMsg(text); load(); };
   const counts = useMemo(() => {
-    const c = { all: 0, admin: 0, view: 0, dept: 0, tv: 0, off: 0 };
+    const c = { all: 0, admin: 0, sup: 0, view: 0, dept: 0, tv: 0, off: 0 };   // 27-11-2026: sup was missing (NaN)
     for (const u of users || []) { c.all++; c[KIND(u)]++; if (u.active === false) c.off++; }
     return c;
   }, [users]);
@@ -161,7 +175,7 @@ export default function UserManager({ onActivity = null }) {
     try { const j = await api.setEnforce(!enforce); setEnforce(j.enforce); setMsg(j.enforce ? 'Server protection is on: nobody can read data without logging in.' : 'Server protection is off.'); }
     catch (x) { setMsg(`Not changed: ${x.message}`); }
   };
-  const pagesText = (u) => (u.role !== 'management' ? '—' : u.pages?.length ? u.pages.map((id) => MGMT_CATALOG.find((p) => p.id === id)?.label || id).join(', ') : 'Management view');
+  const pagesText = (u) => (u.role !== 'management' ? '—' : u.pages?.length ? u.pages.map((id) => MGMT_CATALOG.find((p) => p.id === id)?.label || id) : 'Management view');
 
   return (
     <div className="flex flex-col gap-3" aria-label="Users and logins">
@@ -204,18 +218,18 @@ export default function UserManager({ onActivity = null }) {
                     <td className="px-2 py-2 whitespace-nowrap">{u.role === 'management' ? linesText(u.lines) : 'All lines'}</td>
                     <td className="px-2 py-2">{u.role === 'admin' ? 'Yes' : u.oleEdit ? 'Yes' : '—'}</td>
                     <td className="px-2 py-2">{u.role === 'admin' ? 'All' : u.dept || '—'}</td>
-                    <td className="px-2 py-2 max-w-[220px] text-fs-13 text-slate-600">{u.role === 'admin' ? 'All' : u.role === 'tv' ? 'Live line screen' : pagesText(u)}</td>
+                    <td className="px-2 py-2 text-fs-13 text-slate-600" style={{ minWidth: 220, maxWidth: 360 }}>{u.role === 'admin' ? 'All' : u.role === 'tv' ? 'Live line screen' : <PagesCell names={pagesText(u)} />}</td>
                     <td className="px-2 py-2 whitespace-nowrap">{u.active === false ? <span className="font-bold text-slate-500">Switched off</span> : <span className="font-bold text-sky-700">Active</span>}</td>
                     <td className="px-2 py-2 whitespace-nowrap text-fs-12 text-slate-600">{u.lastLogin ? fmtDateTime(u.lastLogin) : '—'}</td>
                     <td className="px-2 py-1.5">
                       <div className="flex flex-nowrap justify-end gap-1 whitespace-nowrap">
                         {u.role === 'management' && <button type="button" className={btn} onClick={() => setEdit({ u })} aria-label={`Edit ${u.user}`}><Pencil size={13} /> Edit</button>}
-                        {onActivity && u.role !== 'tv' && <button type="button" className={btn} onClick={() => onActivity(u.user)} aria-label={`Activity of ${u.user}`} title="Logins and changes of this login"><History size={13} /> Activity</button>}
-                        <button type="button" className={btn} onClick={() => setPw(u)} aria-label={`Password ${u.user}`}><KeyRound size={13} /> Password</button>
-                        {u.role !== 'admin' && <button type="button" className={btn} onClick={() => toggle(u)} aria-label={`${u.active === false ? 'Switch on' : 'Switch off'} ${u.user}`}>{u.active === false ? 'Switch on' : 'Switch off'}</button>}
+                        {onActivity && u.role !== 'tv' && <button type="button" className={ico} onClick={() => onActivity(u.user)} aria-label={`Activity of ${u.user}`} title="Activity — logins and changes"><History size={15} /></button>}
+                        <button type="button" className={ico} onClick={() => setPw(u)} aria-label={`Password ${u.user}`} title="Change password"><KeyRound size={15} /></button>
+                        {u.role !== 'admin' && <button type="button" className={ico} onClick={() => toggle(u)} aria-label={`${u.active === false ? 'Switch on' : 'Switch off'} ${u.user}`} title={u.active === false ? 'Switch on' : 'Switch off'}><Power size={15} className={u.active === false ? 'text-slate-400' : 'text-emerald-700'} /></button>}
                         {u.role !== 'admin' && (del === u.user
                           ? <span className="inline-flex items-center gap-1"><button type="button" onClick={() => remove(u)} className="h-8 rounded-lg bg-red-700 px-2.5 text-fs-13 font-bold text-white">Yes, remove</button><button type="button" onClick={() => setDel(null)} className={btn}>No</button></span>
-                          : <button type="button" className={`${btn} text-red-700 border-red-200 hover:bg-red-50`} onClick={() => setDel(u.user)} aria-label={`Remove ${u.user}`}><Trash2 size={13} /> Remove</button>)}
+                          : <button type="button" className={`${ico} text-red-700 hover:bg-red-50`} onClick={() => setDel(u.user)} aria-label={`Remove ${u.user}`} title="Remove login"><Trash2 size={15} /></button>)}
                       </div>
                     </td>
                   </tr>

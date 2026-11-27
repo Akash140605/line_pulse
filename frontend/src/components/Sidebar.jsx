@@ -125,7 +125,8 @@ export default function Sidebar({ page, onChange, focusDate, loading, pages: pag
   // 26-11-2026: inside its folder a page needs no folder word — "Availability dashboard" in AVAILABILITY is "Dashboard"
   // (the whole name stays on hover, in search and in Ctrl+K). A name the admin gave is shown as given.
   const SIDE_NAME = { adash: ['Availability dashboard', 'Dashboard'], pdash: ['Performance dashboard', 'Dashboard'], qdash: ['Quality dashboard', 'Dashboard'],
-    targetcheck: ['Target rule & check', 'Target check'], custprod: ['Customer production', 'Customer output'], linetargets: ['Line target method', 'Target method'], rejan: ['Rejection analysis', 'Rejections'] };
+    targetcheck: ['Target rule & check', 'Target check'], custprod: ['Customer production', 'Customer output'], linetargets: ['Line target method', 'Target method'], rejan: ['Rejection analysis', 'Rejections'],
+    capaday: ['Daily CAPA — rework', 'Daily CAPA'], idleday: ['Daily CAPA — idle time', 'Daily CAPA'] };   // 27-11-2026: the folder already says which
   const inFolder = (id, label) => { const x = SIDE_NAME[id]; return x && String(label).toLowerCase() === x[0].toLowerCase() ? x[1] : label; };
   const item = ({ id, label, icon: Icon }, tree = true, folder = false) => {
     const active = page === id;

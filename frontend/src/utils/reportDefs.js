@@ -54,7 +54,7 @@ export const REPORTS = [
   {
     // 25-11-2026: the plant's Quality MIS workbook — the sheets Line Pulse can fill (utils/qualityMis.js)
     id: 'mis', name: 'Quality MIS (IPQC daily, top defects, summary, hourly rework)', src: 'ole', mis: true,
-    about: 'The plant\'s Quality MIS: IPQC(Daily) defect qty / production / defect % of every line and day, Daily Top Defect Action (root cause, action, responsibility, status from the RCA), Summary of the defects per line and the Hrly. Rework data (IPQC). LAR / LRN (incoming) are not in Line Pulse.',
+    about: 'The plant\'s Quality MIS: IPQC(Daily) — defect qty / production / defect % of every line: one column a month of the period (Apr-26 …), then every day of the last month, with T. PRODUCTION and the TGT 3.30% row (choose 01-04 to today for the whole year), Daily Top Defect Action (root cause, action, responsibility, status from the RCA), Summary of the defects per line and the Hrly. Rework data (IPQC). LAR / LRN (incoming) are not in Line Pulse.',
     cols: [['date', 'Date', 12, 'text', (r) => dmy(r.date)], ['name', 'Line', 12, 'text'], ['prod', 'Production', 11, 'int'], ['def', 'Defect qty', 10, 'int'], ['pct', 'Defect %', 10, 'dec1'], ['top', 'Top defect', 30, 'text']],
     rows: ({ M }) => (M?.lines || []).flatMap((l) => M.days.map((d) => ({ date: d, name: l.name, prod: l.byDay[d].prod, def: l.byDay[d].def, pct: l.byDay[d].prod ? (l.byDay[d].def / l.byDay[d].prod) * 100 : null,
       top: (M.top.find((t) => t.date === d && t.line === l.line) || {}).defect || '' })).filter((r) => r.prod || r.def)),

@@ -10,7 +10,8 @@
 import { reworkXlsxSheet, lineName } from './reworkReport';
 import { excelDate } from './kpiReport';
 
-export const MIS_TOP = 5;   // defects per day and line in "Daily Top Defect Action"
+export const MIS_TOP = 5;
+export const MIS_TGT = 0.033;   // 27-11-2026: the plant's defect % target (TGT row of IPQC)   // defects per day and line in "Daily Top Defect Action"
 const tidy = (s) => String(s || '').trim();
 const dmy = (d) => `${d.slice(8, 10)}-${d.slice(5, 7)}-${d.slice(0, 4)}`;
 
@@ -73,25 +74,31 @@ const I = (v) => ({ v, s: 'hprInt' });
 /** The workbook's sheets for buildXlsx. */
 export function misSheets(M, W) {
   const col = (i) => { let s = ''; i += 1; while (i > 0) { const r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); } return s; };
-  // IPQC(Daily): Line | Category | Total | one column per day
-  const ipqc = [[H('Date'), H('Category'), H('Total'), ...M.days.map((d) => ({ v: excelDate(d), s: 'hprHeadDate' }))]];
-  const last = col(2 + M.days.length);
+  // 27-11-2026: IPQC(Daily) as the plant's sheet — Date | Category | Total | one column a month of the period (Apr-26 …)
+  // | one column a day of the last month (1-Nov …). Every line: Defect Qty (line name in yellow), Production, Defect %.
+  // Then T. PRODUCTION (all lines) and TGT (the defect % target) under every column.
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = [...new Set(M.days.map((d) => d.slice(0, 7)))].sort();
+  const lastM = (M.to || M.days[M.days.length - 1] || '').slice(0, 7);
+  const dim = lastM ? new Date(Date.UTC(Number(lastM.slice(0, 4)), Number(lastM.slice(5, 7)), 0)).getUTCDate() : 0;
+  const mDays = Array.from({ length: dim }, (_, i) => `${lastM}-${String(i + 1).padStart(2, '0')}`).filter((d) => !M.to || d <= M.to);
+  const cols = [...months.map((m) => ({ m })), ...mDays.map((d) => ({ d }))];
+  const sumOfL = (l, c, k) => (c.m ? M.days.filter((d) => d.startsWith(c.m)).reduce((a, d) => a + (l.byDay[d]?.[k] || 0), 0) : l.byDay[c.d]?.[k] || 0);
+  const mEnd = col(2 + months.length);   // last month column
+  const ipqc = [[H('Date'), H('Category'), H('Total'), ...cols.map((c) => (c.m ? H(`${MON[Number(c.m.slice(5, 7)) - 1]}-${c.m.slice(2, 4)}`) : { v: excelDate(c.d), s: 'hprHeadDate' }))]];
+  const lineRow = [];
   for (const l of M.lines) {
-    const a = ipqc.length + 1;   // the row of "Defect Qty"
-    ipqc.push([T(l.name), T('Defect Qty'), { f: M.days.length ? `SUM(D${a}:${last}${a})` : '0', v: l.def, s: 'hprIntB' }, ...M.days.map((d) => I(l.byDay[d].def || null))]);
-    ipqc.push([T(l.name), T('Production'), { f: M.days.length ? `SUM(D${a + 1}:${last}${a + 1})` : '0', v: l.prod, s: 'hprIntB' }, ...M.days.map((d) => I(l.byDay[d].prod || null))]);
+    const a = ipqc.length + 1; lineRow.push(a);
+    const tot = (k) => ({ f: months.length ? `SUM(D${a + k}:${mEnd}${a + k})` : '0', v: k ? l.prod : l.def, s: 'hprIntB' });
+    ipqc.push([{ v: l.name, s: 'hprInput' }, T('Defect Qty'), tot(0), ...cols.map((c) => I(sumOfL(l, c, 'def') || null))]);
+    ipqc.push([T(l.name), T('Production'), tot(1), ...cols.map((c) => I(sumOfL(l, c, 'prod') || null))]);
     ipqc.push([T(l.name), T('Defect %'), { f: `IFERROR(C${a}/C${a + 1},"")`, v: l.prod ? l.def / l.prod : '', s: 'hprPctB' },
-      ...M.days.map((d, i) => { const c = col(3 + i); const x = l.byDay[d]; return { f: `IFERROR(${c}${a}/${c}${a + 1},"")`, v: x.prod ? x.def / x.prod : '', s: 'hprPct' }; })]);
+      ...cols.map((c, i) => { const cc = col(3 + i); const dq = sumOfL(l, c, 'def'), pq = sumOfL(l, c, 'prod'); return { f: `IFERROR(${cc}${a}/${cc}${a + 1},"")`, v: pq ? dq / pq : '', s: 'hprPct' }; })]);
   }
-  if (M.lines.length > 1) {
-    const rowsOf = (k) => M.lines.map((_, i) => 2 + i * 3 + k);
-    const sumOf = (c, k) => ({ f: rowsOf(k).map((r) => `${c}${r}`).join('+'), v: 0 });
-    const a = ipqc.length + 1;
-    const td = M.lines.reduce((s, l) => s + l.def, 0), tp = M.lines.reduce((s, l) => s + l.prod, 0);
-    ipqc.push([{ v: 'All lines', s: 'hprTotal' }, { v: 'Defect Qty', s: 'hprTotal' }, ...[2, ...M.days.map((_, i) => 3 + i)].map((ci) => ({ ...sumOf(col(ci), 0), v: ci === 2 ? td : M.lines.reduce((s, l) => s + (l.byDay[M.days[ci - 3]].def || 0), 0), s: 'hprTotal' }))]);
-    ipqc.push([{ v: 'All lines', s: 'hprTotal' }, { v: 'Production', s: 'hprTotal' }, ...[2, ...M.days.map((_, i) => 3 + i)].map((ci) => ({ ...sumOf(col(ci), 1), v: ci === 2 ? tp : M.lines.reduce((s, l) => s + (l.byDay[M.days[ci - 3]].prod || 0), 0), s: 'hprTotal' }))]);
-    ipqc.push([{ v: 'All lines', s: 'hprTotal' }, { v: 'Defect %', s: 'hprTotal' }, ...[2, ...M.days.map((_, i) => 3 + i)].map((ci) => ({ f: `IFERROR(${col(ci)}${a}/${col(ci)}${a + 1},"")`, v: '', s: 'hprTotalPct' }))]);
-  }
+  const allCols = [2, ...cols.map((_, i) => 3 + i)];
+  ipqc.push([{ v: 'T. PRODUCTION', s: 'hprTotal' }, { v: '', s: 'hprTotal' }, ...allCols.map((ci) => ({ f: lineRow.length ? lineRow.map((r) => `${col(ci)}${r + 1}`).join('+') : '0',
+    v: ci === 2 ? M.lines.reduce((s2, l) => s2 + l.prod, 0) : M.lines.reduce((s2, l) => s2 + sumOfL(l, cols[ci - 3], 'prod'), 0), s: 'hprTotal' }))]);
+  ipqc.push([{ v: 'TGT', s: 'hprTotal' }, { v: '', s: 'hprTotal' }, ...allCols.map(() => ({ v: MIS_TGT, s: 'hprTotalPct' }))]);
   // Daily Top Defect Action
   const top = [['Date', 'Line', 'Category', 'Defect', 'Total Qty', 'Root Cause For Defect', 'Action', 'Responsibility', 'Target Date/Status'].map(H)];
   let prev = '';
@@ -109,7 +116,7 @@ export function misSheets(M, W) {
   if (pl) sum.push([{ v: `${lineName(pl)} Total`, s: 'hprTotal' }, { v: '', s: 'hprTotal' }, { v: M.summary.filter((x) => x.line === pl).reduce((a, x) => a + x.qty, 0), s: 'hprTotal' }]);
   sum.push([{ v: 'Grand Total', s: 'hprTotal' }, { v: '', s: 'hprTotal' }, { v: M.summary.reduce((a, x) => a + x.qty, 0), s: 'hprTotal' }]);
   return [
-    { name: 'IPQC(Daily)', cols: [{ width: 16 }, { width: 13 }, { width: 10 }, ...M.days.map(() => ({ width: 9 }))], rows: ipqc, freezeRow: 1 },
+    { name: 'IPQC(Daily)', cols: [{ width: 16 }, { width: 13 }, { width: 10 }, ...cols.map((c) => ({ width: c.m ? 9 : 7.5 }))], rows: ipqc, freezeRow: 1 },
     { name: 'Daily Top Defect Action', cols: [11, 13, 12, 30, 9, 40, 40, 16, 18].map((width) => ({ width })), rows: top, freezeRow: 1, autoFilter: `A1:I${top.length}` },
     { name: 'Summary', cols: [18, 36, 12].map((width) => ({ width })), rows: sum, freezeRow: 1 },
     reworkXlsxSheet(W || { rows: [], hours: [], totals: { total: 0, rs: 0, hours: {} } }),

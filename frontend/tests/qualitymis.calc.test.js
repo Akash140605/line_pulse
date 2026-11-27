@@ -30,9 +30,13 @@ describe('quality MIS', () => {
     const sh = misSheets(M, W);
     expect(sh.map((s) => s.name)).toEqual(['IPQC(Daily)', 'Daily Top Defect Action', 'Summary', 'Hrly. Rework data(ipqc)']);
     const ip = sh[0].rows;
-    expect(ip[1][1].v).toBe('Defect Qty'); expect(ip[1][2]).toMatchObject({ f: 'SUM(D2:E2)', v: 6 });
+    // 27-11-2026: Date | Category | Total | Nov-26 | 1-Nov | 2-Nov — the total adds the month columns
+    expect(ip[0].map((c) => c.v).slice(0, 4)).toEqual(['Date', 'Category', 'Total', 'Nov-26']); expect(ip[0].length).toBe(6);
+    expect(ip[1][0].s).toBe('hprInput');
+    expect(ip[1][1].v).toBe('Defect Qty'); expect(ip[1][2]).toMatchObject({ f: 'SUM(D2:D2)', v: 6 }); expect(ip[1][3].v).toBe(6);
     expect(ip[3][2].v).toBeCloseTo(6 / 150, 8);
-    expect(ip[7][0].v).toBe('All lines'); expect(ip[7][2].v).toBe(10); expect(ip[8][2].v).toBe(350);
+    expect(ip[7][0].v).toBe('T. PRODUCTION'); expect(ip[7][2]).toMatchObject({ f: 'C3+C6', v: 350 });
+    expect(ip[8][0].v).toBe('TGT'); expect(ip[8][2].v).toBe(0.033);
     const last = sh[2].rows[sh[2].rows.length - 1];
     expect(last[0].v).toBe('Grand Total'); expect(last[2].v).toBe(10);
     expect(misFileName('2026-11-25')).toBe('Quality_MIS_Nov-26.xlsx');

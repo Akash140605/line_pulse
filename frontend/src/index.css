@@ -1126,3 +1126,15 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 .lp-hm tbody tr:hover td.hm2-td { background: #F8FAFC; }
 .lp-hm thead th.hm2-h { background: #F1F5F9; color: #1F3864; }
 .lp-hm thead th.hm2-today { background: #1F3864; color: #fff; }
+
+/* 27-11-2026 dashboards polish: wider tables, single-line names, no empty gaps */
+@media (min-width: 1280px) {
+  .lp-pdash { grid-template-columns: minmax(0, 3.9fr) minmax(0, 8.1fr) !important; }
+  .lp-pdash .lp-ad-lines table td:last-child, .lp-pdash .lp-ad-lines table th:last-child { max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+  .lp-pdash .lp-pd-models table td, .lp-pdash .lp-pd-models table th { padding: 4px 5px !important; }
+  .lp-adash .lp-ad-models [role="listitem"] { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 8.6rem !important; }
+  .lp-adash .lp-ad-models [role="listitem"] > *:last-child { white-space: nowrap; }
+  .lp-adash .lp-ad-dept > div:nth-child(2) { justify-content: flex-start !important; gap: 14px !important; }
+}
+.lp-pdash .lp-pd-var [role="listitem"]:nth-child(odd), .lp-adash .lp-ad-models [role="listitem"]:nth-child(odd) { background: #F8FAFC; }
+.lp-pdash .lp-pd-var [role="listitem"]:hover, .lp-adash .lp-ad-models [role="listitem"]:hover { background: #EFF6FF; }

@@ -191,7 +191,7 @@ export function factorsOf(t, zero = false) {
     { k: 'A', name: 'Availability', value: t.A, formula: 'Run Time ÷ Planned Time', lossName: 'Availability Loss', loss: t.A == null ? null : 1 - t.A,
       rows: [['Planned Time', hrs(t.plannedMin)], ['Run Time', hrs(t.actualMin)], ['Idle Time', hrs(t.lossMin), t.lossMin ? 'text-[#C00000]' : '']] },
     { k: 'P', name: 'Performance', value: t.P, formula: oleConfig().pMode === 'std' ? 'Std Time Of Output ÷ Run Time' : oleConfig().pMode === 'plan' ? 'Actual Qty ÷ Plan Target Qty (shift)' : 'Actual Qty ÷ Target Qty (run time)', lossName: 'Performance Loss', loss: t.P == null ? null : Math.max(0, 1 - t.P),
-      rows: [['Plan Target Qty', target == null ? '—' : nf(target)], ['Actual Qty', nf(t.qty)], ['Short / Excess', target == null ? '—' : signed(t.qty - target), target != null && t.qty < target ? 'text-[#C00000]' : 'text-[#138A36]']] },
+      rows: [['Plan Target Qty', target == null ? '—' : nf(target)], ['Actual Qty', nf(t.qty)], ['+ / − vs plan', target == null ? '—' : signed(t.qty - target), target != null && t.qty < target ? 'text-[#C00000]' : 'text-[#138A36]']] },
     // 23-11-2026: no rejection any more (a bad piece is reworked or dismantled) — the third row is the rework; an old
     // rejection still shows in its place when the period has one
     // 26-11-2026: the formula as it is counted — Good = Actual − Rework (− Rejected); setup "rejections only": Actual − Rejected

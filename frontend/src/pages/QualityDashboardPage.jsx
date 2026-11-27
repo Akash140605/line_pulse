@@ -249,7 +249,7 @@ function FtyTable({ rows, rtyT, target }) {
     return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([date, rs]) => ({ date, rows: rs.sort((a, b) => Number(a.line) - Number(b.line)), total: rs.reduce((a, r) => a + r.qty, 0) }));
   }, [rows]);
   // the sheet's colours on every header cell (the app's table style would paint them light blue)
-  const HS = { wordBreak: 'break-word', background: NAVY, color: '#fff' };
+  const HS = { wordBreak: 'normal', overflowWrap: 'normal', hyphens: 'none', background: NAVY, color: '#fff' };   // 27-11-2026: whole words only (no "Leaka ge")
   const H = 'border border-white/40 px-0.5 py-1 text-center text-fs-11 font-extrabold leading-tight text-white';
   const C = 'whitespace-nowrap border border-slate-300 px-0.5 py-[3px] text-center font-mono text-fs-12';
   const p2d = (v) => (v == null ? '—' : `${(v * 100).toFixed(2)}%`);
@@ -270,16 +270,16 @@ function FtyTable({ rows, rtyT, target }) {
               <tr style={{ background: NAVY }}>
                 <th rowSpan={2} style={HS} className={H}>Date</th>
                 <th rowSpan={2} style={HS} className={H}>Line</th>
-                <th rowSpan={2} style={HS} className={H}>Line Wise Production</th>
-                <th rowSpan={2} style={HS} className={H}>Total Production</th>
+                <th rowSpan={2} style={HS} className={H}>Line prod.</th>
+                <th rowSpan={2} style={HS} className={H}>Total prod.</th>
                 <th rowSpan={2} style={HS} className={H}>Defect</th>
-                <th rowSpan={2} style={HS} className={H}>Dismantle</th>
+                <th rowSpan={2} style={HS} className={H}>Dism.</th>
                 <th colSpan={6} style={HS} className={H}>STAGES</th>
                 <th colSpan={6} style={HS} className={H}>STAGE WISE FPY (%)</th>
                 <th rowSpan={2} className={H} style={{ ...HS, background: '#C55A11' }}>Target</th>
                 <th rowSpan={2} className={H} style={{ ...HS, background: '#548235' }}>RTY (%)</th>
               </tr>
-              <tr style={{ background: NAVY }}>{[...STAGE_SHORT, ...STAGE_SHORT].map((h, k) => <th key={k} className={H} style={HS}>{h}</th>)}</tr>
+              <tr style={{ background: NAVY }}>{[...STAGE_HEAD, ...STAGE_HEAD].map((h, k) => <th key={k} className={H} style={HS} title={STAGE_SHORT[k % 6]}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {days.flatMap((d) => d.rows.map((r, k) => (
@@ -305,6 +305,7 @@ function FtyTable({ rows, rtyT, target }) {
 }
 
 const STAGE_SHORT = ['HVIR', 'Leakage', 'Functional', 'Front Inspect', 'Pre-Final', 'Final Inspect'];   // as the plant's sheet
+const STAGE_HEAD = ['HVIR', 'Leak', 'Func.', 'Front Insp.', 'Pre-Final', 'Final Insp.'];   // 27-11-2026: short headers that fit the narrow columns (full name on hover)
 const ypc = (v) => (v == null ? "—" : `${(v * 100).toFixed(2)}%`);   // as the SAWM KPI FTY & RTY sheet
 function StageFlow({ S, fpyT, rtyT, qs, onPick }) {
   const a = S.all;
@@ -325,7 +326,7 @@ function StageFlow({ S, fpyT, rtyT, qs, onPick }) {
               <div className="flex items-center gap-1.5 text-fs-12 font-bold uppercase tracking-wide text-slate-500"><span className="grid h-5 w-5 place-items-center rounded-full bg-[#1F3864] text-fs-11 text-white">{i + 1}</span>{STAGE_SHORT[i]}</div>
               <div className={`mt-1 font-mono text-fs-22 font-extrabold tabular-nums ${tone(a.fpy[i], stT)}`}>{ypc(a.fpy[i])}</div>
               <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ width: `${a.qty ? Math.max(2, Math.min(100, (a.stages[i] / Math.max(1, ...a.stages)) * 100)) : 0}%`, background: bar(a.fpy[i], stT) }} /></div>
-              <div className="mt-1 flex items-center justify-between gap-1 text-fs-12 text-slate-600"><span><b className={a.stages[i] ? 'text-red-700' : 'text-slate-700'}>{nf(a.stages[i])}</b> pcs defect</span><span className="font-bold text-blue-700">Details ›</span></div>
+              <div className="mt-1 flex items-center justify-between gap-1 whitespace-nowrap text-fs-12 text-slate-600"><span><b className={a.stages[i] ? 'text-red-700' : 'text-slate-700'}>{nf(a.stages[i])}</b> defect</span><span className="font-bold text-blue-700">Details ›</span></div>
             </button>
             <div className="grid place-items-center text-slate-400" aria-hidden="true"><ChevronRight size={16} /></div>
           </React.Fragment>

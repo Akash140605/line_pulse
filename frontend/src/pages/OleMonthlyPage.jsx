@@ -390,7 +390,7 @@ function MonthModels({ row, R, ids, onClose, co = () => '' }) {
         {!list.length ? <p className="text-fs-14 text-slate-600">No production in this month.</p> : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-fs-14 tabular-nums" aria-label={`${row.full} models`}>
-              <thead><tr className="bg-[#DDEBF7] text-left text-fs-13 text-[#1F3864]">{['Line', 'Company', 'Model', 'Target', 'Actual', 'Short / Excess', 'Achieved', 'Std CT', 'Actual CT', 'Time lost'].map((h, i) => <th key={h} className={`${th} ${i > 2 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+              <thead><tr className="bg-[#DDEBF7] text-left text-fs-13 text-[#1F3864]">{['Line', 'Company', 'Model', 'Target', 'Actual', '+ / − vs plan', 'Achieved', 'Std CT', 'Actual CT', 'Time lost'].map((h, i) => <th key={h} className={`${th} ${i > 2 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
               <tbody>
                 {list.map((x, i) => (
                   <tr key={x.key} className={`hover:bg-[#DDEBF7]/50 ${i && list[i - 1].line !== x.line ? 'border-t-2 border-t-[#1F3864]' : ''}`}>

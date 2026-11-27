@@ -135,7 +135,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
               <Tile testid="fd-main" name="Performance" value={pct(t.P)} sub={`Target ${(ok * 100).toFixed(0)}% · ${group}`} tone={tone(t.P)} />
               <Tile name="Plan target qty" value={nf(t.target)} sub="HPR / SAWM plan" />
               <Tile name="Actual qty" value={nf(t.qty)} sub={t.ach == null ? '—' : `${pct(t.ach)} of the plan`} tone={t.ach == null ? 'text-slate-900' : t.ach >= 1 ? 'text-emerald-700' : 'text-red-700'} />
-              <Tile name="Short / excess" value={signed(t.short)} sub={t.short == null ? '—' : t.short < 0 ? 'pieces short of the plan' : 'pieces over the plan'} tone={t.short == null ? 'text-slate-900' : t.short < 0 ? 'text-red-700' : 'text-emerald-700'} />
+              <Tile name="+ / − vs plan" value={signed(t.short)} sub={t.short == null ? '—' : t.short < 0 ? 'pieces short of the plan' : 'pieces over the plan'} tone={t.short == null ? 'text-slate-900' : t.short < 0 ? 'text-red-700' : 'text-emerald-700'} />
               <Tile name="Cycle time" value={sec(t.act)} sub={`actual · std ${sec(t.std)}`} tone={t.act != null && t.std != null && t.act > t.std * 1.005 ? 'text-red-700' : 'text-emerald-700'} />
               <Tile name="Speed loss" value={hh(t.speed)} sub="run time beyond the std cycle" tone={t.speed >= 3 ? 'text-red-700' : 'text-slate-900'} />
               <Tile name="Good qty" value={nf(t.good)} sub={t.qty ? `${pct(t.good / t.qty)} of actual qty` : 'pcs right'} tone="text-emerald-700" />
@@ -181,7 +181,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                         {V.map((m) => (
                           <div key={m.key} role="listitem" tabIndex={0} onClick={() => setMdl(m)} onKeyDown={(e) => { if (e.key === 'Enter') setMdl(m); }} title={`${m.model} on Line ${m.line}: ${sec(m.act)} against std ${sec(m.std)} · ${nf(m.qty)} pcs`}
                             className="grid cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-fs-13 hover:bg-blue-50" style={{ gridTemplateColumns: 'minmax(0,1.2fr) minmax(0,1fr) 9.5rem' }}>
-                            <span className="break-words font-semibold leading-tight text-slate-800"><span className="font-mono">{m.model}</span> <span className="text-fs-12 text-slate-500">L{m.line}</span></span>
+                            <span className="truncate font-semibold leading-tight text-slate-800"><span className="font-mono">{m.model}</span> <span className="text-fs-12 text-slate-500">L{m.line}</span></span>
                             <span className="relative h-3 rounded bg-slate-100"><span className="absolute top-0 h-full w-px bg-slate-400" style={{ left: '50%' }} />
                               <span className="absolute top-0 h-full rounded" style={m.var > 0 ? { left: '50%', width: `${(m.var / hiV) * 50}%`, background: '#EB5757' } : { right: '50%', width: `${(-m.var / hiV) * 50}%`, background: '#16A34A' }} /></span>
                             <span className={`text-right font-mono font-bold ${m.var > 0.005 ? 'text-red-700' : 'text-emerald-700'}`}>{m.var > 0 ? '+' : ''}{(m.var * 100).toFixed(1)}% <span className="text-fs-12 font-semibold text-slate-500">{sec(m.act)}/{sec(m.std)}</span></span>
@@ -254,7 +254,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                   </table>
                 ) : (
                   <table className="w-full border-collapse text-fs-13 tabular-nums" aria-label="Performance line by line table">
-                    <thead><tr>{['Line', 'Plan', 'Actual', 'Short / Excess', 'Achieved', 'Std CT', 'Actual CT', 'Speed loss', 'Performance', 'Slowest model'].map((h, i) => <th key={h} className={`${th} ${i > 0 && i < 9 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+                    <thead><tr>{['Line', 'Plan', 'Actual', '+ / − vs plan', 'Achieved', 'Std CT', 'Actual CT', 'Speed loss', 'Performance', 'Slowest model'].map((h, i) => <th key={h} className={`${th} ${i > 0 && i < 9 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
                     <tbody>
                       {X.lines.map((r) => (
                         <tr key={r.line} className="cursor-pointer hover:bg-slate-50" title="Only this line" onClick={() => openLine(r.line)}>

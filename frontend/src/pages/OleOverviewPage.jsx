@@ -346,7 +346,7 @@ function PeriodDrawer({ title, ids, R, reasons, onClose, onPickDay, onOpenLine =
               {tab === 'lines' && (
                 <div className="overflow-x-auto">
                   <table className="w-full text-fs-14 tabular-nums" aria-label="Line-wise">
-                    <thead><tr className="border-b-2 border-slate-300 text-left text-fs-12 text-slate-600">{['Line', 'Target', 'Actual', 'Short / Excess', 'Achieved', 'A', 'P', 'Q', 'OLE', 'Lost Time'].map((h, i) => <th key={h} className={`${th} ${i ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+                    <thead><tr className="border-b-2 border-slate-300 text-left text-fs-12 text-slate-600">{['Line', 'Target', 'Actual', '+ / − vs plan', 'Achieved', 'A', 'P', 'Q', 'OLE', 'Lost Time'].map((h, i) => <th key={h} className={`${th} ${i ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
                     <tbody>
                       {perLine.map((x) => { const tg = tgt(x.t); return (
                         <tr key={x.line} onClick={onLine ? () => onLine(x.line) : undefined} className={`border-b border-slate-100 ${onLine ? 'cursor-pointer hover:bg-blue-50' : ''}`} aria-label={`Line ${x.line} details`}>
@@ -688,7 +688,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
     lineRej: [{ k: 'line', label: 'Line', render: (r) => lineCell(r.line) }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'pass', label: 'Passed', right: true, render: (r) => nf(Math.max(0, (r.rej || 0) - (r.dis || 0))) }, { k: 'dis', label: 'Dismantle', right: true, render: (r) => (r.dis ? <b className="text-red-700">{nf(r.dis)}</b> : <span className="text-slate-400">0</span>) }, { k: 'r', label: 'Rework %', right: true, render: (r) => <span className={`rounded px-1.5 py-0.5 font-bold ${rejChip(r.r)}`}>{pc(r.r, 2)}</span> }],
     modelRej: [{ k: 'company', label: 'Company', render: (r) => <CompanyCell name={co(r.name)} /> }, { k: 'name', label: 'Model', wrap: true, render: (r) => <span className="font-mono font-semibold">{r.name}</span> }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'pass', label: 'Passed', right: true, render: (r) => nf(Math.max(0, (r.rej || 0) - (r.dis || 0))) }, { k: 'dis', label: 'Dismantle', right: true, render: (r) => (r.dis ? <b className="text-red-700">{nf(r.dis)}</b> : <span className="text-slate-400">0</span>) }, { k: 'r', label: 'Rework %', right: true, render: (r) => <span className={`rounded px-1.5 py-0.5 font-bold ${rejChip(r.r)}`}>{pc(r.r, 2)}</span> }],
     linePerf: [{ k: 'company', label: 'Company', render: (r) => <CompanyCell name={co(r.model)} /> }, { k: 'model', label: 'Model', render: (r) => <span className="font-mono font-semibold">{r.model}</span> }, { k: 'target', label: 'Target', right: true, render: (r) => (r.few ? '—' : r.target == null ? '—' : nf(r.target)) }, { k: 'qty', label: 'Produced', right: true, render: (r) => nf(r.qty) },
-      { k: 'short', label: 'Short / Excess', right: true, render: (r) => (r.few ? fewNote(r.qty) : r.short == null ? '—' : <b className={r.short < 0 ? 'text-red-700' : 'text-emerald-700'}>{signed(r.short)}</b>) },
+      { k: 'short', label: '+ / − vs plan', right: true, render: (r) => (r.few ? fewNote(r.qty) : r.short == null ? '—' : <b className={r.short < 0 ? 'text-red-700' : 'text-emerald-700'}>{signed(r.short)}</b>) },
       { k: 'ach', label: 'Achieved', right: true, render: (r) => (r.few || r.ach == null ? '—' : `${Math.round(r.ach * 1000) / 10}%`) },
       { k: 'std', label: 'Std CT', right: true, render: (r) => secText(r.std) }, { k: 'act', label: 'Actual CT', right: true, render: (r) => (r.few ? '—' : secText(r.act)) }, { k: 'var', label: 'Var.', right: true, render: (r) => (r.few ? '—' : varCell(r.var)) }, { k: 'lost', label: 'Time Lost', right: true, render: (r) => (r.few ? '—' : lostCell(r.lostMin)) }],
   };
@@ -699,7 +699,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
         <span key={m.name} className="flex items-baseline justify-between gap-3 whitespace-nowrap"><span className="font-mono font-semibold">{m.name}</span><span className="text-fs-12 text-[#666]">{nf(m.value)} pcs</span></span>
       ))}</span>)) },
     { k: 'target', label: 'Target', right: true, render: (r) => (r.target == null ? '—' : nf(r.target)) }, { k: 'qty', label: 'Produced', right: true, render: (r) => nf(r.qty) },
-    { k: 'short', label: 'Short / Excess', right: true, render: (r) => (r.target == null ? '—' : <b className={r.qty < r.target ? 'text-red-700' : 'text-emerald-700'}>{signed(r.qty - r.target)}</b>) },
+    { k: 'short', label: '+ / − vs plan', right: true, render: (r) => (r.target == null ? '—' : <b className={r.qty < r.target ? 'text-red-700' : 'text-emerald-700'}>{signed(r.qty - r.target)}</b>) },
     { k: 'ach', label: 'Achieved', right: true, render: (r) => (r.target ? achChip(r.qty / r.target) : '—') },
     // 19-11-2026: the cycle of the hour — std (weighted by the models made) against actual (run time ÷ pieces)
     { k: 'std', label: 'Std CT', right: true, render: (r) => secText(stdCt(r.t)) },
@@ -860,7 +860,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
                     { k: 'date', label: 'Date', render: (r) => <button type="button" onClick={() => { setPickLine(win.line); setPickDay(r.date); }} className="whitespace-nowrap font-bold text-[#1F4E79] hover:underline">{dmy(r.date)} <span className="font-normal text-slate-500">{wd(r.date)}</span> ›</button> },
                     { k: 'target', label: 'Target', right: true, render: (r) => (tg(r.t) == null ? '—' : nf(tg(r.t))) },
                     { k: 'qty', label: 'Actual', right: true, render: (r) => <b>{nf(r.t.qty)}</b> },
-                    { k: 'short', label: 'Short / Excess', right: true, render: (r) => (tg(r.t) == null ? '—' : <b className={r.t.qty < tg(r.t) ? 'text-red-700' : 'text-emerald-700'}>{signed(r.t.qty - tg(r.t))}</b>) },
+                    { k: 'short', label: '+ / − vs plan', right: true, render: (r) => (tg(r.t) == null ? '—' : <b className={r.t.qty < tg(r.t) ? 'text-red-700' : 'text-emerald-700'}>{signed(r.t.qty - tg(r.t))}</b>) },
                     { k: 'ach', label: 'Achieved', right: true, render: (r) => (tg(r.t) ? achChip(r.t.qty / tg(r.t)) : '—') },
                     { k: 'run', label: 'Run Time', right: true, render: (r) => hr2(r.t.actualMin) },
                     { k: 'loss', label: 'Stop / Loss', right: true, render: (r) => (r.t.stopMin + r.t.lossMin > 0 ? <b className="text-red-700">{hr2(r.t.stopMin + r.t.lossMin)}</b> : <span className="text-slate-400">{hr2(0)}</span>) },

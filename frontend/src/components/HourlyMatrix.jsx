@@ -41,8 +41,8 @@ export const HOUR_CLOSE = '#FB8C00';
 export const HOUR_BAD = '#DC2626';
 const NO_TONE = { bg: '#F1F5F9', fg: '#334155' };
 // 26-11-2026: the % chip in a deep shade of its band (white text readable on every screen and TV)
-const CHIP = { '#16A34A': '#166534', '#F59E0B': '#B45309', '#F87171': '#B91C1C' };
-const SOFT = { ok: { bg: '#E3F5E9', fg: '#14532D', edge: '#16A34A' }, close: { bg: '#FFF3DC', fg: '#7C4A03', edge: '#F59E0B' }, bad: { bg: '#FDE8E8', fg: '#8F1D1D', edge: '#F87171' } };
+const CHIP = { '#16A34A': '#15803D', '#D97706': '#B45309', '#DC2626': '#B91C1C' };   // 27-11-2026: the % as coloured text (no chip)
+const SOFT = { ok: { bg: '#E7F8EE', fg: '#0F172A', edge: '#16A34A' }, close: { bg: '#FEF6E4', fg: '#0F172A', edge: '#D97706' }, bad: { bg: '#FDECEC', fg: '#0F172A', edge: '#DC2626' } };   // 27-11-2026: calmer tints, dark numbers
 const closeFrom = () => { const v = Number(savedUi()?.management?.oneView?.amberFrom); return v > 0 ? v / 100 : 0.9; };
 function planTone(ratio, close) {
   if (!(ratio > 0)) return NO_TONE;
@@ -503,7 +503,7 @@ export default function HourlyMatrix({ days, matrix: matrixProp, loading: loadin
           <h2 className="text-fs-15 font-extrabold text-slate-900">Hourly matrix <span className="text-fs-12 font-semibold normal-case text-slate-500">· pieces and % of plan · click a cell for its scans</span></h2>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-fs-12 font-semibold text-slate-600" aria-label="Legend">
-          {hasPlan ? <>{legend(SOFT.ok.bg, 'Plan reached (100%+)', { boxShadow: `inset 3px 0 0 ${SOFT.ok.edge}` })}{legend(SOFT.close.bg, `${ACH_ORANGE_FROM}–99%`, { boxShadow: `inset 3px 0 0 ${SOFT.close.edge}` })}{legend(SOFT.bad.bg, `Below ${ACH_ORANGE_FROM}%`, { boxShadow: `inset 3px 0 0 ${SOFT.bad.edge}` })}</> : legend(NO_TONE.bg, 'No target', { border: '1px solid #CBD5E1' })}
+          {hasPlan ? <>{legend(SOFT.ok.bg, 'Plan reached (100%+)', { border: `1px solid ${SOFT.ok.edge}66` })}{legend(SOFT.close.bg, `${ACH_ORANGE_FROM}–99%`, { border: `1px solid ${SOFT.close.edge}66` })}{legend(SOFT.bad.bg, `Below ${ACH_ORANGE_FROM}%`, { border: `1px solid ${SOFT.bad.edge}66` })}</> : legend(NO_TONE.bg, 'No target', { border: '1px solid #CBD5E1' })}
           {legend('#F8FAFC', 'Outside shift — no plan', { border: '1px solid #CBD5E1' })}
           {legend('transparent', 'Running hour (plan so far)', { border: '2px dashed #1E3A8A' })}
           {legend('transparent', `Below ${minQty} pcs — left out`, { border: '1.5px dashed #64748B' })}
@@ -626,12 +626,12 @@ export default function HourlyMatrix({ days, matrix: matrixProp, loading: loadin
                         <button type="button" disabled={qty === 0} onClick={() => qty > 0 && onSelectCell && onSelectCell(date, hour)} title={tip}
                           aria-label={`${date} ${isWork ? spec.label : hourRangeLabel(hour)}: ${qty || 0} pcs${pc != null ? `, ${pc}% of plan` : ''}`}
                           className={`lp-hm-cell hm2-cell ${qty > 0 ? 'hm2-click' : ''} ${isSelected ? 'hm2-sel' : ''} ${state === 'running' && qty > 0 ? 'hm2-run' : ''} ${below ? 'hm2-below' : ''}`}
-                          style={{ background: state === 'future' ? 'transparent' : tone.bg, color: tone.fg, '--edge': tone.edge && state !== 'future' ? tone.edge : 'transparent' }}>
+                          style={{ background: state === 'future' ? 'transparent' : tone.bg, color: tone.fg, '--edge': tone.edge && state !== 'future' ? tone.edge : 'transparent', borderColor: tone.edge && state !== 'future' ? `${tone.edge}40` : 'transparent' }}>
                           {qty > 0 ? (
                             <span className={stacked ? 'flex flex-col items-center leading-none' : 'flex items-center justify-center gap-1.5 leading-none'}>
                               <span className={`font-mono font-extrabold ${tight ? 'text-fs-13' : 'text-fs-15'} ${rowOff ? 'line-through' : ''}`}>{qty}</span>
                               {/* 26-11-2026: the % in a chip of its band colour (green / orange / red) — read at a glance */}
-                              {pc != null && !rowOff && <span className="rounded px-1 py-[1px] font-mono text-fs-12 font-extrabold" style={{ background: CHIP[tone.edge] || '#475569', color: '#fff', marginTop: stacked ? 3 : 0 }}>{pc}%</span>}
+                              {pc != null && !rowOff && <span className="hm2-pc font-mono text-fs-12 font-extrabold" style={{ color: CHIP[tone.edge] || '#475569', marginTop: stacked ? 2 : 0 }}>{pc}<small>%</small></span>}
                             </span>
                           ) : <span style={{ opacity: 0.35 }}>{state === 'future' ? '' : '·'}</span>}
                           {/* 26-11-2026: no bar along the bottom any more — in a short row it ran through the number; the % chip and the cell colour say it */}

@@ -1116,3 +1116,13 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 .lp-tvt-a{font-weight:800;white-space:nowrap;line-height:1}
 .lp-tvt-pill{border-radius:999px;padding:2px 12px;color:#fff;font-family:ui-monospace,monospace;font-weight:800;line-height:1.1;white-space:nowrap}
 .lp-tvt-foot{grid-column:1/-1;padding:4px 12px;font-weight:700}
+
+/* 27-11-2026 Hourly matrix: calmer look — soft tint + thin border, dark number, % in its band colour */
+.lp-hm .hm2-cell, .lp-hm .hm2-click:hover { box-shadow: none; }
+.lp-hm .hm2-cell { border: 1px solid transparent !important; border-radius: 7px; }
+.lp-hm .hm2-click:hover { box-shadow: 0 0 0 2px #1F3864 !important; }
+.lp-hm .hm2-sel { box-shadow: 0 0 0 2px #1F3864, 0 0 0 4px #fff !important; }
+.lp-hm .hm2-pc small { font-size: .78em; margin-left: 1px; opacity: .85; }
+.lp-hm tbody tr:hover td.hm2-td { background: #F8FAFC; }
+.lp-hm thead th.hm2-h { background: #F1F5F9; color: #1F3864; }
+.lp-hm thead th.hm2-today { background: #1F3864; color: #fff; }

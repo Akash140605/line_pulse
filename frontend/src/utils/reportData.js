@@ -8,6 +8,7 @@ import { shiftOfDay, SHIFT_PLANT } from './shift';
 import { kpiDays } from './kpiReport';
 import { reworkSheet, RWK_RATE } from './reworkReport';
 import { targetsOn } from './targetPeriods';
+import { withMasterFallback } from './targetMethods';   // 27-11-2026: a model missing from the line's set takes the Model master cycle (as the line screens)
 import { serverToday } from './serverTime';
 import { mergeTargets, isLineD } from '../hooks/useAutoTargets';
 
@@ -27,7 +28,7 @@ export function hprDataOf(ctx, auto, hprSet = {}) {
     lines: (ctx.ids || []).map((l) => {
       const L = d.byLine[l]; const su = setups[`${d.date}|${l}`] || null;
       const shift = shiftOfDay(setups, d.date, l, st[l]?.shift || null) || SHIFT_PLANT;
-      const hours = L?.ok ? hprHours({ rows: L.rows, shift, targets: tOf(l, d.date), otFrom: hprSet.otFrom, date: d.date, line: l, rca: D.ent.rca || {}, lastMin: ctx.lastScans?.[`${d.date}|${l}`] ?? null }) : [];
+      const hours = L?.ok ? hprHours({ rows: L.rows, shift, targets: withMasterFallback(tOf(l, d.date), l, (L.rows || []).flatMap((r) => r.models || [])), otFrom: hprSet.otFrom, date: d.date, line: l, rca: D.ent.rca || {}, lastMin: ctx.lastScans?.[`${d.date}|${l}`] ?? null }) : [];
       return { line: l, mp: su?.mp ?? null, fromEntry: !!su, shift, hrs: hours.length ? workMinOf(shift) / 60 : 0, rate: hprSet.rate, otX: hprSet.otX, error: L && !L.ok ? (L.error || 'No answer') : null, hours };
     }).filter((x) => x.hours.some((h) => h.qty > 0 || h.reasons.length) || (x.error && d.date === today)),
   })).filter((d) => d.lines.length);

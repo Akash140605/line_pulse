@@ -1455,7 +1455,7 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
                 // sizes from the tile's own room (the card can be small on a page, big on a TV): never cut, never wrapped
                 const tW = tall ? (wbox.w - 22) / 4 - 14 : wideLow ? ((wbox.w - 28) * 1.1) / 2.95 / 3 - 10 : ((wbox.w - 28) * 1.1) / 2.95 / 2 - 14;
                 const tH0 = tall ? ((wbox.h - 20) * 1.15) / 3.35 / 2 - 8 : wideLow ? ((wbox.h - 14) * 1.05) / 2.25 - 10 : ((wbox.h - 14) * 1.12) / 2.12 / 2 - 8;
-                const tH = ti === 0 && !wideLow ? tH0 * 1.6 : tH0;   // Today takes the whole left column (with Achieved under it)
+                const tH = tH0;   // 27-11-2026: Today is the top row (a 3-column table), This hour + Cycle under it
                 const lp = Math.max(14, Math.min(tall ? 20 : 18, tH * 0.3));
                 const head = String(lab).length * 0.66 * lp + (tgt != null ? (String(tgt).length + 5) * 0.62 * lp + 10 : 0);
                 const lpx = lpAll(lp, tW);   // label + target on one line, the same size in all four tiles
@@ -1464,6 +1464,24 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
                 const tLine = tgt != null;   // 23-11-2026: TV too — "Target N" on its own line under the number (on the label line it got cut on a narrow tile)
                 const vpx = Math.max(16, Math.min(tall ? 50 : 40, (tW - 6) / (0.66 * Math.max(2, String(val).length) + (String(val).includes('%') ? 0.25 : 0)), tH - lpx * (withFoot || tLine ? 2 : 1) - (withFoot || tLine ? 10 : 6)));   // % is wider than a digit
                 const fz = (n) => ({ fontSize: `calc(${Math.round(n)}px * var(--fs-tv, 1) * var(--fit, 1))` });
+                // 27-11-2026: Today as a 3-column table — Target · Actual · Achieved % (as asked)
+                if (ti === 0) {
+                  const cells = [['Target', tgt != null ? tgt : '—'], ['Actual', val], ['Achieved', achDay == null ? '—' : `${achDay}%`]];
+                  const colW = ((wideLow ? tW : tW * 2 + 14) + 8) / 3 - 8;   // Today spans the tiles' whole width (top row)
+                  const hz = Math.max(9, Math.min(lpx * 0.9, colW / (0.62 * 8.5)));
+                  const showLab = tH >= 78;   // a short tile: no "Today" line (the table says what it is)
+                  const vz = Math.max(12, Math.min((tH - hz * 1.35 - (showLab ? lpx * 0.9 + 4 : 0) - 12 - (noTgtDay > 0 ? lpx * 0.75 : 0)) / 1.05, ...cells.map(([, v]) => colW / (0.64 * Math.max(2, String(v).length) + (String(v).includes('%') ? 0.3 : 0)))));
+                  return (
+                    <div key={lab} title={hint} data-testid="today-table" className={`rounded-lg bg-white/[.07] border border-white/10 min-w-0 min-h-0 overflow-hidden px-2 py-1 flex flex-col justify-center gap-1 ${!wideLow ? 'col-span-2' : ''}`}>
+                      {showLab && <span className="leading-none font-extrabold uppercase tracking-wide text-sky-100 whitespace-nowrap" style={fz(lpx * 0.9)}>Today</span>}
+                      <div className="grid grid-cols-3 overflow-hidden rounded-md border border-white/15">
+                        {cells.map(([h]) => <span key={h} title={h === 'Achieved' ? 'Achieved %' : `${h} today`} className="border-b border-white/15 bg-white/10 px-1 py-0.5 text-center font-bold uppercase leading-tight text-sky-100 whitespace-nowrap" style={fz(hz)}>{h}</span>)}
+                        {cells.map(([h, v], i) => <span key={`v${h}`} className={`px-1 py-1 text-center font-mono font-extrabold tabular-nums leading-none whitespace-nowrap text-white ${i ? 'border-l border-white/15' : ''}`} style={fz(vz)}>{v}</span>)}
+                      </div>
+                      {noTgtDay > 0 && <span className="leading-tight font-bold text-sky-100 whitespace-nowrap" style={fz(Math.max(10, Math.min(lpx * 0.75, (tW - 2) / (0.6 * `${noTgtDay} no cycle time`.length))))} data-testid="no-target-day" title={`${noTgtDay} pcs of models without a cycle time — not counted in Achieved`}>{noTgtDay} no cycle time</span>}
+                    </div>
+                  );
+                }
                 return (
                   <div key={lab} title={hint} className={`rounded-lg bg-white/[.07] border border-white/10 min-w-0 min-h-0 overflow-hidden px-2 py-1 flex flex-col justify-center gap-1 ${ti === 0 && !wideLow ? 'row-span-2' : ''}`}>
                     <div className="flex items-center justify-between gap-1 min-w-0">

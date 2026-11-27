@@ -22,7 +22,7 @@ const addDays = (d, n) => { const t = new Date(`${d}T00:00:00`); t.setDate(t.get
 
 function Tile({ name, value, sub, tone = 'text-slate-900', on, onClick }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={on} className={`min-w-0 rounded-xl border bg-white p-3 text-left shadow-sm hover:border-blue-400 ${on ? 'border-blue-600 ring-2 ring-blue-200' : 'border-slate-200'}`}>
+    <button type="button" onClick={onClick} aria-pressed={on} className={`lp-tile min-w-0 rounded-xl border bg-white p-3 text-left shadow-sm hover:border-blue-400 ${on ? 'border-blue-600 ring-2 ring-blue-200' : 'border-slate-200'}`}>
       <div className="text-fs-13 font-bold text-slate-600">{name}</div>
       <div className={`mt-1 font-mono text-fs-28 font-extrabold leading-tight tabular-nums ${tone}`}>{value}</div>
       {sub && <div className="mt-1 text-fs-12 text-slate-600">{sub}</div>}
@@ -104,7 +104,7 @@ export default function CapaRegisterPage() {
       {err && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-fs-13 font-semibold text-red-800">{err}</div>}
       {!rca ? <PageLoader label="Reading the RCAs" sub={`${dmy(from)} – ${dmy(to)}`} /> : (
         <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+          <div className="lp-kpis grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
             <Tile name="All RCAs" value={nf(T.all)} sub={`${dmy(from)} – ${dmy(to)}`} on={status === 'all'} onClick={() => setStatus('all')} />
             <Tile name="Open" value={nf(T.open)} sub="submitted, action not closed" tone="text-amber-700" on={status === 'open'} onClick={() => setStatus('open')} />
             <Tile name="Overdue" value={nf(T.overdue)} sub="past the corrective target date" tone={T.overdue ? 'text-red-700' : 'text-slate-900'} on={status === 'overdue'} onClick={() => setStatus('overdue')} />

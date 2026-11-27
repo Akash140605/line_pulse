@@ -27,7 +27,7 @@ const td = 'border border-[#D4D4D4] px-1.5 py-1';
 
 function Tile({ name, value, sub, tone = 'text-slate-900', testid }) {
   return (
-    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" data-testid={testid}>
+    <div className="lp-tile min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" data-testid={testid}>
       <div className="text-fs-13 font-bold text-slate-600">{name}</div>
       <div className={`mt-1 break-words font-extrabold leading-tight tabular-nums ${typeof value === 'string' && !/\d/.test(value) && value.length > 9 ? 'text-fs-18' : 'font-mono text-fs-28'} ${tone}`} title={String(value)}>{value}</div>   {/* 25-11-2026: a name (top stage, category) in a smaller font */}
       {sub && <div className="mt-1 break-words text-fs-12 text-slate-600" title={typeof sub === 'string' ? sub : undefined}>{sub}</div>}
@@ -111,7 +111,7 @@ export default function ReworkDashboardPage() {
               <button type="button" onClick={() => setPick(null)} className="ml-auto rounded-md border border-blue-300 bg-white px-2 py-0.5 font-bold hover:bg-blue-100">Show all ✕</button>
             </div>
           )}
-          <section className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6" aria-label="Rework totals">
+          <section className="lp-kpis grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6" aria-label="Rework totals">
             <Tile testid="rw-total" name={`${word} pcs`} value={nf(total)} sub={`${rows.length} entries`} tone={total ? 'text-red-700' : 'text-slate-900'} />
             <Tile testid="rw-rs" name="Loss (INR)" value={rs(money)} sub={`₹${RWK_RATE} per piece`} />
             <Tile testid="rw-dis" name="Dismantled" value={nf(dis)} sub={total ? `${Math.round((dis / total) * 100)}% of the pieces` : '—'} tone={dis ? 'text-red-700' : 'text-slate-900'} />

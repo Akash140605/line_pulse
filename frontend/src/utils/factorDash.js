@@ -46,6 +46,7 @@ export function availDash(R, ids0) {
       add(L.reasons, k, min); add(L.depts, dk, min);
       const o = reasons.get(k) || { name: k, dept: dk, min: 0, n: 0, lines: new Set(), models: new Map() };
       o.min += min; o.n += 1; o.lines.add(l); if (x.model) add(o.models, x.model, min); reasons.set(k, o);
+      (o.items = o.items || []).push({ date: d.date, line: String(l), hour: r.hour, model: x.model || '', dept: dk, min });   // 27-11-2026: a reason clicked → its entries
       const dp = depts.get(dk) || { name: dk, min: 0, n: 0, reasons: new Map() }; dp.min += min; dp.n += 1; add(dp.reasons, k, min); depts.set(dk, dp);
       if (x.model) { const m = models.get(x.model) || { name: x.model, min: 0, n: 0, reasons: new Map(), items: [] }; m.min += min; m.n += 1; add(m.reasons, k, min); models.set(x.model, m);
         m.items.push({ date: d.date, line: String(l), hour: r.hour, reason: k, dept: dk, min, note: x.note || x.remark || '' }); }   // 27-11-2026: a model clicked → every entry

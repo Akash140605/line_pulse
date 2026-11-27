@@ -49,7 +49,7 @@ function Title({ children, right = null }) {
 function Tile({ name, actual, target = null, fmt = d1, unit = '', sub = null, testid }) {
   const r = actual != null && target ? Math.max(0, Math.min(1.2, actual / target)) : null;
   return (
-    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" data-testid={testid}>
+    <div className="lp-tile min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" data-testid={testid}>
       <div className="text-fs-13 font-bold text-slate-600">{name}</div>
       <div className={`mt-1 whitespace-nowrap font-mono text-fs-28 font-extrabold leading-none tabular-nums ${tone(actual, target)}`}>{fmt(actual)}{unit && <span className="ml-1 text-fs-13 font-semibold text-slate-500">{unit}</span>}</div>
       {target != null && (
@@ -140,7 +140,7 @@ export default function KpiDashboardPage() {
       ) : (
         <div ref={bodyRef} className="flex flex-col gap-3">
           {/* the period in boxes (as the Summary's columns) */}
-          <section className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6" aria-label="KPIs of the period">
+          <section className="lp-kpis grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6" aria-label="KPIs of the period">
             <Tile testid="kpi-prod" name="Production" actual={T.qty} target={T.plan} fmt={nf} unit="pcs" sub={T.ach != null ? <>Achieved <b className={`font-mono ${tone(T.ach, 100)}`}>{T.ach.toFixed(1)}%</b></> : 'No plan'} />
             <Tile testid="kpi-uph" name="UPH" actual={T.uphA} target={T.uphT} sub="pieces per hour" />
             <Tile testid="kpi-upph" name="UPPH" actual={T.upphA} target={T.upphT} fmt={d2} sub={T.manHours ? `pieces per man-hour · ${nf(T.manHours)} man-hr` : 'needs the manpower of the morning entry'} />
@@ -148,7 +148,7 @@ export default function KpiDashboardPage() {
             <Tile testid="kpi-mp" name="Manpower" actual={MP.last?.total ?? null} fmt={nf} unit="persons" sub={<>{MP.last ? `at open, ${dmy(MP.last.date)}` : 'No morning entry'}{MP.stdTot ? <> · std <b className="font-mono">{nf(MP.stdTot)}</b></> : null}{MP.avg ? <> · avg <b className="font-mono">{nf(MP.avg)}</b></> : null}</>} />
             <Tile testid="kpi-ot" name="Actual OT" actual={E.otPlan == null && E.otUnplan == null ? null : ot} fmt={(v) => (v == null ? '—' : v.toLocaleString('en-IN', { maximumFractionDigits: 1 }))} unit="man-hr" sub={E.otPlan == null && E.otUnplan == null ? 'KPI entry not filled' : <>Planned <b className="font-mono">{d1(E.otPlan ?? 0)}</b> · Unplanned <b className="font-mono">{d1(E.otUnplan ?? 0)}</b></>} />
           </section>
-          <section className="grid grid-cols-2 gap-2 md:grid-cols-4" aria-label="Stock and OS&D">
+          <section className="lp-kpis grid grid-cols-2 gap-2 md:grid-cols-4" aria-label="Stock and OS&D">
             <Tile testid="kpi-osd" name="OS&D (period)" actual={E.osd} fmt={money} sub="sum of the KPI entries" />
             <Tile testid="kpi-wo" name=">7 days WO" actual={E.wo7?.value ?? null} fmt={nf} unit="bal qty" sub={E.wo7 ? `as on ${dmy(E.wo7.date)}` : 'KPI entry not filled'} />
             <Tile testid="kpi-trc" name="TRC lying >3 days" actual={E.trc3?.value ?? null} fmt={money} sub={E.trc3 ? `as on ${dmy(E.trc3.date)}` : 'KPI entry not filled'} />

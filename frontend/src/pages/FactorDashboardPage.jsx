@@ -9,7 +9,7 @@ import { nf, dmy, p2, useOleData, useOleLines, groupNameOf, companyOf, CompanyCe
 import { useAllLineSettings } from '../hooks/useLineSettings';
 import { useLastScans } from '../hooks/useLastScans';
 import { oleRange, okFrom, watchFrom, hm } from '../utils/ole';
-import { Pareto, Donut, DeptDrawer, withDept, NoDeptNote } from './OleFocusPage';
+import { Pareto, Donut, DeptDrawer, withDept, NoDeptNote, deptRowsOf } from './OleFocusPage';
 import { availDash, perfDash, modelHours } from '../utils/factorDash';
 import MesDrawer from '../components/MesDrawer';
 import { exportPanel } from '../utils/domExcel';
@@ -35,7 +35,7 @@ const LineName = ({ l }) => <span className="whitespace-nowrap font-bold text-sl
 
 function Tile({ name, value, sub, tone = 'text-slate-900', testid }) {
   return (
-    <div data-testid={testid} className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm">
+    <div data-testid={testid} className="lp-tile min-w-0 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm">
       <div className="text-fs-13 font-bold text-slate-600">{name}</div>
       <div className={`mt-1 break-words font-extrabold leading-tight tabular-nums ${typeof value === 'string' && !/\d/.test(value) && value.length > 9 ? 'text-fs-18' : 'font-mono text-fs-28'} ${tone}`} title={String(value)}>{value}</div>
       {sub && <div className="mt-1 break-words text-fs-12 text-slate-600" title={typeof sub === 'string' ? sub : undefined}>{sub}</div>}
@@ -89,7 +89,8 @@ export default function FactorDashboardPage({ factor = 'A' }) {
   const bodyRef = useRef(null);
   const [mdl, setMdl] = useState(null);   // 26-11-2026: a model row clicked → its hours (drawer)
   const [deptOpen, setDeptOpen] = useState(null);
-  const [idleModel, setIdleModel] = useState(null);   // 27-11-2026: a model of the idle list clicked → its entries   // 27-11-2026: a department clicked → its reasons (drawer)
+  const [idleModel, setIdleModel] = useState(null);
+  const [idleReason, setIdleReason] = useState(null);   // 27-11-2026: an idle reason clicked → its entries   // 27-11-2026: a model of the idle list clicked → its entries   // 27-11-2026: a department clicked → its reasons (drawer)
   const openDay = (date) => setRange({ start: date, end: date });
   const openLine = (l) => setSel((s0) => (s0 === String(l) ? 'all' : String(l)));
   const ok = okFrom(factor), watch = watchFrom(factor);
@@ -120,7 +121,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
         <div ref={bodyRef} className="flex flex-col gap-3">
           {/* KPI tiles */}
           {isA ? (
-            <section className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5" aria-label="Availability of the period">
+            <section className="lp-kpis grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5" aria-label="Availability of the period">
               <Tile testid="fd-main" name="Availability" value={pct(t.A)} sub={`Target ${(ok * 100).toFixed(0)}% · ${group}`} tone={tone(t.A)} />
               <Tile name="Planned time" value={hh(t.planned)} sub="shift time without breaks" />
               <Tile name="Run time" value={hh(t.run)} sub={t.planned ? `${pct(t.run / t.planned)} of planned` : '—'} />
@@ -128,11 +129,11 @@ export default function FactorDashboardPage({ factor = 'A' }) {
               <Tile name="Top reason" value={X.reasons[0]?.name || '—'} sub={X.reasons[0] ? `${hh(X.reasons[0].min)}${X.reasons[0].dept !== 'Not set' ? ` · ${X.reasons[0].dept}` : ''}` : 'no idle time written'} tone={X.reasons[0] ? 'text-red-700' : 'text-slate-900'} />
             </section>
           ) : (
-            <section className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5" aria-label="Performance of the period">
+            <section className="lp-kpis grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5" aria-label="Performance of the period">
               <Tile testid="fd-main" name="Performance" value={pct(t.P)} sub={`Target ${(ok * 100).toFixed(0)}% · ${group}`} tone={tone(t.P)} />
               <Tile name="Plan target qty" value={nf(t.target)} sub="HPR / SAWM plan" />
               <Tile name="Actual qty" value={nf(t.qty)} sub={t.ach == null ? '—' : `${pct(t.ach)} of the plan`} tone={t.ach == null ? 'text-slate-900' : t.ach >= 1 ? 'text-emerald-700' : 'text-red-700'} />
-              <Tile name="Short / excess" value={t.short == null ? '—' : nf(Math.abs(t.short))} sub={t.short == null ? '—' : t.short < 0 ? 'pieces short of the plan' : 'pieces over the plan'} tone={t.short == null ? 'text-slate-900' : t.short < 0 ? 'text-red-700' : 'text-emerald-700'} />
+              <Tile name="Short / excess" value={signed(t.short)} sub={t.short == null ? '—' : t.short < 0 ? 'pieces short of the plan' : 'pieces over the plan'} tone={t.short == null ? 'text-slate-900' : t.short < 0 ? 'text-red-700' : 'text-emerald-700'} />
               <Tile name="Cycle time" value={sec(t.act)} sub={`actual · std ${sec(t.std)}`} tone={t.act != null && t.std != null && t.act > t.std * 1.005 ? 'text-red-700' : 'text-emerald-700'} />
               <Tile name="Speed loss" value={hh(t.speed)} sub="run time beyond the std cycle" tone={t.speed >= 3 ? 'text-red-700' : 'text-slate-900'} />
               <Tile name="Good qty" value={nf(t.good)} sub={t.qty ? `${pct(t.good / t.qty)} of actual qty` : 'pcs right'} tone="text-emerald-700" />
@@ -151,12 +152,12 @@ export default function FactorDashboardPage({ factor = 'A' }) {
               <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
                 <section className={`${card} xl:col-span-2`} aria-label="Idle time reasons Pareto">
                   <Title right="Pareto by time lost">Idle time reasons</Title>
-                  <Pareto rows={X.reasons.map((r) => ({ label: r.name, value: r.min }))} fmt={hrs} time color="#EB5757" empty="No idle time in this period." />
+                  <Pareto rows={X.reasons.map((r) => ({ label: r.name, value: r.min }))} fmt={hrs} time color="#EB5757" empty="No idle time in this period." onPick={(k) => setIdleReason(k)} />
                 </section>
                 <section className={card} aria-label="Share by department">
                   <Title right="who owns the lost time">Share by department</Title>
                   <Donut top={6} rows={withDept(depts)} fmt={hrs} centre="idle time" empty="No idle time in this period." onPick={(lab) => setDeptOpen(lab)} />
-                  {deptOpen && <DeptDrawer dept={deptOpen} rows={byDept[deptOpen] || []} fmt={hrs} sub={`${group} · ${periodText || ''}`} onClose={() => setDeptOpen(null)} />}
+                  {deptOpen && <DeptDrawer dept={deptOpen} rows={deptRowsOf(byDept, deptOpen)} fmt={hrs} sub={`${group} · ${periodText || ''}`} onClose={() => setDeptOpen(null)} />}
                   <NoDeptNote rows={depts} fmt={hrs} />
                 </section>
               </div>
@@ -166,15 +167,10 @@ export default function FactorDashboardPage({ factor = 'A' }) {
           {!isA && (() => {
             const lineSpeed = X.lines.filter((l) => l.speed > 0).map((l) => ({ label: `Line ${l.line}`, value: l.speed }));
             return (
-              <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-                <section className={`${card} xl:col-span-2`} aria-label="Where the speed is lost">
+              <div className="grid grid-cols-1 gap-3">   {/* 27-11-2026: "Speed loss by line" taken off (as asked) */}
+                <section className={card} aria-label="Where the speed is lost">
                   <Title right="Pareto of time lost against the std cycle, by model">Where the speed is lost</Title>
                   <Pareto rows={X.slow.map((m) => ({ label: `${m.model} (L${m.line})`, value: m.lostMin }))} fmt={(m) => dur(Math.max(0, m))} time color="#EB5757" empty="No model ran slower than its std." />
-                </section>
-                <section className={card} aria-label="Speed loss by line">
-                  <Title right="run time beyond std">Speed loss by line</Title>
-                  <Donut rows={lineSpeed} fmt={(m) => hm(Math.max(0, m))} centre="speed loss" empty="No speed loss in this period." />
-                  <Ranked label="Slowest models" max={6} empty="No model ran slower than its std." rows={X.slow.map((m) => ({ key: m.key, label: <span><span className="font-mono">{m.model}</span> <span className="text-fs-12 text-slate-500">L{m.line}</span></span>, value: m.lostMin, right: `${dur(m.lostMin)} · +${(m.var * 100).toFixed(0)}%`, title: `${m.model} on Line ${m.line}: ${sec(m.act)} against ${sec(m.std)}` }))} />
                 </section>
               </div>
             );
@@ -218,8 +214,8 @@ export default function FactorDashboardPage({ factor = 'A' }) {
 
           {/* 26-11-2026: one under the other — the line table has many columns and must not be cut */}
           <div className="grid grid-cols-1 gap-3">
-            {/* day by day — 27-11-2026: Availability only (taken off the Performance dashboard, as asked) */}
-            {!oneDay && isA && (
+            {/* day by day — 27-11-2026: taken off both dashboards (as asked) */}
+            {false && (
             <section className={card} aria-label={`${name} day by day`}>
               <Title right={`${t.worstDay ? `lowest ${dmy(t.worstDay.date)} · ${pct(v(t.worstDay))} · ` : ''}click a day to open it`}>Day by day</Title>
               {!X.days.length ? <Empty text="No production in this period." /> : (
@@ -296,6 +292,26 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                 <Title right="idle written against a model · click a model for its entries">Models</Title>
                 <Ranked label="Idle time by model" empty="No idle time written against a model." onPick={(k) => setIdleModel(k)} rows={X.models.map((m) => ({ key: m.name, label: <span><span className="mr-1 text-fs-11 font-bold uppercase text-slate-500">{co(m.name)}</span><span className="font-mono">{m.name}</span></span>, value: m.min, right: `${dur(m.min)} · ${m.n === 1 ? '1 time' : `${m.n} times`}`, title: `${m.name}: mostly ${m.top}` }))} />
               </section>
+              {idleReason && (() => {
+                const r = X.reasons.find((x) => x.name === idleReason); if (!r) return null;
+                const items = [...(r.items || [])].sort((p, q) => (p.date < q.date ? -1 : p.date > q.date ? 1 : 0) || Number(p.line) - Number(q.line) || p.hour - q.hour);
+                const by = (k) => { const m = new Map(); for (const x of items) { const key = x[k] || '—'; const o = m.get(key) || { key, min: 0, n: 0 }; o.min += x.min; o.n += 1; m.set(key, o); } return [...m.values()].sort((a, b) => b.min - a.min); };
+                const thd = 'px-2 py-1.5 font-bold', tdd = 'px-2 py-1.5 border-b border-[#E5E7EB]';
+                const small = (title, list, lab = (k) => k) => (
+                  <div className="rounded-lg border border-slate-200 p-2"><div className="mb-1 text-fs-12 font-extrabold uppercase tracking-wide text-[#1F3864]">{title}</div>
+                    {list.slice(0, 10).map((x) => <div key={x.key} className="flex items-baseline justify-between gap-2 py-0.5 text-fs-13"><span className="min-w-0 break-words font-semibold">{lab(x.key)}</span><span className="whitespace-nowrap font-mono font-bold text-red-700">{dur(x.min)} <span className="font-normal text-slate-500">· {x.n}×</span></span></div>)}</div>);
+                return (
+                  <MesDrawer title={`${r.name} · idle time`} sub={`${group} · ${periodText} · ${dur(r.min)} in ${r.n === 1 ? '1 entry' : `${r.n} entries`}${r.dept && r.dept !== 'Not set' ? ` · ${r.dept}` : ''}`} onClose={() => setIdleReason(null)} label={`${r.name} entries`} width={65} fit minWidth={560} bodyClass="p-2">
+                    <div data-testid="idle-reason-drawer" className="flex flex-col gap-3">
+                      <div className="grid gap-2 md:grid-cols-3">{small('Line-wise', by('line'), (k) => `Line ${k}`)}{small('Model-wise', by('model'), (k) => (k === '—' ? 'No model' : k))}{small('Department', by('dept'), (k) => (k === 'Not set' ? 'Other' : k))}</div>
+                      <table className="w-full border-collapse text-fs-14 tabular-nums">
+                        <thead><tr className="bg-[#1F3864] text-left text-white">{['Date', 'Line', 'Hour', 'Model', 'Dept.', 'Time'].map((h, i) => <th key={h} className={`${thd} ${i === 5 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+                        <tbody>{items.map((x, i) => <tr key={i} className={i % 2 ? 'bg-[#F8FAFC]' : ''}><td className={`${tdd} whitespace-nowrap`}>{dmy(x.date)}</td><td className={tdd}><LineName l={x.line} /></td><td className={`${tdd} whitespace-nowrap font-mono`}>{p2(x.hour)}:00–{p2((x.hour + 1) % 24)}:00</td><td className={`${tdd} font-mono`}>{x.model || '—'}</td><td className={tdd}>{x.dept && x.dept !== 'Not set' ? x.dept : 'Other'}</td><td className={`${tdd} text-right font-bold text-red-700`}>{dur(x.min)}</td></tr>)}</tbody>
+                      </table>
+                    </div>
+                  </MesDrawer>
+                );
+              })()}
               {idleModel && (() => {
                 const m = X.models.find((x) => x.name === idleModel); if (!m) return null;
                 const items = [...(m.items || [])].sort((p, q) => (p.date < q.date ? -1 : p.date > q.date ? 1 : 0) || Number(p.line) - Number(q.line) || p.hour - q.hour);

@@ -35,7 +35,7 @@ function Tile({ name, value, sub, tone = 'text-slate-900', onClick, testid }) {
   const C = onClick ? 'button' : 'div';
   return (
     <C type={onClick ? 'button' : undefined} onClick={onClick} data-testid={testid}
-      className={`min-w-0 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm ${onClick ? 'lp-ed-hit cursor-pointer hover:bg-slate-50' : ''}`}>
+      className={`lp-tile min-w-0 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm ${onClick ? 'lp-ed-hit cursor-pointer hover:bg-slate-50' : ''}`}>
       <div className="text-fs-13 font-bold text-slate-600">{name}</div>
       <div className={`mt-1 break-words font-extrabold leading-tight tabular-nums ${typeof value === 'string' && !/\d/.test(value) && value.length > 9 ? 'text-fs-18' : 'font-mono text-fs-28'} ${tone}`} title={String(value)}>{value}</div>   {/* 25-11-2026: a name (top stage, category) in a smaller font */}
       {sub && <div className="mt-1 break-words text-fs-12 text-slate-600" title={typeof sub === 'string' ? sub : undefined}>{sub}</div>}
@@ -127,14 +127,13 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
       {!Q ? <PageLoader label="Reading the lines" sub="Production, defects, stages" /> : (
         <div ref={bodyRef} className="flex flex-col gap-3">
           {/* 27-11-2026: no PPM; Good Qty, Rework Passed and Dismantle beside the defects (as asked) */}
-          <section className="grid grid-cols-2 gap-2 md:grid-cols-4" aria-label="Quality of the period">
+          <section className="lp-kpis grid grid-cols-2 gap-2 md:grid-cols-4" aria-label="Quality of the period">
             <Tile testid="qd-made" name="Total Production" value={nf(t.made)} sub={group} />
             <Tile testid="qd-good" name="Good Qty" value={nf(Math.max(0, t.made - t.bad))} sub={t.made ? `${pc((t.made - t.bad) / t.made)} right first time` : '—'} tone="text-emerald-700" />
-            <Tile testid="qd-bad" name="Defect" value={nf(t.bad)} sub={`${nf(t.defects)} defect types`} tone={t.bad ? 'text-red-700' : 'text-slate-900'} />
+            <Tile testid="qd-bad" name="Reject" value={nf(t.bad)} sub={`${nf(t.defects)} reasons`} tone={t.bad ? 'text-red-700' : 'text-slate-900'} />
             <Tile testid="qd-pass" name="Rework Passed" value={nf(Math.max(0, (t.rwk || 0) - (t.dismantle || 0)))} sub={`passed after rework${t.rej ? ` · ${nf(t.rej)} rejected` : ''}`} tone="text-slate-900" />
-            <Tile testid="qd-dis" name="Dismantle" value={nf(t.dismantle)} sub={t.bad ? `${Math.round((t.dismantle / t.bad) * 100)}% of the defects` : '—'} tone={t.dismantle ? 'text-red-700' : 'text-slate-900'} />
-            <Tile testid="qd-pct" name="Defect %" value={pc(t.pct)} sub={`defect ÷ production · limit ${limit.toFixed(1)}%`} tone={rateTone(t.pct)} />
-            <Tile testid="qd-fpy" name="FPY (%)" value={yp(t.fpy)} sub={`Target ${qs.fpyTarget}%`} tone={yTone(t.fpy, fpyT)} />
+            <Tile testid="qd-dis" name="Dismantle" value={nf(t.dismantle)} sub={t.bad ? `${Math.round((t.dismantle / t.bad) * 100)}% of the rejects` : '—'} tone={t.dismantle ? 'text-red-700' : 'text-slate-900'} />
+            <Tile testid="qd-pct" name="Reject %" value={pc(t.pct)} sub={`reject ÷ production · limit ${limit.toFixed(1)}%`} tone={rateTone(t.pct)} />
             <Tile testid="qd-rty" name="RTY (%)" value={yp(S?.all.rty ?? t.rty)} sub={`Π of the 6 stages · target ${qs.rtyTarget}%`} tone={yTone(S?.all.rty ?? t.rty, rtyT)} />
           </section>
 

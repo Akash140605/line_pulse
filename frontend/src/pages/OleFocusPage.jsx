@@ -77,8 +77,10 @@ export function niceTop(max, time = false) {
   return m * e * 4;
 }
 const axisMin = (v) => (v >= 120 ? `${+(v / 60).toFixed(v % 60 ? 1 : 0)} h` : `${+v.toFixed(v < 10 && v % 1 ? 1 : 0)} min`);
-export function Pareto({ rows, fmt = nf, unit = '', color = STEEL, empty, time = false }) {
-  const top = rows.filter((r) => r.value > 0).slice(0, 10);
+export function Pareto({ rows, fmt = nf, unit = '', color = STEEL, empty, time = false, onPick = null }) {
+  const [all, setAll] = useState(false);   // 27-11-2026: View all (was the top 10 only)
+  const nPos = rows.filter((r) => r.value > 0).length;
+  const top = rows.filter((r) => r.value > 0).slice(0, all ? undefined : 10);
   if (!top.length) return <Empty>{empty}</Empty>;
   const total = rows.reduce((a, r) => a + r.value, 0);
   let cum = 0;
@@ -94,22 +96,26 @@ export function Pareto({ rows, fmt = nf, unit = '', color = STEEL, empty, time =
   const H = B + 22 + 12 * Math.max(1, ...lab.map((l) => l.length));
   const i80h = u.findIndex((r) => r.cum >= 80), vitalH = i80h >= 0 ? i80h + 1 : u.length;
   // 26-11-2026: names that do not fit under a bar (long model codes) — the Pareto lies down: name · bar · value · cumulative %
-  if (u.some((r) => String(r.label).split(/\s+/).some((w) => w.length > per + 1)) || lab.some((l) => l.length > 3)) {
+  if (onPick || all || u.some((r) => String(r.label).split(/\s+/).some((w) => w.length > per + 1)) || lab.some((l) => l.length > 3)) {
     const hi = Math.max(...u.map((r) => r.value));
     return (
       <div>
         <div className="mb-1 grid items-center gap-2 px-1 text-[11.5px] font-bold uppercase tracking-wide text-[#777]" style={{ gridTemplateColumns: 'minmax(0,1.1fr) minmax(0,1.6fr) 5.5rem 3.5rem' }}><span>Name</span><span>Time / pieces</span><span className="text-right">Value</span><span className="text-right">Cum. %</span></div>
         <div className="flex flex-col gap-1" role="list" aria-label="Pareto list">
           {u.map((r, i) => (
-            <div key={r.label} role="listitem" className="grid items-center gap-2 rounded px-1 py-0.5 text-[13px]" style={{ gridTemplateColumns: 'minmax(0,1.1fr) minmax(0,1.6fr) 5.5rem 3.5rem', ...(i === vitalH - 1 ? { borderBottom: '2px dashed #C00000', paddingBottom: 4 } : {}) }} title={`${r.label}: ${fmt(r.value)}${unit} · ${Math.round(r.cum)}% so far`}>
-              <span className="break-words font-semibold leading-tight text-[#222]">{r.label}</span>
+            <div key={r.label} role="listitem" className={`grid items-center gap-2 rounded px-1 py-0.5 text-[13px] ${onPick ? 'cursor-pointer hover:bg-[#EAF2FB]' : ''}`} style={{ gridTemplateColumns: 'minmax(0,1.1fr) minmax(0,1.6fr) 5.5rem 3.5rem', ...(i === vitalH - 1 ? { borderBottom: '2px dashed #C00000', paddingBottom: 4 } : {}) }} title={`${r.label}: ${fmt(r.value)}${unit} · ${Math.round(r.cum)}% so far${onPick ? ' — click for details' : ''}`}
+              {...(onPick ? { tabIndex: 0, 'data-testid': `pareto-pick-${i}`, onClick: () => onPick(r.key ?? r.label), onKeyDown: (e) => { if (e.key === 'Enter') onPick(r.key ?? r.label); } } : {})}>
+              <span className={`break-words font-semibold leading-tight ${onPick ? 'text-[#1F3864]' : 'text-[#222]'}`}>{r.label}</span>
               <span className="h-3.5 overflow-hidden rounded-[2px] bg-[#EEF2F7]"><span className="block h-full rounded-[2px]" style={{ width: `${Math.max(2, (r.value / hi) * 100)}%`, background: i < vitalH ? color : '#9DB7D5' }} /></span>
               <b className="text-right tabular-nums text-[#111]">{fmt(r.value)}{unit}</b>
               <span className="text-right tabular-nums text-[#555]">{Math.round(r.cum)}%</span>
             </div>
           ))}
         </div>
-        <p className="mt-2 text-[13px] text-[#555]"><b className="text-[#1F3864]">{vitalH}</b> of {rows.filter((r) => r.value > 0).length} make <b className="text-[#1F3864]">{Math.round(u[Math.max(vitalH - 1, 0)].cum)}%</b> of the total{unit} <span className="text-[#C00000]">(red dashed line = 80%)</span></p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <p className="text-[13px] text-[#555]"><b className="text-[#1F3864]">{vitalH}</b> of {nPos} make <b className="text-[#1F3864]">{Math.round(u[Math.max(vitalH - 1, 0)].cum)}%</b> of the total{unit} <span className="text-[#C00000]">(red dashed line = 80%)</span></p>
+          {nPos > 10 && <button type="button" data-testid="pareto-all" onClick={() => setAll((v) => !v)} className="ml-auto rounded-[3px] border border-[#BFBFBF] bg-white px-2 py-0.5 text-[12px] font-semibold text-[#1F3864] hover:bg-[#EAF2FB]">{all ? 'Show top 10' : `View all ${nPos}`}</button>}
+        </div>
       </div>
     );
   }
@@ -190,8 +196,15 @@ export function Donut({ rows, fmt = nf, unit = '', centre = 'Total', empty, top 
  */
 /** 26-11-2026: idle time written without a department is not a department ("Not set" never shown as one) — one line under the chart instead */
 export const NO_DEPT = new Set(['Not set', 'Not given', '']);
-export const withDept = (rows) => (rows || []).filter((d) => !NO_DEPT.has(String(d.label ?? '').trim()));
-export function NoDeptNote({ rows, fmt = nf }) {
+// 27-11-2026: idle time written without a department counts as "Other" (was left out with a note under the chart)
+export const withDept = (rows) => {
+  const out = [], other = { label: 'Other', value: 0 };
+  for (const d of rows || []) { if (NO_DEPT.has(String(d.label ?? '').trim()) || d.label === 'Other') other.value += d.value || 0; else out.push(d); }
+  return other.value > 0 ? [...out, other].sort((a, b) => b.value - a.value) : out;
+};
+export const deptRowsOf = (byDept, d) => (d === 'Other' ? [...NO_DEPT, 'Other'].flatMap((k) => byDept?.[k] || []).sort((a, b) => b.value - a.value) : byDept?.[d] || []);
+export function NoDeptNote() { return null; }   // 27-11-2026: no note — that time is "Other" now
+export function NoDeptNoteOld({ rows, fmt = nf }) {
   const v = (rows || []).filter((d) => NO_DEPT.has(String(d.label ?? '').trim())).reduce((a, d) => a + (d.value || 0), 0);
   if (!(v > 0)) return null;
   return <p className="mt-2 rounded-md bg-[#F3F4F6] px-2 py-1 text-[11.5px] text-[#555]" data-testid="no-dept-note"><b className="text-[#333]">{fmt(v)}</b> of idle time was written without a department (Loss entry) — not shown above.</p>;
@@ -429,14 +442,14 @@ export default function OleFocusPage({ factor = 'A' }) {
     const top = F.reasonsA[0];
     body = (
       <>
-        <div className={`${card} grid grid-cols-2 gap-px overflow-hidden bg-[#D4D4D4] md:grid-cols-3`}>
+        <div className={`${card} lp-kpis grid grid-cols-2 gap-px overflow-hidden bg-[#D4D4D4] md:grid-cols-3`}>
           <Kpi icon={GaugeIcon} label="Availability" value={pc(T.A)} note={`${hrs(T.actualMin)} run of ${hrs(T.plannedMin)} planned`} color={toneOf(T.A, 'A')} />
           <Kpi icon={Clock} label="Idle time" value={hrs(T.lossMin)} note={T.plannedMin ? `${pc(T.lossMin / T.plannedMin)} of planned time` : 'no planned time'} color={RED} />
           <Kpi icon={AlertTriangle} label="Top reason" value={top ? top.label : '—'} note={top ? `${hrs(top.value)}${top.dept !== 'Not set' ? ` · ${top.dept}` : ''}` : 'no idle time'} color={RED} />
         </div>
         <div className="grid gap-3 xl:grid-cols-3">
           <Card title="Idle time reasons" sub="Pareto by time lost" className="xl:col-span-2"><Pareto rows={F.reasonsA} fmt={(v) => hrs(v)} time empty="No idle time in this period." color={RED} /></Card>
-          <Card title="Share by department" sub="who owns the lost time"><Donut top={6} rows={withDept(F.deptA)} fmt={(v) => hrs(v)} centre="idle time" empty="No idle time in this period." onPick={(d) => setDeptOpen(d)} />{deptOpen && <DeptDrawer dept={deptOpen} rows={F.deptR[deptOpen] || []} fmt={(v) => hrs(v)} sub={`${who} · ${periodChip}`} onClose={() => setDeptOpen(null)} />}<NoDeptNote rows={F.deptA} fmt={(v) => hrs(v)} /></Card>
+          <Card title="Share by department" sub="who owns the lost time"><Donut top={6} rows={withDept(F.deptA)} fmt={(v) => hrs(v)} centre="idle time" empty="No idle time in this period." onPick={(d) => setDeptOpen(d)} />{deptOpen && <DeptDrawer dept={deptOpen} rows={deptRowsOf(F.deptR, deptOpen)} fmt={(v) => hrs(v)} sub={`${who} · ${periodChip}`} onClose={() => setDeptOpen(null)} />}<NoDeptNote rows={F.deptA} fmt={(v) => hrs(v)} /></Card>
         </div>
         <div className="grid gap-3 xl:grid-cols-2">
           <Card title="When it happens" sub="idle time by hour of the day"><When hours={F.hoursA} fmt={(v) => `${Math.round(v)}`} unit=" min" empty="No idle time in this period." /></Card>
@@ -472,7 +485,7 @@ export default function OleFocusPage({ factor = 'A' }) {
     const slow = F.M.filter((m) => m.lostMin != null && m.lostMin >= 1).sort((a, b) => b.lostMin - a.lostMin);
     body = (
       <>
-        <div className={`${card} grid grid-cols-2 gap-px overflow-hidden bg-[#D4D4D4] md:grid-cols-3 xl:grid-cols-5`}>
+        <div className={`${card} lp-kpis grid grid-cols-2 gap-px overflow-hidden bg-[#D4D4D4] md:grid-cols-3 xl:grid-cols-5`}>
           <Kpi icon={GaugeIcon} label="Performance" value={pc(T.P)} note={oleConfig().pMode === 'std' ? 'std time of output ÷ run time' : oleConfig().pMode === 'plan' ? 'actual qty ÷ shift plan' : 'actual qty ÷ target of the run time'} color={toneOf(T.P, 'P')} />
           <Kpi icon={Target} label="Target qty" value={nf(target)} note="pcs planned in the run time" color={NAVY} />
           <Kpi icon={Package} label="Actual qty" value={nf(T.qty)} note={target ? `${pc(T.qty / target)} of target` : 'pcs made'} color={T.qty >= target ? GREEN : RED} />
@@ -515,7 +528,7 @@ export default function OleFocusPage({ factor = 'A' }) {
     const byModel = F.M.filter((m) => m.rej > 0).map((m) => ({ ...m, rate: m.qty ? m.rej / m.qty : null })).sort((a, b) => b.rej - a.rej);
     body = (
       <>
-        <div className={`${card} grid grid-cols-2 gap-px overflow-hidden bg-[#D4D4D4] md:grid-cols-3 xl:grid-cols-5`}>
+        <div className={`${card} lp-kpis grid grid-cols-2 gap-px overflow-hidden bg-[#D4D4D4] md:grid-cols-3 xl:grid-cols-5`}>
           <Kpi icon={GaugeIcon} label="Quality" value={pc(T.Q ?? (T.qty > 0 ? 1 : 0))} note="good qty ÷ actual qty" color={toneOf(T.Q ?? 1, 'Q')} />
           <Kpi icon={CheckCircle2} label="Good qty" value={nf(goodOf(T))} note={`of ${nf(T.qty)} made`} color={GREEN} />
           <Kpi icon={RotateCcw} label="Rework" value={nf(lineList.reduce((a, r) => a + r.rwk, 0))} note={T.qty ? `${pc(lineList.reduce((a, r) => a + r.rwk, 0) / T.qty, 2)} of production` : 'pcs reworked'} color={AMBER} />

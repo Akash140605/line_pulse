@@ -213,10 +213,24 @@ export function factorsOf(t, zero = false) {
 }
 
 /** the KPI panel of the plant (or one line): gauge | A | P | Q */
-export function KpiPanel({ t: t0, onFactor = null, zero = false, gauge = 206, onOle = null }) {
+export function KpiPanel({ t: t0, onFactor = null, zero = false, gauge = 206, onOle = null, only = null }) {
   const t = zero ? zeroed(t0) : t0;
   const F = factorsOf(t, zero);
   const w = weakOf(t);
+  // 27-11-2026: a factor clicked (Availability / Performance / Quality): only its own meter and its figures
+  const one = only ? F.find((f) => f.k === only) : null;
+  if (one) {
+    return (
+      <div className="lp-kpi-only grid gap-px bg-[#D4D4D4]" data-testid={`kpi-only-${only}`}>
+        <div className="flex min-w-0 flex-col items-center justify-center gap-1 border-t-[3px] bg-white px-3 py-2" style={{ borderTopColor: t[only] == null ? '#BFBFBF' : band(t[only], only) }}>
+          <span className="text-mes-label font-bold uppercase tracking-[0.12em] text-[#777]">{one.name}</span>
+          <Gauge value={t[only]} size={gauge} label="" />
+          <span className="text-mes-label font-semibold text-[#555]">{one.formula}</span>
+        </div>
+        <Factor {...one} weak={false} onOpen={null} />
+      </div>
+    );
+  }
   return (
     <div className="grid gap-px bg-[#D4D4D4] lg:grid-cols-[minmax(0,0.85fr)_repeat(3,minmax(0,1fr))]">
       <div className="flex min-w-0 flex-col border-t-[3px] bg-white" style={{ borderTopColor: t.ole == null ? '#BFBFBF' : band(t.ole) }}>

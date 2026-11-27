@@ -26,7 +26,7 @@ const td = 'border border-[#D4D4D4] px-1.5 py-1';
 
 function Tile({ name, value, sub, testid }) {
   return (
-    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" data-testid={testid}>
+    <div className="lp-tile min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" data-testid={testid}>
       <div className="text-fs-13 font-bold text-slate-600">{name}</div>
       <div className="mt-1 break-words font-mono text-fs-28 font-extrabold leading-tight tabular-nums text-slate-900" title={String(value)}>{value}</div>
       {sub && <div className="mt-1 break-words text-fs-12 text-slate-600" title={typeof sub === 'string' ? sub : undefined}>{sub}</div>}
@@ -81,7 +81,7 @@ export default function CustomerProductionPage() {
       {D.err && <div role="alert" className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-fs-13 font-semibold text-slate-700">{D.err}</div>}
       {!C ? <PageLoader label="Reading the production" sub={periodText} /> : (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <div className="lp-kpis grid grid-cols-2 gap-3 lg:grid-cols-5">
             <Tile testid="cp-total" name="Pieces made" value={nf(C.total)} sub={`${groupNameOf(IDS)} · ${periodText}`} />
             <Tile testid="cp-cust" name="Customers" value={nf(C.customers.length)} sub={C.customers[0] ? `Top: ${C.customers[0].name} · ${nf(C.customers[0].total)}` : '—'} />
             <Tile testid="cp-models" name="Models" value={nf(models)} sub="made in the period" />

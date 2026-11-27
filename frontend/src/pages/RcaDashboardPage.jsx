@@ -24,7 +24,7 @@ const td = 'border border-[#D4D4D4] px-2 py-1.5';
 
 function Tile({ name, value, sub, tone = 'text-slate-900', testid }) {
   return (
-    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" data-testid={testid}>
+    <div className="lp-tile min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" data-testid={testid}>
       <div className="text-fs-13 font-bold text-slate-600">{name}</div>
       <div className={`mt-1 font-mono text-fs-28 font-extrabold leading-none tabular-nums ${tone}`}>{value}</div>
       {sub && <div className="mt-1 text-fs-12 text-slate-600">{sub}</div>}
@@ -75,7 +75,7 @@ export default function RcaDashboardPage({ onOpen = null, canOpen = [] }) {
               Department: <b>{dept}</b><button type="button" onClick={() => setDept(null)} className="ml-auto rounded-md border border-blue-300 bg-white px-2 py-0.5 font-bold hover:bg-blue-100">All departments ✕</button>
             </div>
           )}
-          <section className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7" aria-label="RCA totals">
+          <section className="lp-kpis grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7" aria-label="RCA totals">
             <Tile testid="rca-total" name="RCA needed" value={nf(T.n)} sub="losses, rejection, rework" />
             <Tile testid="rca-pending" name="Pending" value={nf(T.pending)} sub="nothing written yet" tone={T.pending ? 'text-red-700' : 'text-slate-900'} />
             <Tile testid="rca-submitted" name="Submitted" value={nf(T.submitted)} sub="written, action open" tone={T.submitted ? 'text-amber-700' : 'text-slate-900'} />

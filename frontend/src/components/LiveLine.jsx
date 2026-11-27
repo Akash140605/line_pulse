@@ -1015,8 +1015,8 @@ function TvModels({ list, running, total, sm = false, cols = 1 }) {
   };
   return (
     <div className={`rounded-xl bg-white/[.07] border border-white/10 min-w-0 min-h-0 overflow-hidden flex flex-col ${sm ? 'px-1.5 py-1' : 'px-3 py-2'}`} aria-label="Models today">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-2 shrink-0">
-        <span className={`${sm ? 'text-fs-13' : 'text-fs-18'} leading-tight font-extrabold uppercase tracking-wide text-white/90 whitespace-nowrap`}>Models today</span>
+      <div className={`flex ${sm ? 'flex-nowrap' : 'flex-wrap'} items-baseline justify-between gap-x-2 shrink-0`}>
+        <span className={`${sm ? 'text-fs-13' : 'text-fs-18'} leading-tight font-extrabold uppercase tracking-wide text-white/90 whitespace-nowrap`}>{sm ? 'Models' : 'Models today'}</span>
         <span className={`${sm ? 'text-fs-13' : 'text-fs-16'} font-bold text-sky-200 shrink-0 whitespace-nowrap tabular-nums`}>{list.length} · {Number(total ?? list.reduce((a, m) => a + m.qty, 0)).toLocaleString('en-IN')} pcs</span>
       </div>
       <div ref={boxRef} className={`relative min-h-0 overflow-hidden ${clipNow ? '' : 'flex-1'} ${sm ? 'mt-0.5' : 'mt-1.5'}`} style={clipNow ? { height: clipNow } : undefined}>
@@ -1467,16 +1467,26 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
                 // 27-11-2026: Today as a 3-column table — Target · Actual · Achieved % (as asked)
                 if (ti === 0) {
                   const cells = [['Target', tgt != null ? tgt : '—'], ['Actual', val], ['Achieved', achDay == null ? '—' : `${achDay}%`]];
-                  const colW = ((wideLow ? tW : tW * 2 + 14) + 8) / 3 - 8;   // Today spans the tiles' whole width (top row)
-                  const hz = Math.max(9, Math.min(lpx * 0.9, colW / (0.62 * 8.5)));
+                  const colW = ((wideLow ? tW : tW * 2 + 14) + 8) / 3 - 14;   // Today spans the tiles' whole width (top row)
+                  const hz = Math.max(9, Math.min(lpx * 0.8, (colW - 6) / (0.64 * 8.5)));
                   const showLab = tH >= 78;   // a short tile: no "Today" line (the table says what it is)
-                  const vz = Math.max(12, Math.min((tH - hz * 1.35 - (showLab ? lpx * 0.9 + 4 : 0) - 12 - (noTgtDay > 0 ? lpx * 0.75 : 0)) / 1.05, ...cells.map(([, v]) => colW / (0.64 * Math.max(2, String(v).length) + (String(v).includes('%') ? 0.3 : 0)))));
+                  const vz = Math.max(12, Math.min((tH - hz * 1.3 - (showLab ? lpx * 0.9 + 4 : 0) - 22 - (noTgtDay > 0 ? lpx * 0.75 : 0)) / 1.1, ...cells.map(([, v]) => colW / (0.64 * Math.max(2, String(v).length) + (String(v).includes('%') ? 0.3 : 0)))));
                   return (
                     <div key={lab} title={hint} data-testid="today-table" className={`rounded-lg bg-white/[.07] border border-white/10 min-w-0 min-h-0 overflow-hidden px-2 py-1 flex flex-col justify-center gap-1 ${!wideLow ? 'col-span-2' : ''}`}>
                       {showLab && <span className="leading-none font-extrabold uppercase tracking-wide text-sky-100 whitespace-nowrap" style={fz(lpx * 0.9)}>Today</span>}
-                      <div className="grid grid-cols-3 overflow-hidden rounded-md border border-white/15">
-                        {cells.map(([h]) => <span key={h} title={h === 'Achieved' ? 'Achieved %' : `${h} today`} className="border-b border-white/15 bg-white/10 px-1 py-0.5 text-center font-bold uppercase leading-tight text-sky-100 whitespace-nowrap" style={fz(hz)}>{h}</span>)}
-                        {cells.map(([h, v], i) => <span key={`v${h}`} className={`px-1 py-1 text-center font-mono font-extrabold tabular-nums leading-none whitespace-nowrap text-white ${i ? 'border-l border-white/15' : ''}`} style={fz(vz)}>{v}</span>)}
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {cells.map(([h, v], i) => {
+                          const pill = i === 2 && achDay != null;
+                          const bg = achDay >= 100 ? '#059669' : achDay >= 90 ? '#D97706' : '#DC2626';
+                          return (
+                            <div key={h} className="lp-today-cell flex min-w-0 flex-col items-center justify-center gap-1 rounded-md border border-white/15 bg-white/[.06] px-1 py-1" title={h === 'Achieved' ? 'Achieved % = pieces with a target ÷ target so far' : `${h} today`}>
+                              <span className="font-bold uppercase leading-none tracking-wide text-sky-100 whitespace-nowrap" style={fz(hz)}>{h}</span>
+                              {pill
+                                ? <span className="rounded-full px-2 py-0.5 font-mono font-extrabold tabular-nums leading-none whitespace-nowrap" style={{ ...fz(vz * 0.86), background: bg, color: '#fff', boxShadow: `0 4px 12px -4px ${bg}` }}>{v}</span>
+                                : <span className={`font-mono font-extrabold tabular-nums leading-none whitespace-nowrap ${i === 0 ? 'text-sky-100' : 'text-white'}`} style={fz(vz)}>{v}</span>}
+                            </div>
+                          );
+                        })}
                       </div>
                       {noTgtDay > 0 && <span className="leading-tight font-bold text-sky-100 whitespace-nowrap" style={fz(Math.max(10, Math.min(lpx * 0.75, (tW - 2) / (0.6 * `${noTgtDay} no cycle time`.length))))} data-testid="no-target-day" title={`${noTgtDay} pcs of models without a cycle time — not counted in Achieved`}>{noTgtDay} no cycle time</span>}
                     </div>

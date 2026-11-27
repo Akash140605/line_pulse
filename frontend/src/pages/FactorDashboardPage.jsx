@@ -118,7 +118,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
       </HeaderBar>
       {D.err && <div role="alert" className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-fs-14 font-semibold text-slate-700">{D.err}</div>}
       {!X ? <PageLoader label="Reading the lines" sub={isA ? 'Planned time, run time, idle time' : 'Pieces, plan, cycle time'} /> : (
-        <div ref={bodyRef} className="flex flex-col gap-3">
+        <div ref={bodyRef} className={`flex flex-col gap-3 ${isA ? 'lp-adash' : 'lp-pdash'}`}>
           {/* KPI tiles */}
           {isA ? (
             <section className="lp-kpis grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5" aria-label="Availability of the period">
@@ -149,12 +149,12 @@ export default function FactorDashboardPage({ factor = 'A' }) {
             for (const r of X.reasons) (byDept[r.dept] = byDept[r.dept] || []).push({ label: r.name, value: r.min, n: r.n });
             const depts = X.depts.map((d) => ({ label: d.name, value: d.min }));
             return (
-              <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-                <section className={`${card} xl:col-span-2`} aria-label="Idle time reasons Pareto">
+              <div className="lp-ad-wrap grid grid-cols-1 gap-3 xl:grid-cols-3">
+                <section className={`${card} lp-ad-reasons xl:col-span-2`} aria-label="Idle time reasons Pareto">
                   <Title right="Pareto by time lost">Idle time reasons</Title>
                   <Pareto rows={X.reasons.map((r) => ({ label: r.name, value: r.min }))} fmt={hrs} time color="#EB5757" empty="No idle time in this period." onPick={(k) => setIdleReason(k)} />
                 </section>
-                <section className={card} aria-label="Share by department">
+                <section className={`${card} lp-ad-dept`} aria-label="Share by department">
                   <Title right="who owns the lost time">Share by department</Title>
                   <Donut top={6} rows={withDept(depts)} fmt={hrs} centre="idle time" empty="No idle time in this period." onPick={(lab) => setDeptOpen(lab)} />
                   {deptOpen && <DeptDrawer dept={deptOpen} rows={deptRowsOf(byDept, deptOpen)} fmt={hrs} sub={`${group} · ${periodText || ''}`} onClose={() => setDeptOpen(null)} />}
@@ -164,28 +164,18 @@ export default function FactorDashboardPage({ factor = 'A' }) {
             );
           })()}
 
-          {!isA && (() => {
-            const lineSpeed = X.lines.filter((l) => l.speed > 0).map((l) => ({ label: `Line ${l.line}`, value: l.speed }));
-            return (
-              <div className="grid grid-cols-1 gap-3">   {/* 27-11-2026: "Speed loss by line" taken off (as asked) */}
-                <section className={card} aria-label="Where the speed is lost">
-                  <Title right="Pareto of time lost against the std cycle, by model">Where the speed is lost</Title>
-                  <Pareto rows={X.slow.map((m) => ({ label: `${m.model} (L${m.line})`, value: m.lostMin }))} fmt={(m) => dur(Math.max(0, m))} time color="#EB5757" empty="No model ran slower than its std." />
-                </section>
-              </div>
-            );
-          })()}
+          {/* 27-11-2026: "Where the speed is lost" taken off (as asked) */}
 
           {/* 26-11-2026: cycle time variation — model by model, hour by hour, day by day; and the reasons written as performance loss */}
           {!isA && (() => {
             const V = X.variation, hiV = Math.max(0.01, ...V.map((m) => Math.abs(m.var)));
             return (
               <>
-                <div className="grid grid-cols-1 gap-3">
-                  <section className={card} aria-label="Cycle time variation by model">
+                <div className="lp-ad-wrap grid grid-cols-1 gap-3">
+                  <section className={`${card} lp-pd-var`} aria-label="Cycle time variation by model">
                     <Title right="actual cycle against std · highest variation first · click a model for its hours">Cycle time variation · by model</Title>
                     {!V.length ? <Empty text="No model with enough pieces and a std cycle." /> : (
-                      <div className="flex max-h-[300px] flex-col gap-1 overflow-y-auto pr-1" role="list" aria-label="Cycle time variation by model">
+                      <div className="lp-pd-varlist flex max-h-[300px] flex-col gap-1 overflow-y-auto pr-1" role="list" aria-label="Cycle time variation by model">
                         {V.map((m) => (
                           <div key={m.key} role="listitem" tabIndex={0} onClick={() => setMdl(m)} onKeyDown={(e) => { if (e.key === 'Enter') setMdl(m); }} title={`${m.model} on Line ${m.line}: ${sec(m.act)} against std ${sec(m.std)} · ${nf(m.qty)} pcs`}
                             className="grid cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-fs-13 hover:bg-blue-50" style={{ gridTemplateColumns: 'minmax(0,1.2fr) minmax(0,1fr) 9.5rem' }}>
@@ -201,7 +191,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                 </div>
                 {/* 27-11-2026: cycle time by hour / day by day taken off (as asked); the reasons only when some are written */}
                 {X.reasons.length > 0 && (
-                  <section className={card} aria-label="Performance loss reasons">
+                  <section className={`${card} lp-pd-reasons`} aria-label="Performance loss reasons">
                     <Title right="minutes written against a model (Loss entry)">Performance loss reasons</Title>
                     <Pareto rows={X.reasons.map((r) => ({ label: r.name, value: r.min }))} fmt={(m) => dur(m)} time color="#EB5757" />
                   </section>
@@ -213,7 +203,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
           {/* 27-11-2026: the line × day table taken off (as asked) — Day by day below shows the same days */}
 
           {/* 26-11-2026: one under the other — the line table has many columns and must not be cut */}
-          <div className="grid grid-cols-1 gap-3">
+          <div className="lp-ad-wrap grid grid-cols-1 gap-3">
             {/* day by day — 27-11-2026: taken off both dashboards (as asked) */}
             {false && (
             <section className={card} aria-label={`${name} day by day`}>
@@ -240,7 +230,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
             )}
 
             {/* line by line */}
-            <section className={card} aria-label={`${name} line by line`}>
+            <section className={`${card} lp-ad-lines`} aria-label={`${name} line by line`}>
               <Title right={isA ? 'time, main reason' : 'plan, pieces, cycle, slowest model'}>Line by line</Title>
               <div className="overflow-x-auto">
                 {isA ? (
@@ -287,8 +277,8 @@ export default function FactorDashboardPage({ factor = 'A' }) {
 
           {/* reasons / models */}
           {isA ? (
-            <div className="grid grid-cols-1 gap-3">
-              <section className={card} aria-label="Idle time by model">
+            <div className="lp-ad-wrap grid grid-cols-1 gap-3">
+              <section className={`${card} lp-ad-models`} aria-label="Idle time by model">
                 <Title right="idle written against a model · click a model for its entries">Models</Title>
                 <Ranked label="Idle time by model" empty="No idle time written against a model." onPick={(k) => setIdleModel(k)} rows={X.models.map((m) => ({ key: m.name, label: <span><span className="mr-1 text-fs-11 font-bold uppercase text-slate-500">{co(m.name)}</span><span className="font-mono">{m.name}</span></span>, value: m.min, right: `${dur(m.min)} · ${m.n === 1 ? '1 time' : `${m.n} times`}`, title: `${m.name}: mostly ${m.top}` }))} />
               </section>
@@ -336,11 +326,11 @@ export default function FactorDashboardPage({ factor = 'A' }) {
               })()}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3">
-              <section className={card} aria-label="Models against their std cycle">
+            <div className="lp-ad-wrap grid grid-cols-1 gap-3">
+              <section className={`${card} lp-pd-models`} aria-label="Models against their std cycle">
                 <Title right={`${nf(X.models.length)} models · slowest first · click a model for its hours`}>Models · cycle time vs std</Title>
                 {!X.models.length ? <Empty text="No production in this period." /> : (
-                  <div className="max-h-[420px] overflow-auto">
+                  <div className="lp-pd-modtable max-h-[420px] overflow-auto">
                     <table className="w-full border-collapse text-fs-13 tabular-nums" aria-label="Performance models table">
                       <thead className="sticky top-0"><tr>{['Line', 'Company', 'Model', 'Std', 'Actual', 'Var.', 'Target', 'Actual Qty', 'Achieved', 'Time lost'].map((h, i) => <th key={h} className={`${th} ${i > 2 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
                       <tbody>

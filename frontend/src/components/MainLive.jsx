@@ -350,7 +350,7 @@ export default function MainLive({ tv = false }) {
       </div>
 
       {/* combined hourly output (below the fold — scroll down): lines stacked, total on top; a click on a bar opens its models */}
-      {!tv && hourRows.length > 0 && (() => {
+      {false && !tv && hourRows.length > 0 && (() => {   // 27-11-2026: "All lines — output by hour" taken off (as asked): the line cards alone, one screen
         const worked = hourRows.filter((r) => !r.isLunch && r.total > 0);
         const peak = worked.reduce((b, r) => (!b || r.total > b.total ? r : b), null);
         const avg = worked.length ? Math.round(worked.reduce((t, r) => t + r.total, 0) / worked.length) : 0;

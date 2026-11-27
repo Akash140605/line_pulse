@@ -88,6 +88,8 @@ export default function FactorDashboardPage({ factor = 'A' }) {
   const X = useMemo(() => (R ? (isA ? availDash(R, IDS) : perfDash(R, IDS)) : null), [R, IDS, isA]);
   const bodyRef = useRef(null);
   const [mdl, setMdl] = useState(null);   // 26-11-2026: a model row clicked → its hours (drawer)
+  const [mh, setMh] = useState({ k: 'date', dir: 1, day: '', only: 'all' });   // 27-11-2026: sort / filter of the model's hours
+  React.useEffect(() => { setMh({ k: 'date', dir: 1, day: '', only: 'all' }); }, [mdl?.key]);   // a new model starts unfiltered
   const [deptOpen, setDeptOpen] = useState(null);
   const [idleModel, setIdleModel] = useState(null);
   const [idleReason, setIdleReason] = useState(null);   // 27-11-2026: an idle reason clicked → its entries   // 27-11-2026: a model of the idle list clicked → its entries   // 27-11-2026: a department clicked → its reasons (drawer)
@@ -357,7 +359,14 @@ export default function FactorDashboardPage({ factor = 'A' }) {
           )}
 
           {mdl && (() => {
-            const hs = modelHours(R, mdl.line, mdl.model);
+            const hs0 = modelHours(R, mdl.line, mdl.model);
+            // 27-11-2026: filters (day, slower than std, alone / with other models) and sort on every column
+            const daysOf = [...new Set(hs0.map((h) => h.date))];
+            const keyOf = { date: (h) => `${h.date}|${String(h.hour).padStart(2, '0')}`, qty: (h) => h.qty, hourQty: (h) => h.hourQty, run: (h) => h.runMin, std: (h) => h.std, act: (h) => h.act, var: (h) => h.var, lost: (h) => h.lostMin };
+            const hs = hs0.filter((h) => (!mh.day || h.date === mh.day) && (mh.only === 'all' || (mh.only === 'slow' ? h.var > 0.005 : mh.only === 'ok' ? !(h.var > 0.005) : mh.only === 'alone' ? !h.mixed : h.mixed)))
+              .map((h, i) => [h, i]).sort((a, b) => { const x = keyOf[mh.k](a[0]), y = keyOf[mh.k](b[0]); if (x == null || y == null) return (x == null) - (y == null) || a[1] - b[1]; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * mh.dir || a[1] - b[1]; }).map(([h]) => h);
+            const sortBy = (k) => setMh((o) => ({ ...o, k, dir: o.k === k ? -o.dir : k === 'date' ? 1 : -1 }));
+            const mhSel = 'h-8 rounded-md border border-slate-300 bg-white px-2 text-fs-13';
             // 27-11-2026: total of the hours shown (the same figures as the rows)
             const tq = hs.reduce((a, h) => a + h.qty, 0), tSec = hs.reduce((a, h) => a + (h.actSec || 0), 0), tStd = hs.reduce((a, h) => a + (h.std ? h.qty * h.std : 0), 0);
             const tAct = tq ? tSec / tq : null, tStdCt = tq && tStd ? tStd / tq : null, tVar = tAct != null && tStdCt ? (tAct - tStdCt) / tStdCt : null;
@@ -365,9 +374,20 @@ export default function FactorDashboardPage({ factor = 'A' }) {
             const vText = (v) => (v == null ? '—' : `${v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%`);
             return (
               <MesDrawer title={`Line ${mdl.line} — ${mdl.model}`} sub={`${co(mdl.model) ? `${co(mdl.model)} · ` : ''}${periodText} · ${nf(tq)} pcs in ${hs.length} hours · Std CT ${sec(tStdCt ?? mdl.std)} · Actual CT ${sec(tAct)}`} onClose={() => setMdl(null)} label={`${mdl.model} hour by hour`} width={75} fit bodyClass="p-2">
-                {!hs.length ? <Empty text="No pieces of this model in this period." /> : (<>
+                <div className="mb-2 flex flex-wrap items-center gap-2" data-testid="mh-filters">
+                  <select aria-label="Day" value={mh.day} onChange={(e) => setMh({ ...mh, day: e.target.value })} className={mhSel}><option value="">All days</option>{daysOf.map((d) => <option key={d} value={d}>{dmy(d)}</option>)}</select>
+                  <select aria-label="Show" value={mh.only} onChange={(e) => setMh({ ...mh, only: e.target.value })} className={mhSel} data-testid="mh-only">
+                    {[['all', 'All hours'], ['slow', 'Slower than std'], ['ok', 'At or faster than std'], ['alone', 'Model alone in the hour'], ['mixed', 'With other models']].map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select>
+                  <select aria-label="Sort" value={`${mh.k}|${mh.dir}`} onChange={(e) => { const [k, d] = e.target.value.split('|'); setMh({ ...mh, k, dir: Number(d) }); }} className={mhSel} data-testid="mh-sort">
+                    {[['date|1', 'Date & hour'], ['var|-1', 'Var. high → low'], ['var|1', 'Var. low → high'], ['lost|-1', 'Time lost most first'], ['qty|-1', 'Model Qty most first']].map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+                    {!['date|1', 'var|-1', 'var|1', 'lost|-1', 'qty|-1'].includes(`${mh.k}|${mh.dir}`) && <option value={`${mh.k}|${mh.dir}`}>{mh.k} {mh.dir > 0 ? '↑' : '↓'}</option>}</select>
+                  <span className="ml-auto text-fs-12 text-slate-500">{hs.length} of {hs0.length} hours</span>
+                </div>
+                {!hs.length ? <Empty text={hs0.length ? 'No hour matches the filters.' : 'No pieces of this model in this period.'} /> : (<>
                   <table className="w-full border-collapse text-fs-13 tabular-nums" aria-label={`${mdl.model} hour by hour`} data-testid="model-hours">
-                    <thead><tr>{['Date', 'Hour', 'Model Qty', 'Hour Qty (all models)', 'Run Time', 'Std CT', 'Actual CT', 'Var. vs Std', 'Time Lost vs Std', 'Other models in the hour'].map((h, i) => <th key={h} className={`${th} ${i >= 2 && i <= 8 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+                    <thead><tr>{[['date', 'Date'], [null, 'Hour'], ['qty', 'Model Qty'], ['hourQty', 'Hour Qty (all models)'], ['run', 'Run Time'], ['std', 'Std CT'], ['act', 'Actual CT'], ['var', 'Var. vs Std'], ['lost', 'Time Lost vs Std'], [null, 'Other models in the hour']].map(([k, h], i) => (
+                      <th key={h} className={`${th} ${i >= 2 && i <= 8 ? 'text-right' : ''}`} aria-sort={k && mh.k === k ? (mh.dir > 0 ? 'ascending' : 'descending') : undefined}>
+                        {k ? <button type="button" onClick={() => sortBy(k)} data-testid={`mh-sort-${k}`} className={`inline-flex items-center gap-1 font-bold ${mh.k === k ? 'text-[#2E75B6]' : ''}`}>{h}<span aria-hidden="true" className="text-fs-11">{mh.k === k ? (mh.dir > 0 ? '▲' : '▼') : '↕'}</span></button> : h}</th>))}</tr></thead>
                     <tbody>
                       {hs.map((h) => (
                         <tr key={h.key}>

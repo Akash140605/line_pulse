@@ -1033,3 +1033,30 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
   .lp-adash .lp-ad-lines table th, .lp-adash .lp-ad-lines table td { white-space: nowrap; }
 }
 .lp-pdash .lp-pd-var, .lp-pdash .lp-ad-lines, .lp-pdash .lp-pd-models { box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 8px 22px -12px rgba(15,23,42,.16); border-color: #E3E8F0; }
+
+/* 27-11-2026: Live lines — only the line cards, always one screen (no scrolling), on any screen height */
+@media (min-width: 1024px) {
+  .lp-live-2.lp-live-2h { grid-auto-rows: max(330px, calc(100vh - 178px)) !important; }
+  .lp-live-2:not(.lp-live-2h) { grid-auto-rows: max(240px, calc((100vh - 186px) / 2)) !important; }
+}
+
+/* 27-11-2026: Availability one view — even, tidy columns */
+@media (min-width: 1280px) {
+  .lp-adash { grid-template-columns: minmax(0, 4.4fr) minmax(0, 3fr) minmax(0, 5fr) !important; grid-template-rows: auto minmax(0, 0.8fr) minmax(0, 1.2fr) !important; }
+  .lp-adash .lp-ad-reasons [role="listitem"], .lp-adash .lp-ad-reasons .grid.uppercase { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) 3.6rem 2.8rem !important; }
+  .lp-adash .lp-ad-reasons [role="listitem"] > span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lp-adash .lp-ad-lines table { table-layout: auto; width: 100%; }
+  .lp-adash .lp-ad-lines table th, .lp-adash .lp-ad-lines table td { white-space: nowrap; }
+  .lp-adash .lp-ad-lines table td:nth-last-child(-n+2), .lp-adash .lp-ad-lines table th:nth-last-child(-n+2) { white-space: normal; }
+  .lp-adash .lp-ad-lines > div { overflow-x: hidden !important; }
+  .lp-adash .lp-ad-dept svg[aria-label="Share chart"] { width: 128px !important; height: 128px !important; }
+  .lp-adash .lp-ad-dept > div:nth-child(2) { gap: 10px; }
+  .lp-adash .lp-ad-reasons, .lp-adash .lp-ad-dept, .lp-adash .lp-ad-lines, .lp-adash .lp-ad-models { scrollbar-width: none; }
+  .lp-adash .lp-ad-reasons:hover, .lp-adash .lp-ad-dept:hover, .lp-adash .lp-ad-lines:hover, .lp-adash .lp-ad-models:hover { scrollbar-width: thin; }
+  .lp-adash .lp-ad-reasons::-webkit-scrollbar, .lp-adash .lp-ad-models::-webkit-scrollbar, .lp-adash .lp-ad-dept::-webkit-scrollbar, .lp-adash .lp-ad-lines::-webkit-scrollbar { width: 6px; height: 6px; }
+  .lp-adash .lp-ad-reasons::-webkit-scrollbar-thumb, .lp-adash .lp-ad-models::-webkit-scrollbar-thumb, .lp-adash .lp-ad-dept::-webkit-scrollbar-thumb, .lp-adash .lp-ad-lines::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 6px; }
+  .lp-adash .lp-ad-models [role="listitem"] { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 7rem !important; }
+  .lp-adash .lp-ad-models [role="listitem"] > span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+
+@media (min-width: 1280px) { .lp-adash { grid-template-rows: auto auto minmax(0, 1fr) !important; } .lp-adash .lp-ad-lines { max-height: 46vh; } }

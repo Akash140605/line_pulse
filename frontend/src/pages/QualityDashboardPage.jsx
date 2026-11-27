@@ -15,7 +15,6 @@ import { ChevronRight, Layers } from 'lucide-react';
 import { exportPanel } from '../utils/domExcel';
 import { buildXlsx, downloadXlsx } from '../utils/xlsxWriter';
 import { fs } from '../theme';
-import { Pareto } from './OleFocusPage';
 
 /**
  * Quality dashboard (23-11-2026) — one page for quality: pieces made against pieces reworked (old rejection counted as
@@ -142,10 +141,7 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
 
           {/* 26-11-2026: as on OLE Quality — why parts are reworked (Pareto) and the share of every defect */}
           {/* 27-11-2026: the "Defects by reason" donut taken off (as asked) — the Pareto shows the same defects */}
-          <section className={card} aria-label="Why parts are reworked">
-            <Title right="Pareto of the defects">Why parts are reworked</Title>
-            <Pareto rows={Q.defects.map((d) => ({ label: d.name, value: d.bad }))} unit=" pcs" color={RED} empty="No defect in this period." />
-          </section>
+          {/* 27-11-2026: "Why parts are reworked" taken off (as asked) — Top defects below opens every defect */}
 
           {pick && <PickDrawer pick={pick} sheet={sheet || []} onClose={() => setPick(null)} group={group} period={periodText} />}
           {S && stage && <StageDrawer S={S} sheet={sheet || []} stations={stations} pick={stage} setPick={setStage} onClose={() => setStage(null)} fpyT={fpyT} group={group} period={periodText} ids={IDS.map(String)} />}
@@ -193,7 +189,7 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
             </section>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3">   {/* 27-11-2026: Models full width (as asked) */}
             <section className={card} aria-label="Models">
               <Title right={worstText(Q.worstModel, (n) => n)}>Models</Title>
               {!Q.models.length ? <Empty /> : (() => {
@@ -215,8 +211,8 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
                     <span className="ml-auto text-fs-12 text-slate-500">{list.length} of {Q.models.length} models · click a model for its defects</span>
                   </div>
                   <div className="max-h-[360px] overflow-auto">
-                    <table className="w-full border-collapse text-fs-13" data-testid="qd-models">
-                      <thead className="sticky top-0"><tr>{head('name', 'Model')}{head('made', 'Production', true)}{head('bad', 'Defect', true)}{head('pct', '%', true)}{head('top', 'Top defect')}</tr></thead>
+                    <table className="w-full text-fs-13" style={{ borderCollapse: 'separate', borderSpacing: 0 }} data-testid="qd-models">
+                      <thead className="sticky top-0 z-10 bg-[#EEF3FA] shadow-[0_1px_0_#CBD5E1]"><tr>{head('name', 'Model')}{head('made', 'Production', true)}{head('bad', 'Defect', true)}{head('pct', '%', true)}{head('top', 'Top defect')}</tr></thead>
                       <tbody>
                         {list.map((r) => (
                           <tr key={r.name} className="cursor-pointer hover:bg-blue-50" title={`${r.name} — click for its defects`} onClick={() => setPick({ field: 'model', value: r.name })}>

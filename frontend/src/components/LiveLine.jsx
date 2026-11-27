@@ -995,6 +995,7 @@ function TvModels({ list, running, total, sm = false, cols = 1 }) {
     if (n) clipNow = used;
   }
   const top = Math.max(1, ...list.map((m) => m.qty));
+  const all = Math.max(1, Number(total ?? list.reduce((a, m) => a + m.qty, 0)));   // 27-11-2026: share of the day's pieces
   const big = !sm && list.length <= 3;   // few models: bigger rows, so the panel has no empty space
   const smBig = sm && list.length <= 3;   // wall card with few models: bigger rows too
   const row = (m, k) => {
@@ -1007,9 +1008,13 @@ function TvModels({ list, running, total, sm = false, cols = 1 }) {
             {m.company && <span className={`font-sans font-extrabold uppercase tracking-wide text-sky-300 break-words ${sm ? 'text-fs-12' : big ? 'text-fs-16' : 'text-fs-12'}`}>{m.company}</span>}
             <span className={`font-mono font-bold break-words text-slate-100 ${sm ? (smBig ? (m.name.length > 18 ? 'text-fs-14' : 'text-fs-16') : m.name.length > 18 ? 'text-fs-12' : 'text-fs-13') : big ? (m.name.length > 18 ? 'text-fs-20' : 'text-fs-24') : m.name.length > 22 ? 'text-fs-14' : m.name.length > 14 ? 'text-fs-16' : 'text-fs-18'}`}>{on ? '▶ ' : ''}{wrapCode(m.name)}</span>
           </span>
-          <span className={`shrink-0 font-mono tabular-nums ${sm ? (smBig ? 'text-fs-22' : 'text-fs-16') : big ? 'text-fs-34' : 'text-fs-24'} font-extrabold leading-none text-white`}>{m.qty.toLocaleString('en-IN')}</span>
+          {/* 27-11-2026: how many of each model — the pieces, "pcs" and its share of the day */}
+          <span className="shrink-0 flex flex-col items-end leading-none">
+            <span className="whitespace-nowrap"><span className={`font-mono tabular-nums ${sm ? (smBig ? 'text-fs-22' : 'text-fs-16') : big ? 'text-fs-34' : 'text-fs-24'} font-extrabold text-white`}>{m.qty.toLocaleString('en-IN')}</span><span className={`ml-0.5 font-bold text-sky-200 ${sm ? 'text-fs-10' : 'text-fs-12'}`}>pcs</span></span>
+            <span className={`mt-0.5 font-mono font-bold tabular-nums text-sky-200 ${sm ? 'text-fs-10' : big ? 'text-fs-14' : 'text-fs-12'}`}>{Math.round((m.qty / all) * 100)}%</span>
+          </span>
         </div>
-        <div className={`${smBig ? 'mt-1 h-1' : sm ? 'mt-[2px] h-[2px]' : big ? 'mt-2 h-1.5' : 'mt-1 h-1'} rounded-full bg-white/10 overflow-hidden`} aria-hidden><div className="h-full rounded-full bg-sky-400" style={{ width: `${(m.qty / top) * 100}%` }} /></div>
+        <div className={`${smBig ? 'mt-1 h-1.5' : sm ? 'mt-[2px] h-[3px]' : big ? 'mt-2 h-2' : 'mt-1 h-1.5'} rounded-full bg-white/10 overflow-hidden`} aria-hidden><div className="h-full rounded-full" style={{ width: `${(m.qty / top) * 100}%`, background: on ? 'linear-gradient(90deg,#38BDF8,#34D399)' : 'linear-gradient(90deg,#2E75B6,#7DD3FC)' }} /></div>
       </li>
     );
   };
@@ -1017,7 +1022,6 @@ function TvModels({ list, running, total, sm = false, cols = 1 }) {
     <div className={`rounded-xl bg-white/[.07] border border-white/10 min-w-0 min-h-0 overflow-hidden flex flex-col ${sm ? 'px-1.5 py-1' : 'px-3 py-2'}`} aria-label="Models today">
       <div className={`flex ${sm ? 'flex-nowrap' : 'flex-wrap'} items-baseline justify-between gap-x-2 shrink-0`}>
         <span className={`${sm ? 'text-fs-13' : 'text-fs-18'} leading-tight font-extrabold uppercase tracking-wide text-white/90 whitespace-nowrap`}>{sm ? 'Models' : 'Models today'}</span>
-        <span className={`${sm ? 'text-fs-13' : 'text-fs-16'} font-bold text-sky-200 shrink-0 whitespace-nowrap tabular-nums`}>{list.length} · {Number(total ?? list.reduce((a, m) => a + m.qty, 0)).toLocaleString('en-IN')} pcs</span>
       </div>
       <div ref={boxRef} className={`relative min-h-0 overflow-hidden ${clipNow ? '' : 'flex-1'} ${sm ? 'mt-0.5' : 'mt-1.5'}`} style={clipNow ? { height: clipNow } : undefined}>
         {!list.length && <div className={`${sm ? 'text-fs-11' : 'text-fs-18'} font-semibold text-slate-300`}>No pieces yet</div>}

@@ -8,19 +8,19 @@
 declare(strict_types=1);
 require_once __DIR__ . '/capa.php';
 
-const UI_MGMT_IDS = ['dash', 'overview', 'live', 'summary', 'hourly', 'control', 'targets', 'losses', 'models', 'ai', 'explorer', 'rejection', 'trends', 'pareto', 'targetcheck', 'linetargets', 'ole', 'oleentry', 'qentry', 'rca', 'quality', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'entrydash', 'oledrill', 'lossan', 'daily', 'rejan', 'rwkan', 'kpientry', 'lqentry', 'reports', 'kpidash', 'rcadash', 'rwkdash', 'serials', 'custprod', 'qdash', 'adash', 'pdash'];   // serials: carton & serial report (23-11-2026) · lossan: loss analysis (dept / reason Pareto), daily: morning entry   // quality (FPY / RTY): off until the admin turns it on
-const UI_MGMT_DEFAULT_ON = ['dash', 'overview', 'live', 'summary', 'hourly', 'control', 'targets', 'losses', 'ole', 'oleentry', 'qentry', 'rca', 'lossan', 'rejan', 'rwkan', 'qdash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'oledrill', 'rwkdash', 'rcadash', 'kpidash', 'custprod', 'quality', 'entrydash', 'reports', 'adash', 'pdash'];   // rejan / rwkan: Rejection / Rework analysis
+const UI_MGMT_IDS = ['dash', 'overview', 'live', 'summary', 'hourly', 'control', 'targets', 'losses', 'models', 'ai', 'explorer', 'rejection', 'trends', 'pareto', 'targetcheck', 'linetargets', 'ole', 'oleentry', 'qentry', 'rca', 'capaday', 'idleday', 'quality', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'entrydash', 'oledrill', 'lossan', 'daily', 'rejan', 'rwkan', 'kpientry', 'lqentry', 'reports', 'kpidash', 'rcadash', 'rwkdash', 'serials', 'custprod', 'qdash', 'adash', 'pdash'];   // serials: carton & serial report (23-11-2026) · lossan: loss analysis (dept / reason Pareto), daily: morning entry   // quality (FPY / RTY): off until the admin turns it on
+const UI_MGMT_DEFAULT_ON = ['dash', 'overview', 'live', 'summary', 'hourly', 'control', 'targets', 'losses', 'ole', 'oleentry', 'qentry', 'rca', 'capaday', 'idleday', 'lossan', 'rejan', 'rwkan', 'qdash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'oledrill', 'rwkdash', 'rcadash', 'kpidash', 'custprod', 'quality', 'entrydash', 'reports', 'adash', 'pdash'];   // rejan / rwkan: Rejection / Rework analysis
 // 24-11-2026: the review pages of management — switched on once for a saved Setup older than this (mgmtV < 2); after that the admin's choice stays
 const UI_MGMT_REVIEW = ['dash', 'overview', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'oledrill', 'qdash', 'rwkdash', 'rcadash', 'kpidash', 'custprod', 'lossan', 'rejan', 'rwkan', 'quality', 'entrydash', 'reports', 'adash', 'pdash'];
-const UI_ADMIN_IDS = ['overview', 'dash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'oledrill', 'ole', 'daily', 'oleentry', 'qentry', 'rca', 'entrydash', 'lossan', 'rejan', 'rwkan', 'quality', 'master', 'linetargets', 'targetcheck', 'ai', 'targets', 'methodplan', 'analysis', 'distribution', 'pareto', 'models', 'explorer', 'trends', 'control', 'stdcycle', 'hourly', 'rejection', 'lqentry', 'kpidash', 'rcadash', 'rwkdash', 'kpientry', 'reports', 'repcmp', 'formulas', 'serials', 'custprod', 'qdash', 'universe', 'capa', 'adash', 'pdash'];
+const UI_ADMIN_IDS = ['overview', 'dash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'oledrill', 'ole', 'daily', 'oleentry', 'qentry', 'rca', 'capaday', 'idleday', 'entrydash', 'lossan', 'rejan', 'rwkan', 'quality', 'master', 'linetargets', 'targetcheck', 'ai', 'targets', 'methodplan', 'analysis', 'distribution', 'pareto', 'models', 'explorer', 'trends', 'control', 'stdcycle', 'hourly', 'rejection', 'lqentry', 'kpidash', 'rcadash', 'rwkdash', 'kpientry', 'reports', 'repcmp', 'formulas', 'serials', 'custprod', 'qdash', 'universe', 'capa', 'adash', 'pdash'];
 // targets from the data of 01-08-2026 to 31-10-2026 (fixed window, 14-11-2026); 'to' => '' = up to today
 // Menu folders (19-11-2026, as the C8 MES): every page in one folder; the admin names / orders them (Setup → Menu folders)
 const UI_FOLDER_DEFAULT = [
     ['name' => 'Overview', 'ids' => ['dash', 'overview', 'live', 'summary', 'oleview', 'olecal', 'olemonth', 'oledrill', 'ole']],
     ['name' => 'Entry', 'ids' => ['daily', 'lqentry', 'oleentry', 'qentry', 'kpientry', 'entrydash']],   // 20-11-2026: entry pages in their own folder
-    ['name' => 'Availability', 'ids' => ['adash', 'olea', 'lossan', 'losses']],
+    ['name' => 'Availability', 'ids' => ['adash', 'olea', 'idleday', 'lossan', 'losses']],
     ['name' => 'Performance', 'ids' => ['pdash', 'olep', 'hourly', 'analysis', 'distribution', 'stdcycle', 'control', 'trends']],
-    ['name' => 'Quality', 'ids' => ['qdash', 'oleq', 'rca', 'capa', 'rcadash', 'rwkdash', 'rejan', 'rwkan', 'quality', 'rejection']],
+    ['name' => 'Quality', 'ids' => ['qdash', 'oleq', 'rca', 'capaday', 'capa', 'rcadash', 'rwkdash', 'rejan', 'rwkan', 'quality', 'rejection']],
     ['name' => 'Analysis', 'ids' => ['ai', 'pareto', 'models', 'explorer', 'universe']],
     ['name' => 'Targets', 'ids' => ['master', 'linetargets', 'targetcheck', 'targets', 'methodplan']],
     ['name' => 'Reports', 'ids' => ['kpidash', 'reports', 'custprod', 'serials', 'repcmp', 'formulas', 'setup']],
@@ -165,8 +165,7 @@ function ui_hpr($h): array
  *   mpSync / mpUse / mpUp / stdMp   manpower sync of the std cycle · good / watch  OLE colours (%) · fewPcs · timeFmt 'h1' | 'hm'
  *   aEnd  'lastScan' | 'shiftEnd'   a finished day's time runs up to its last scan, or to the shift close
  *   aLoss 'all' | 'unplanned'       every minute entered is a loss, or old planned stops are taken out of the planned time
- *   pMode 'run' | 'plan' | 'std'    Performance = Actual ÷ target of the run time · Actual ÷ shift plan · std time ÷ run time
- *   pBase 'run' | 'planned'         (std mode) std time against run time or planned time
+ *   pBase 'run' | 'planned'         Performance = std time ÷ run time, or ÷ planned time
  *   pCap  bool                      Performance at most 100 %
  *   qMode 'rej' | 'rejRework'       Quality = (made − rejected) ÷ made, or (made − rejected − rework) ÷ made
  */
@@ -184,7 +183,7 @@ function ui_ole($o): array
     $std = [];
     foreach (['1', '2', '3', '4'] as $l) { $n = $int(((array)($o['stdMp'] ?? []))[$l] ?? null, 0, 1000, 0); if ($n > 0) $std[$l] = $n; }
     return ['aEnd' => $pick('aEnd', ['lastScan', 'shiftEnd']), 'aLoss' => $pick('aLoss', ['all', 'unplanned']),
-        'lossIn' => $pick('lossIn', ['avail', 'perf']), 'aIdle' => $pick('aIdle', ['run', 'idle']), 'pMode' => $pick('pMode', ['run', 'plan', 'std']), 'pBase' => $pick('pBase', ['run', 'planned']),
+        'lossIn' => $pick('lossIn', ['avail', 'perf']), 'aIdle' => $pick('aIdle', ['run', 'idle']), 'pBase' => $pick('pBase', ['run', 'planned']),
         'pCap' => $old ? true : (bool)($o['pCap'] ?? false), 'pNoStd' => $pick('pNoStd', ['skip', 'avg']), 'qMode' => (int)($o['qV'] ?? 0) >= 2 ? $pick('qMode', ['rejRework', 'rej']) : 'rejRework', 'qV' => 2,   // 25-11-2026: quality counts the rework (no rejection since 23-11) — a setup saved before gets it once
         'qStations' => $pick('qStations', ['all', 'final']),
         // manpower sync: std cycle × std manpower ÷ the line's manpower of the day (morning entry)

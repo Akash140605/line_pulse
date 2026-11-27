@@ -1331,7 +1331,7 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
   const vsT = () => 'text-white';   // 14-11-2026: numbers stay plain (black on the light look); the colour is on the hour bars only
   const achTv = achDay;
   // 27-11-2026: TV — Today, This hour and Cycle in one table (Target · Actual · Achieved), as on the 4-line wall
-  const tilesTv = tv && (() => {
+  const tgtTable = (tv || (!compact && !wall)) && (() => {
     const hourAch = hourTarget > 0 && hourShown != null ? Math.round((Number(hourShown) / hourTarget) * 1000) / 10 : null;
     const cycAch = Number(targetCycle) > 0 && cyc > 0 ? Math.round((Number(targetCycle) / cyc) * 1000) / 10 : null;
     const rows = [
@@ -1356,6 +1356,7 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
       </div>
     );
   })();
+  const tilesTv = tv && tgtTable;
 
   return (
     <>
@@ -1543,7 +1544,8 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
             </ol>
           </div>
           <div className="flex flex-col gap-2.5 min-w-0">
-            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4 gap-2">{tiles}</div>
+            {/* 27-11-2026: Today · This hour · Cycle as the Target · Actual · Achieved table (as on the TV) */}
+            <div className="grid grid-cols-2 grid-rows-2 gap-2" style={{ minHeight: 230 }} data-testid="overview-tgt-table">{tgtTable || tiles}</div>
             {modelsToday.length > 0 && (
               <div className="flex-1 min-h-0 overflow-y-auto rounded-xl bg-white/[.07] border border-white/10 px-3 py-2" aria-label="Models today">
                 <div className="text-fs-12 font-bold uppercase tracking-wide text-sky-100 mb-1.5">Models today · {modelsToday.length}</div>
@@ -1555,7 +1557,7 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
                     return (
                       <li key={m.name} className={`rounded-md px-2 py-1 ${on ? 'bg-sky-400/15 ring-1 ring-sky-300/70' : 'bg-white/[.06]'}`}>
                         <div className="flex items-baseline gap-2">
-                          <span className={`min-w-0 flex-1 break-words font-mono text-fs-13 font-bold ${on ? 'text-white' : 'text-slate-100'}`}>{m.company && <span className="mr-1 font-sans text-fs-11 font-extrabold uppercase tracking-wide text-sky-300">{m.company}</span>}{on ? '▶ ' : ''}{wrapCode(m.name)}</span>
+                          <span className={`min-w-0 flex-1 break-words font-mono text-fs-13 font-bold ${on ? 'text-white' : 'text-slate-100'}`}>{m.company && <span className="mr-1 font-sans text-fs-11 font-extrabold uppercase tracking-wide text-sky-300">{m.company}</span>}{wrapCode(m.name)}{on && <span className="lp-run-badge ml-1.5">RUNNING</span>}</span>
                           <span className="shrink-0 font-mono tabular-nums text-fs-16 font-extrabold text-white">{m.qty.toLocaleString('en-IN')}</span>
                         </div>
                         <div className="mt-1 h-1 rounded-full bg-white/10"><div className="h-full rounded-full bg-sky-400" style={{ width: `${share}%` }} /></div>

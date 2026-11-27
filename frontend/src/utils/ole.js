@@ -493,7 +493,9 @@ export function qualityOf(rows, stationList = []) {
   let qty = 0, rej = 0, rwk = 0;
   const setup = stationList.map(normStation).filter((x) => x.reason);
   const look = stationLookup(stationList);
-  const blank = (n, x = null) => ({ name: n, label: x?.code || String(n).replace(/\s*\(.*\)\s*$/, ''), code: x?.code || '', type: x?.type || 'inline', rty: x ? x.rty : true, active: x ? x.active : true, setup: !!x, rej: 0, rwk: 0, defects: new Map() });
+  const blank = (n, x = null) => ({ name: n, label: x?.code || String(n).replace(/\s*\(.*\)\s*$/, ''), code: x?.code || '', type: x?.type || 'inline', rty: x ? x.rty : true, active: x ? x.active : true, setup: !!x, rej: 0, rwk: 0, dis: 0, defects: new Map(), det: { defects: new Map(), models: new Map(), lines: new Map(), days: new Map(), hours: new Map() } });
+  // 27-11-2026: what a stage found, by defect / model / line / day / hour (Stage-wise FPY → click a stage)
+  const tally = (m, key, k, n, d) => { if (key == null || key === '') return; const o = m.get(key) || { name: String(key), rej: 0, rwk: 0, dis: 0 }; o[k] += n; o.dis += d; m.set(key, o); };
   const st = new Map(setup.map((x) => [x.reason, blank(x.reason, x)]));
   const md = new Map(), df = new Map();
   const mOf = (n) => { const o = md.get(n) || { name: n, qty: 0, rej: 0, rwk: 0 }; md.set(n, o); return o; };
@@ -508,6 +510,11 @@ export function qualityOf(rows, stationList = []) {
         const sn = look.get(String(x.station || '').toLowerCase())?.reason || x.station || 'Station not given';
         const so = st.get(sn) || blank(sn);
         so[k] += n; so.defects.set(x.reason || 'Not given', (so.defects.get(x.reason || 'Not given') || 0) + n); st.set(sn, so);
+        const dz = k === 'rwk' ? Number(x.dismantle) || 0 : 0; so.dis += dz;
+        tally(so.det.defects, x.reason || 'Not given', k, n, dz); tally(so.det.models, x.model || 'Model not given', k, n, dz);
+        if (r.line != null) tally(so.det.lines, String(r.line), k, n, dz);
+        if (r.date) tally(so.det.days, r.date, k, n, dz);
+        if (r.hour != null) tally(so.det.hours, Number(r.hour), k, n, dz);
         if (x.model) mOf(x.model)[k] += n;
         const d = df.get(x.reason || 'Not given') || { name: x.reason || 'Not given', rej: 0, rwk: 0, byModel: new Map() }; d[k] += n; df.set(d.name, d);
         if (x.model) { const bm = d.byModel.get(x.model) || { rej: 0, rwk: 0 }; bm[k] += n; d.byModel.set(x.model, bm); }   // 20-11-2026: models of the defect
@@ -515,7 +522,10 @@ export function qualityOf(rows, stationList = []) {
     }
   }
   const y = (bad, of = qty) => (of > 0 ? Math.max(0, (of - bad) / of) : null);
-  const stations = [...st.values()].map((s) => ({ ...s, fpy: y(s.rej + s.rwk), defects: [...s.defects.entries()].map(([name, n]) => ({ name, qty: n })).sort((a, b) => b.qty - a.qty) }));
+  const byBig = (m) => [...m.values()].sort((a, b) => (b.rej + b.rwk) - (a.rej + a.rwk) || String(a.name).localeCompare(String(b.name)));
+  const byKey = (m) => [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)).map(([, v]) => v);
+  const stations = [...st.values()].map(({ det, ...s }) => ({ ...s, fpy: y(s.rej + s.rwk), defects: [...s.defects.entries()].map(([name, n]) => ({ name, qty: n })).sort((a, b) => b.qty - a.qty),
+    detail: { defects: byBig(det.defects), models: byBig(det.models), lines: byKey(det.lines), days: byKey(det.days), hours: byKey(det.hours) } }));
   const inRty = stations.filter((s) => s.rty);
   const rty = qty > 0 ? inRty.reduce((a, s) => a * (s.fpy ?? 1), 1) : null;
   return {

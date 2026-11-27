@@ -927,3 +927,7 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
   body:has(.lp-fx) :not(:has(.lp-fx)):not(.lp-fx):not(.lp-fx *) { display: none !important; }
   body:has(.lp-fx) :has(.lp-fx) { position: static !important; overflow: visible !important; height: auto !important; max-height: none !important; padding: 0 !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; background: #fff !important; }
 }
+
+/* 27-11-2026 Stage-wise FPY: a stage row opens its details */
+.lp-stage-row:focus-visible { outline: 2px solid #2563EB; outline-offset: -2px; background: #EFF6FF; }
+@media (min-width: 640px) { .lp-stage-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; } }

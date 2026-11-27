@@ -42,7 +42,7 @@ const pc1 = (v) => (v == null ? '—' : `${Math.round(v * 1000) / 10}%`);   // 9
 const tone = (v, k = null) => (v == null ? 'text-slate-500' : v >= okFrom(k) ? 'text-[#138A36]' : v >= watchFrom(k) ? 'text-[#9C5700]' : 'text-[#C00000]');
 const lossTone = (v) => (v == null ? 'text-slate-500' : v <= 1 - okFrom() ? 'text-[#138A36]' : v <= 0.4 ? 'text-[#9C5700]' : 'text-[#C00000]');
 // 19-11-2026: in words, not + / − — "Short 28" · "Excess 116" · "On target"
-const signed = (v) => (v > 0 ? `Excess ${nf(v)}` : v < 0 ? `Short ${nf(-v)}` : 'On target');
+const signed = (v) => (v > 0 ? `+${nf(v)}` : v < 0 ? `−${nf(-v)}` : '0');   // 27-11-2026: + / − (colour shows excess / short)
 /** 20-11-2026: the models a reason / defect was written on — the first `max` (with their own time or pieces when more than one), "+N" for the rest; all in the tooltip */
 // 26-11-2026: EVERY model is named (no "+2"): one model inline; more models one under the other, each with its time / pieces
 const modelsCell = (ms, unit = 'min', _max = 0, co = null) => {
@@ -128,14 +128,57 @@ function QTable({ title, top = 5, rows, cols, empty, label, onAll = null, onRow 
     </section>
   );
 }
-function Grid({ rows, cols, label, total = null, onRow = null, rowTitle = 'Open the details' }) {
+/** 27-11-2026 Cycle Time vs Standard with filters (line, company, model, too few) and a sort on every column —
+ *  Var. low → high first (the models running fastest against their std on top). Rows without a figure stay at the bottom. */
+const PERF_SORT = { line: (r) => Number(r.line), std: (r) => r.std, act: (r) => (r.few ? null : r.act), var: (r) => (r.few ? null : r.var), target: (r) => (r.few ? null : r.target), qty: (r) => r.qty, ach: (r) => (r.few ? null : r.ach), lost: (r) => (r.few ? null : r.lostMin) };
+function PerfList({ rows, cols, co, label, onRow, rowTitle }) {
+  const [sort, setSort] = useState({ k: 'var', dir: 1 });
+  const [f, setF] = useState({ line: '', company: '', q: '', few: true });
+  const lines = useMemo(() => [...new Set(rows.map((r) => String(r.line)))].sort((a, b) => Number(a) - Number(b)), [rows]);
+  const cos = useMemo(() => [...new Set(rows.map((r) => co(r.model) || '—'))].sort(), [rows, co]);
+  const val = (r, k) => (PERF_SORT[k] ? PERF_SORT[k](r) : k === 'company' ? co(r.model) || '' : k === 'model' ? r.model : r[k]);
+  const list = useMemo(() => {
+    const q = f.q.trim().toLowerCase();
+    const out = rows.filter((r) => (!f.line || String(r.line) === f.line) && (!f.company || (co(r.model) || '—') === f.company) && (!q || String(r.model).toLowerCase().includes(q)) && (f.few || !r.few));
+    return out.map((r, i) => [r, i]).sort((a, b) => {
+      const x = val(a[0], sort.k), y = val(b[0], sort.k);
+      if (x == null || y == null) return (x == null) - (y == null) || a[1] - b[1];
+      const c = typeof x === 'string' ? x.localeCompare(y) : x - y;
+      return c * sort.dir || Number(a[0].line) - Number(b[0].line) || a[1] - b[1];
+    }).map(([r]) => r);
+  }, [rows, f, sort, co]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sel = 'h-8 rounded-[3px] border border-[#BFBFBF] bg-white px-2 text-mes-body text-[#1F3864] focus:border-[#2E75B6] focus:outline-none';
+  const on = f.line || f.company || f.q || !f.few;
+  return (
+    <div data-testid="perf-list">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#BFBFBF] bg-[#F7F9FC] px-2 py-1.5 no-print">
+        {lines.length > 1 && <select aria-label="Line" value={f.line} onChange={(e) => setF({ ...f, line: e.target.value })} className={sel} data-testid="perf-f-line"><option value="">All lines</option>{lines.map((l) => <option key={l} value={l}>Line {l}</option>)}</select>}
+        {cos.length > 1 && <select aria-label="Company" value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} className={sel} data-testid="perf-f-co"><option value="">All companies</option>{cos.map((c) => <option key={c} value={c}>{c}</option>)}</select>}
+        <input type="search" aria-label="Search a model" placeholder="Search model" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} className={`${sel} w-40`} data-testid="perf-f-q" />
+        <label className="inline-flex items-center gap-1.5 text-mes-body text-[#333]"><input type="checkbox" checked={!f.few} onChange={(e) => setF({ ...f, few: !e.target.checked })} data-testid="perf-f-few" />Hide too few pcs</label>
+        <select aria-label="Sort by" value={`${sort.k}|${sort.dir}`} onChange={(e) => { const [k, d] = e.target.value.split('|'); setSort({ k, dir: Number(d) }); }} className={sel} data-testid="perf-sort">
+          {[['var|1', 'Var. low → high'], ['var|-1', 'Var. high → low'], ['lost|-1', 'Time lost most first'], ['ach|1', 'Achieved low → high'], ['ach|-1', 'Achieved high → low'], ['qty|-1', 'Actual Qty most first'], ['line|1', 'Line']].map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+          {![ 'var|1', 'var|-1', 'lost|-1', 'ach|1', 'ach|-1', 'qty|-1', 'line|1'].includes(`${sort.k}|${sort.dir}`) && <option value={`${sort.k}|${sort.dir}`}>{(cols.find((c) => c.k === sort.k)?.label || sort.k)} {sort.dir > 0 ? '↑' : '↓'}</option>}
+        </select>
+        <span className="ml-auto text-mes-label text-[#555]">{list.length} of {rows.length} models</span>
+        {on && <button type="button" onClick={() => setF({ line: '', company: '', q: '', few: true })} className="rounded-[2px] px-2 py-0.5 text-mes-body font-semibold text-[#2E75B6] hover:bg-[#EAF2FB]">Clear</button>}
+      </div>
+      {list.length ? <Grid rows={list} cols={cols} label={label} onRow={onRow} rowTitle={rowTitle} sort={sort} onSort={(k) => setSort((o) => ({ k, dir: o.k === k ? -o.dir : ['lost', 'qty', 'target'].includes(k) ? -1 : 1 }))} />
+        : <p className="p-3 text-fs-14 text-slate-600">No model matches the filters.</p>}
+    </div>
+  );
+}
+function Grid({ rows, cols, label, total = null, onRow = null, rowTitle = 'Open the details', sort = null, onSort = null }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-mes-body tabular-nums" aria-label={label}>
         <thead>
           <tr className={`bg-[#DDEBF7] text-left ${NAVY}`}>
             <th className="w-10 border border-[#BFBFBF] !px-1 py-[3px] text-center font-bold">#</th>
-            {cols.map((c) => <th key={c.k} className={`whitespace-nowrap border border-[#BFBFBF] px-2 py-1 font-bold ${c.right ? 'text-right' : ''}`} style={c.right ? { width: '1%' } : undefined}>{c.label}</th>)}
+            {cols.map((c) => <th key={c.k} className={`whitespace-nowrap border border-[#BFBFBF] px-2 py-1 font-bold ${c.right ? 'text-right' : ''}`} style={c.right ? { width: '1%' } : undefined}
+              aria-sort={sort && sort.k === c.k ? (sort.dir > 0 ? 'ascending' : 'descending') : undefined}>
+              {onSort ? <button type="button" onClick={() => onSort(c.k)} title={`Sort by ${c.label}`} data-testid={`sort-${c.k}`} className={`inline-flex items-center gap-1 font-bold hover:text-[#2E75B6] ${sort?.k === c.k ? 'text-[#2E75B6]' : ''}`}>
+                {c.label}<span aria-hidden="true" className="text-fs-11">{sort?.k === c.k ? (sort.dir > 0 ? '▲' : '▼') : '↕'}</span></button> : c.label}</th>)}
           </tr>
         </thead>
         <tbody>
@@ -514,7 +557,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   const periodText = mode === 'year' ? `Year ${year}` : `${{ today: 'Today', yesterday: 'Yesterday', day: 'Day', week: 'Week', month: 'Month', range: 'Range' }[kind]} · ${oneDay ? dmy(range.start) : `${dmy(range.start)} – ${dmy(range.end)}`}`;
   const bandPeriod = mode === 'year' ? `Year ${year}` : kind === 'month' || (range.start.slice(8) === '01' && range.start.slice(0, 7) === range.end.slice(0, 7))
     ? `${MONTH_FULL[Number(range.start.slice(5, 7)) - 1]} ${range.start.slice(0, 4)}` : oneDay ? dmy(range.start) : `${dmy(range.start)} – ${dmy(range.end)}`;
-  const rowsOfLines = (ids) => (R?.days || []).flatMap((d) => ids.flatMap((l) => d.byLine[l]?.rows || []));
+  const rowsOfLines = (ids) => (R?.days || []).flatMap((d) => ids.flatMap((l) => (d.byLine[l]?.rows || []).map((r) => (r.line != null && r.date ? r : { ...r, line: String(l), date: d.date }))));   // line + day: Stage-wise FPY details
   const rows = useMemo(() => rowsOfLines(IDS), [R, IDS]); // eslint-disable-line react-hooks/exhaustive-deps
   const LS = useMemo(() => lossSummary(rows, D.ent.reasons.station), [rows, D.ent.reasons]);
   const co = useMemo(() => companyOf(D.al), [D.al]);   // 20-11-2026: the company of every model
@@ -548,12 +591,12 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   // 23-11-2026: no separate rejection — a defect is reworked or dismantled: the tables count rework (+ any old rejection)
   const QD = Q.rej + Q.rwk;
   // 26-11-2026: the pieces dismantled for each defect (written on its rework rows)
-  const disOf = new Map();
-  for (const r of rows) { const e = r.e || normEntry(r.entry); for (const x of [...e.rejects, ...e.rework]) if (Number(x.dismantle) > 0) disOf.set(x.reason || 'Not given', (disOf.get(x.reason || 'Not given') || 0) + Number(x.dismantle)); }
+  const disOf = new Map(), disModel = new Map(), disLine = new Map();   // 27-11-2026: also by model and by line
+  for (const r of rows) { const e = r.e || normEntry(r.entry); for (const x of [...e.rejects, ...e.rework]) if (Number(x.dismantle) > 0) { const n = Number(x.dismantle); disOf.set(x.reason || 'Not given', (disOf.get(x.reason || 'Not given') || 0) + n); if (x.model) disModel.set(x.model, (disModel.get(x.model) || 0) + n); if (r.line != null) disLine.set(String(r.line), (disLine.get(String(r.line)) || 0) + n); } }
   const defects = Q.defects.filter((x) => x.rej + x.rwk > 0).map((x) => ({ key: x.name, name: x.name, rej: x.rej + x.rwk, dis: disOf.get(x.name) || 0, share: QD ? (x.rej + x.rwk) / QD : 0,
     models: (x.models || []).filter((m) => m.value > 0).map((m) => ({ name: m.name, value: m.value })).sort((a, b) => b.value - a.value) }));
-  const lineRej = IDS.map((l) => ({ key: l, line: l, rej: (lineT[l]?.rejects || 0) + (lineT[l]?.rework || 0), qty: lineT[l]?.qty || 0 })).filter((x) => x.rej > 0).map((x) => ({ ...x, r: x.qty ? x.rej / x.qty : null })).sort((a, b) => b.rej - a.rej);
-  const modelRej = Q.models.filter((m) => m.rej + m.rwk > 0).map((m) => ({ key: m.name, ...m, rej: m.rej + m.rwk, r: m.qty ? (m.rej + m.rwk) / m.qty : null })).sort((a, b) => b.rej - a.rej);
+  const lineRej = IDS.map((l) => ({ key: l, line: l, rej: (lineT[l]?.rejects || 0) + (lineT[l]?.rework || 0), qty: lineT[l]?.qty || 0, dis: disLine.get(String(l)) || 0 })).filter((x) => x.rej > 0).map((x) => ({ ...x, r: x.qty ? x.rej / x.qty : null })).sort((a, b) => b.rej - a.rej);
+  const modelRej = Q.models.filter((m) => m.rej + m.rwk > 0).map((m) => ({ key: m.name, ...m, rej: m.rej + m.rwk, dis: disModel.get(m.name) || 0, r: m.qty ? (m.rej + m.rwk) / m.qty : null })).sort((a, b) => b.rej - a.rej);
   const allView = only === 'all' && IDS.length > 1;
   const onTarget = IDS.filter((l) => lineT[l]?.ole != null && lineT[l].ole >= okFrom()).length;
   const below = IDS.filter((l) => lineT[l]?.ole != null && lineT[l].ole < okFrom()).length;
@@ -636,8 +679,8 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
       { k: 'qty', label: 'Actual Qty', right: true, render: (r) => nf(r.qty) },
       { k: 'ach', label: 'Achieved', right: true, render: (r) => (r.few || r.target == null ? '—' : achChip(r.ach)) }, { k: 'lost', label: 'Time Lost', right: true, render: (r) => (r.few ? '—' : lostCell(r.lostMin)) }],
     defects: [{ k: 'name', label: 'Reason', wrap: true, render: (r) => <span className="font-semibold">{nice(r.name)}</span> }, { k: 'models', label: 'Model', wrap: true, render: (r) => modelsCell(r.models, 'pcs', 1, co, true) }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'dis', label: 'Dismantle', right: true, render: (r) => (r.dis ? <b className="text-red-700">{nf(r.dis)}</b> : <span className="text-slate-400">0</span>) }, { k: 'share', label: 'Share', right: true, render: (r) => shareCell(r.share) }],
-    lineRej: [{ k: 'line', label: 'Line', render: (r) => lineCell(r.line) }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'r', label: 'Rework %', right: true, render: (r) => <span className={`rounded px-1.5 py-0.5 font-bold ${rejChip(r.r)}`}>{pc(r.r, 2)}</span> }],
-    modelRej: [{ k: 'company', label: 'Company', render: (r) => <CompanyCell name={co(r.name)} /> }, { k: 'name', label: 'Model', wrap: true, render: (r) => <span className="font-mono font-semibold">{r.name}</span> }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'r', label: 'Rework %', right: true, render: (r) => <span className={`rounded px-1.5 py-0.5 font-bold ${rejChip(r.r)}`}>{pc(r.r, 2)}</span> }],
+    lineRej: [{ k: 'line', label: 'Line', render: (r) => lineCell(r.line) }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'dis', label: 'Dismantle', right: true, render: (r) => (r.dis ? <b className="text-red-700">{nf(r.dis)}</b> : <span className="text-slate-400">0</span>) }, { k: 'r', label: 'Rework %', right: true, render: (r) => <span className={`rounded px-1.5 py-0.5 font-bold ${rejChip(r.r)}`}>{pc(r.r, 2)}</span> }],
+    modelRej: [{ k: 'company', label: 'Company', render: (r) => <CompanyCell name={co(r.name)} /> }, { k: 'name', label: 'Model', wrap: true, render: (r) => <span className="font-mono font-semibold">{r.name}</span> }, { k: 'rej', label: 'Rework', right: true, render: (r) => nf(r.rej) }, { k: 'dis', label: 'Dismantle', right: true, render: (r) => (r.dis ? <b className="text-red-700">{nf(r.dis)}</b> : <span className="text-slate-400">0</span>) }, { k: 'r', label: 'Rework %', right: true, render: (r) => <span className={`rounded px-1.5 py-0.5 font-bold ${rejChip(r.r)}`}>{pc(r.r, 2)}</span> }],
     linePerf: [{ k: 'company', label: 'Company', render: (r) => <CompanyCell name={co(r.model)} /> }, { k: 'model', label: 'Model', render: (r) => <span className="font-mono font-semibold">{r.model}</span> }, { k: 'target', label: 'Target', right: true, render: (r) => (r.few ? '—' : r.target == null ? '—' : nf(r.target)) }, { k: 'qty', label: 'Produced', right: true, render: (r) => nf(r.qty) },
       { k: 'short', label: 'Short / Excess', right: true, render: (r) => (r.few ? fewNote(r.qty) : r.short == null ? '—' : <b className={r.short < 0 ? 'text-red-700' : 'text-emerald-700'}>{signed(r.short)}</b>) },
       { k: 'ach', label: 'Achieved', right: true, render: (r) => (r.few || r.ach == null ? '—' : `${Math.round(r.ach * 1000) / 10}%`) },
@@ -759,7 +802,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
                 </span>
               </SectionHead>
               <div className="grid gap-1.5 bg-white p-1.5 2xl:grid-cols-2">
-                {IDS.map((l) => <LineCard key={l} line={l} t={lineTQ[l]} onOpen={() => setWin({ kind: 'linePerf', line: l })} onDetails={() => setDet({ title: `Line ${l} · ${periodText}`, ids: [l], line: l })} onFactor={(k) => setWin({ kind: 'linePerf', line: l, view: k === 'P' ? 'models' : 'loss' })} />)}
+                {IDS.map((l) => <LineCard key={l} line={l} t={lineTQ[l]} onOpen={() => setWin({ kind: 'linePerf', line: l })} onDetails={() => setDet({ title: `Line ${l} · ${periodText}`, ids: [l], line: l })} onFactor={(k) => setWin({ kind: 'linePerf', line: l, f: k, view: k === 'P' ? 'models' : 'loss' })} />)}
               </div>
             </section>
           )}
@@ -794,7 +837,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
             const view = win.view || 'models';
             const tab = (k, l) => <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setWin({ ...win, view: k })} className={`h-9 border-r border-slate-300 px-4 text-fs-14 font-bold last:border-r-0 ${view === k ? 'bg-dixon-navy text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}>{l}</button>;
             return (
-              <Window title={`Line ${win.line}${plantOf(win.line) ? ` (${plantOf(win.line)})` : ''} — Performance · Reasons For The Loss`} sub={periodText} onClose={() => setWin(null)} width={85} minWidth={980}>
+              <Window title={`Line ${win.line}${plantOf(win.line) ? ` (${plantOf(win.line)})` : ''} — ${{ A: 'Availability', P: 'Performance', Q: 'Quality' }[win.f] || 'Performance'} · Reasons For The Loss`} sub={periodText} onClose={() => setWin(null)} width={85} minWidth={980}>
                 <div className="border-b border-[#BFBFBF]" aria-label={`Line ${win.line} A P Q`}><KpiPanel t={lineTQ[win.line]} zero gauge={150} onFactor={focusOk('A') || drillOk ? (k) => { setWin(null); if (focusOk(k)) openFocus(k, win.line); else openDrill(k, win.line); } : null} /></div>
                 <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 p-2">
                   <div role="tablist" aria-label="Line details" className="flex overflow-hidden rounded-md border border-slate-300">{tab('models', 'Model-Wise')}{tab('hours', 'Hour-Wise')}{tab('days', 'Day-By-Day')}{tab('loss', 'Losses')}</div>
@@ -821,15 +864,29 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
                     { k: 'ole', label: 'OLE', right: true, render: (r) => <b className={tone(r.t.ole)}>{pc1(r.t.ole)}</b> }]}
                     total={{ date: 'Total', target: tT ? nf(tT) : '—', qty: nf(T2.qty), short: tT ? <b className={T2.qty < tT ? 'text-red-700' : 'text-emerald-700'}>{signed(T2.qty - tT)}</b> : '—', ach: tT ? achChip(T2.qty / tT) : '—', run: hr2(T2.actualMin), loss: hr2(T2.stopMin + T2.lossMin), A: pc1(T2.A), P: pc1(T2.P), Q: pc1(T2.Q ?? (T2.qty > 0 ? 1 : null)), ole: pc1(T2.ole) }} />;
                 })() : view === 'loss' ? (() => {
+                  // 27-11-2026: only the losses of the factor clicked (Availability: idle time · Performance: speed · Quality: rework / rejected); no "Kind" column
                   const LR = lossSummary((R?.days || []).flatMap((d) => d.byLine[win.line]?.rows || []), D.ent.reasons.station).reason.filter((x) => x.value > 0);
-                  const tot = LR.filter((x) => x.unit === 'min').reduce((a, x) => a + x.value, 0);
-                  return !LR.length ? <p className="p-4 text-fs-14 text-slate-600">No loss entered for this line in this period.</p>
-                    : <Grid rows={LR.map((x) => ({ ...x, key: `${x.kind}|${x.name}` }))} label={`Line ${win.line} losses`} cols={[
-                      { k: 'name', label: 'Reason', render: (r) => <span className="font-semibold">{nice(r.name)}</span> }, { k: 'models', label: 'Model', render: (r) => modelsCell(r.models, r.unit, 3, co) },
+                  const timeL = LR.filter((x) => x.kind === 'Idle time'), perfL = LR.filter((x) => x.kind === 'Performance loss'), pcsL = LR.filter((x) => x.unit !== 'min');
+                  const slowL = list.filter((x) => !x.few && ((x.lostMin || 0) >= 0.5 || (x.target != null && x.qty < x.target))).sort((a, b) => (b.lostMin || 0) - (a.lostMin || 0) || (b.target - b.qty) - (a.target - a.qty));
+                  const lossTable = (rows, unit, key) => {
+                    const tot = rows.reduce((a, x) => a + x.value, 0);
+                    return <Grid rows={rows.map((x) => ({ ...x, key: `${x.kind}|${x.name}` }))} label={`Line ${win.line} ${key}`} cols={[
+                      { k: 'name', label: unit === 'min' ? 'Reason' : 'Defect', render: (r) => <span className="font-semibold">{nice(r.name)}</span> }, { k: 'models', label: 'Model', render: (r) => modelsCell(r.models, r.unit, 3, co) },
                       { k: 'dept', label: 'Department', render: (r) => (r.dept && r.dept !== 'Not set' ? r.dept : '—') },
-                      { k: 'kind', label: 'Kind', render: (r) => (r.unit === 'min' ? 'Time' : 'Pieces') },
-                      { k: 'value', label: 'Lost', right: true, render: (r) => (r.unit === 'min' ? <b className="text-red-700">{hr2(r.value)}</b> : `${nf(r.value)} pcs`) },
-                      { k: 'share', label: 'Share', right: true, render: (r) => (r.unit === 'min' && tot ? shareCell(r.value / tot) : '—') }]} />;
+                      ...(unit === 'min' ? [] : [{ k: 'type', label: 'Rework / Rejected', render: (r) => (r.kind === 'Rejection' ? 'Rejected' : 'Rework') }]),
+                      { k: 'value', label: 'Lost', right: true, render: (r) => (r.unit === 'min' ? <b className="text-red-700">{hr2(r.value)}</b> : <b className="text-red-700">{nf(r.value)} pcs</b>) },
+                      { k: 'share', label: 'Share', right: true, render: (r) => (tot ? shareCell(r.value / tot) : '—') }]}
+                      total={{ name: 'Total', value: unit === 'min' ? hr2(tot) : `${nf(tot)} pcs` }} />;
+                  };
+                  const sect = (t, body) => <section className="border-b border-[#BFBFBF]"><h3 className="bg-[#F7F9FC] px-2.5 py-1.5 text-mes-body font-bold text-[#1F3864]">{t}</h3>{body}</section>;
+                  const none = (t) => <p className="p-3 text-fs-14 text-slate-600">{t}</p>;
+                  const A = sect('Availability loss · idle time', timeL.length ? lossTable(timeL, 'min', 'idle time') : none('No idle time entered for this line in this period.'));
+                  const P = sect('Performance loss · models below target', <>
+                    {slowL.length ? <Grid rows={slowL} label={`Line ${win.line} performance loss`} cols={C.linePerf.filter((c) => !['std'].includes(c.k))} onRow={(r) => setWin({ kind: 'model', row: r, back: win })} /> : none('Every model made its run-time target in this period.')}
+                    {perfL.length > 0 && <div className="border-t border-[#BFBFBF]"><h4 className="px-2.5 py-1 text-mes-body font-semibold text-[#555]">Written against a model</h4>{lossTable(perfL, 'min', 'performance loss')}</div>}
+                  </>);
+                  const Q = sect('Quality loss · rework and rejected', pcsL.length ? lossTable(pcsL, 'pcs', 'quality loss') : none('No rework or rejection entered for this line in this period.'));
+                  return <div data-testid="line-losses">{win.f === 'A' ? A : win.f === 'P' ? P : win.f === 'Q' ? Q : <>{A}{P}{Q}</>}</div>;
                 })() : view === 'models' ? (!list.length ? <p className="p-4 text-fs-14 text-slate-600">No production in this period.</p>
                   : <Grid rows={list} cols={C.linePerf} label={`Line ${win.line} models`} onRow={(r) => setWin({ kind: 'model', row: r, back: win })} total={{ model: 'Total', target: nf(tot.target), qty: nf(tot.qty), short: <b className={tot.qty < tot.target ? 'text-red-700' : 'text-emerald-700'}>{signed(tot.qty - tot.target)}</b>, ach: tot.target ? `${Math.round((tot.qty / tot.target) * 1000) / 10}%` : '—', lost: lostCell(tot.lost) }} />)
                   : (!hrsL.length ? <p className="p-4 text-fs-14 text-slate-600">No production in this period.</p>
@@ -847,7 +904,9 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
                   {F[2].map(([k, t]) => (
                     <section key={k} className="rounded-[2px] border border-[#BFBFBF] bg-white">
                       <h3 className="border-b border-[#BFBFBF] bg-[#F7F9FC] px-2.5 py-1.5 text-mes-body font-bold text-[#1F3864]">{t}</h3>
-                      {WIN[k][1].length ? <Grid rows={k === 'perf' ? WIN[k][1].map((r, i) => [r, i]).sort((a, b) => Number(a[0].line) - Number(b[0].line) || a[1] - b[1]).map(([r]) => r) : WIN[k][1]} cols={WIN[k][2]} label={t} onRow={drill(k, win)} rowTitle="Open its entries" /> : <p className="p-3 text-fs-14 text-slate-600">Nothing entered for this period.</p>}
+                      {!WIN[k][1].length ? <p className="p-3 text-fs-14 text-slate-600">Nothing entered for this period.</p>
+                        : k === 'perf' ? <PerfList rows={WIN[k][1]} cols={WIN[k][2]} co={co} label={t} onRow={drill(k, win)} rowTitle="Open its entries" />
+                          : <Grid rows={WIN[k][1]} cols={WIN[k][2]} label={t} onRow={drill(k, win)} rowTitle="Open its entries" />}
                     </section>
                   ))}
                 </div>
@@ -857,7 +916,8 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
           {win && WIN[win.kind] && (
             <Window title={`${WIN[win.kind][0]}${win.pick ? ` — ${win.pick.label}` : ''}`} sub={`${allView ? plantsText(IDS) : group} · ${periodText}${win.pick ? ' · its entries below' : ''}`} onClose={() => setWin(win.back || null)} width={96}>
               {/* a list of many lines: Line 1 first, then Line 2 … (its own order kept inside a line) */}
-              <Grid rows={win.kind === 'perf' ? WIN[win.kind][1].map((r, i) => [r, i]).sort((a, b) => Number(a[0].line) - Number(b[0].line) || a[1] - b[1]).map(([r]) => r) : WIN[win.kind][1].filter((r) => pickRow(win.kind, r, win.pick))} cols={WIN[win.kind][2]} label={`${WIN[win.kind][0]} — all`} onRow={drill(win.kind, win)} rowTitle="Open its entries" />
+              {win.kind === 'perf' ? <PerfList rows={WIN[win.kind][1]} cols={WIN[win.kind][2]} co={co} label={`${WIN[win.kind][0]} — all`} onRow={drill(win.kind, win)} rowTitle="Open its entries" />
+                : <Grid rows={WIN[win.kind][1].filter((r) => pickRow(win.kind, r, win.pick))} cols={WIN[win.kind][2]} label={`${WIN[win.kind][0]} — all`} onRow={drill(win.kind, win)} rowTitle="Open its entries" />}
               {/* 26-11-2026: …and every entry behind it, as written (date, hour, line, model, all its details) */}
               {win.kind !== 'perf' && (() => {
                 const unit = ['defects', 'lineRej', 'modelRej'].includes(win.kind) ? 'qty' : 'min';

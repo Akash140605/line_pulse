@@ -1,13 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { useLastScans } from '../hooks/useLastScans';
 import { createPortal } from 'react-dom';
-import { Clock, Timer, AlertTriangle, Gauge as GaugeIcon, Target, Package, PackageX, CheckCircle2, RotateCcw, TrendingDown, Activity, Hash } from 'lucide-react';
+import { Clock, Timer, AlertTriangle, Gauge as GaugeIcon, Target, Package, PackageX, CheckCircle2, RotateCcw, TrendingDown, Activity } from 'lucide-react';
 import { useAllLineSettings } from '../hooks/useLineSettings';
 import { serverToday } from '../utils/serverTime';
-import { oleRange, oleSum, hm, okFrom, watchFrom, normEntry, planTargetOf, goodOf } from '../utils/ole';
+import { oleRange, oleSum, hm, okFrom, watchFrom, normEntry, planTargetOf, goodOf, oleConfig } from '../utils/ole';
 import { LINE_COLOR, nf, dmy, useOleLines, groupNameOf, useOleData, band, inkOf, plantOf, plantsText, companyOf, CompanyCell } from '../components/OleParts';
 import { PeriodBar, periodKind } from '../components/PeriodBar';
 import { useHeaderSlot } from './CleanDashboardPage';
+import MesDrawer from '../components/MesDrawer';
 import { takeOleFocus } from '../utils/drillLink';
 
 /*
@@ -144,7 +145,7 @@ export function Pareto({ rows, fmt = nf, unit = '', color = STEEL, empty, time =
 }
 
 /** Donut of shares with its legend (value · %) */
-export function Donut({ rows, fmt = nf, unit = '', centre = 'Total', empty, top = 0 }) {
+export function Donut({ rows, fmt = nf, unit = '', centre = 'Total', empty, top = 0, onPick = null }) {
   const [all, setAll] = useState(false);   // 26-11-2026: `top` names in the legend, the rest on View all (the ring always shows every slice)
   const list = rows.filter((r) => r.value > 0);
   if (!list.length) return <Empty>{empty}</Empty>;
@@ -161,17 +162,20 @@ export function Donut({ rows, fmt = nf, unit = '', centre = 'Total', empty, top 
   return (
     <div className="flex flex-wrap items-center gap-4">
       <svg viewBox="0 0 160 160" className="shrink-0" style={{ width: 140, height: 140 }} role="img" aria-label="Share chart">
-        {seg.map((s) => <path key={s.label} d={arc(s.from, s.to)} fill={s.color} stroke="#fff" strokeWidth="1.5"><title>{`${s.label}: ${fmt(s.value)}${unit}`}</title></path>)}
+        {seg.map((s) => <path key={s.label} d={arc(s.from, s.to)} fill={s.color} stroke="#fff" strokeWidth="1.5" onClick={onPick ? () => onPick(s.label) : undefined} style={onPick ? { cursor: 'pointer' } : undefined}><title>{`${s.label}: ${fmt(s.value)}${unit}${onPick ? ' — click for details' : ''}`}</title></path>)}
         <text x={C} y={C - 2} textAnchor="middle" fontSize="17" fontWeight="700" fill={NAVY}>{fmt(total)}</text>
         <text x={C} y={C + 15} textAnchor="middle" fontSize="11" fill="#666">{centre}</text>
       </svg>
       <ul className="min-w-[12rem] flex-1 space-y-1">
         {(top && !all ? seg.slice(0, top) : seg).map((s) => (
-          <li key={s.label} className="flex items-center gap-2 text-[13px]">
-            <i className="h-3 w-3 shrink-0 rounded-[2px]" style={{ background: s.color }} />
-            <span className="min-w-0 flex-1 break-words leading-tight text-[#333]" title={s.label}>{s.label}</span>
-            <b className="tabular-nums text-[#111]">{fmt(s.value)}{unit}</b>
-            <span className="w-12 text-right tabular-nums text-[#666]">{Math.round(s.pct)}%</span>
+          <li key={s.label} className="text-[13px]">
+            {/* 27-11-2026: a department (any slice) opens its details */}
+            {React.createElement(onPick ? 'button' : 'div', { ...(onPick ? { type: 'button', onClick: () => onPick(s.label), title: `${s.label} — open its details`, 'data-testid': `donut-pick-${s.label}` } : {}), className: `flex w-full items-center gap-2 rounded-[3px] px-1 py-0.5 text-left ${onPick ? 'hover:bg-[#EAF2FB]' : ''}` },
+              <i className="h-3 w-3 shrink-0 rounded-[2px]" style={{ background: s.color }} />,
+              <span className={`min-w-0 flex-1 break-words leading-tight ${onPick ? 'font-semibold text-[#1F3864]' : 'text-[#333]'}`} title={s.label}>{s.label}</span>,
+              <b className="tabular-nums text-[#111]">{fmt(s.value)}{unit}</b>,
+              <span className="w-12 text-right tabular-nums text-[#666]">{Math.round(s.pct)}%</span>,
+              onPick ? <span aria-hidden="true" className="font-bold text-[#2E75B6]">›</span> : null)}
           </li>
         ))}
         {top > 0 && seg.length > top && <li><button type="button" onClick={() => setAll((v) => !v)} className="mt-0.5 rounded-[3px] border border-[#BFBFBF] bg-white px-2 py-0.5 text-[12px] font-semibold text-[#1F3864] hover:bg-[#EAF2FB]">{all ? `Show top ${top}` : `View all ${seg.length}`}</button></li>}
@@ -191,6 +195,33 @@ export function NoDeptNote({ rows, fmt = nf }) {
   const v = (rows || []).filter((d) => NO_DEPT.has(String(d.label ?? '').trim())).reduce((a, d) => a + (d.value || 0), 0);
   if (!(v > 0)) return null;
   return <p className="mt-2 rounded-md bg-[#F3F4F6] px-2 py-1 text-[11.5px] text-[#555]" data-testid="no-dept-note"><b className="text-[#333]">{fmt(v)}</b> of idle time was written without a department (Loss entry) — not shown above.</p>;
+}
+
+/** 27-11-2026: a department clicked on the donut → every reason it owns: how often, time and share */
+export function DeptDrawer({ dept, rows = [], fmt = nf, sub = '', onClose }) {
+  const tot = rows.reduce((a, r) => a + (r.value || 0), 0), times = rows.reduce((a, r) => a + (r.n || 0), 0);
+  const max = Math.max(1, ...rows.map((r) => r.value || 0));
+  return (
+    <MesDrawer title={`${dept} · idle time`} sub={`${sub} · ${fmt(tot)} in ${nf(times)} entries`} onClose={onClose} label={`${dept} details`} width={55} fit minWidth={520}>
+      <div className="p-2" data-testid="dept-drawer">
+        {!rows.length ? <p className="p-3 text-[14px] text-[#555]">No idle time written for {dept} in this period.</p> : (
+          <table className="w-full border-collapse text-[14px] tabular-nums">
+            <thead><tr className="bg-[#1F3864] text-left text-white">{['#', 'Reason', 'Times', 'Time lost', 'Share'].map((h, i) => <th key={h} className={`px-2 py-1.5 font-bold ${i > 1 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={r.label} className={`border-b border-[#E5E7EB] ${i % 2 ? 'bg-[#F8FAFC]' : ''}`}>
+                  <td className="px-2 py-1.5 text-[#777]">{i + 1}</td>
+                  <td className="px-2 py-1.5 font-semibold">{r.label}</td>
+                  <td className="px-2 py-1.5 text-right">{nf(r.n || 0)}</td>
+                  <td className="px-2 py-1.5 text-right font-bold text-[#C00000]">{fmt(r.value)}</td>
+                  <td className="px-2 py-1.5 text-right"><span className="inline-flex items-center justify-end gap-2"><span className="inline-block h-1.5 rounded-full bg-[#EB5757]/70" style={{ width: `${Math.max(4, (r.value / max) * 60)}px` }} />{tot ? `${Math.round((r.value / tot) * 1000) / 10}%` : '—'}</span></td>
+                </tr>))}
+            </tbody>
+            <tfoot><tr className="bg-[#F3F3F3] font-bold"><td className="px-2 py-1.5" /><td className="px-2 py-1.5">Total</td><td className="px-2 py-1.5 text-right">{nf(times)}</td><td className="px-2 py-1.5 text-right text-[#C00000]">{fmt(tot)}</td><td className="px-2 py-1.5 text-right">100%</td></tr></tfoot>
+          </table>)}
+      </div>
+    </MesDrawer>
+  );
 }
 
 export function DeptOwners({ depts, byDept = {}, fmt = nf }) {
@@ -360,6 +391,7 @@ export default function OleFocusPage({ factor = 'A' }) {
   const slot = useHeaderSlot();
   const [hand] = useState(() => takeOleFocus(factor));   // opened from OLE Overview: its period and line
   const [only, setOnly] = useState(() => (hand?.line ? String(hand.line) : 'all'));
+  const [deptOpen, setDeptOpen] = useState(null);   // 27-11-2026: a department clicked → its reasons
   const IDS = useMemo(() => (only !== 'all' && ALL.includes(only) ? [only] : ALL), [only, ALL.join()]); // eslint-disable-line react-hooks/exhaustive-deps
   const [range, setRange] = useState(() => (hand ? { start: hand.start, end: hand.end } : { start: `${today.slice(0, 8)}01`, end: today }));   // from the sidebar: this month, as the MES
   const settings = useAllLineSettings(IDS);
@@ -397,26 +429,22 @@ export default function OleFocusPage({ factor = 'A' }) {
     const top = F.reasonsA[0];
     body = (
       <>
-        <div className={`${card} grid grid-cols-2 gap-px overflow-hidden bg-[#D4D4D4] md:grid-cols-3 xl:grid-cols-5`}>
+        <div className={`${card} grid grid-cols-2 gap-px overflow-hidden bg-[#D4D4D4] md:grid-cols-3`}>
           <Kpi icon={GaugeIcon} label="Availability" value={pc(T.A)} note={`${hrs(T.actualMin)} run of ${hrs(T.plannedMin)} planned`} color={toneOf(T.A, 'A')} />
           <Kpi icon={Clock} label="Idle time" value={hrs(T.lossMin)} note={T.plannedMin ? `${pc(T.lossMin / T.plannedMin)} of planned time` : 'no planned time'} color={RED} />
-          <Kpi icon={Hash} label="Stops written" value={nf(F.stops)} note="loss entries with minutes" color={NAVY} />
-          <Kpi icon={Timer} label="Average stop" value={F.stops ? hrs(T.lossMin / F.stops) : '—'} note="idle time ÷ stops" color={AMBER} />
           <Kpi icon={AlertTriangle} label="Top reason" value={top ? top.label : '—'} note={top ? `${hrs(top.value)}${top.dept !== 'Not set' ? ` · ${top.dept}` : ''}` : 'no idle time'} color={RED} />
         </div>
         <div className="grid gap-3 xl:grid-cols-3">
           <Card title="Idle time reasons" sub="Pareto by time lost" className="xl:col-span-2"><Pareto rows={F.reasonsA} fmt={(v) => hrs(v)} time empty="No idle time in this period." color={RED} /></Card>
-          <Card title="Share by department" sub="who owns the lost time"><Donut top={6} rows={withDept(F.deptA)} fmt={(v) => hrs(v)} centre="idle time" empty="No idle time in this period." /><DeptOwners depts={withDept(F.deptA)} byDept={F.deptR} fmt={(v) => hrs(v)} /><NoDeptNote rows={F.deptA} fmt={(v) => hrs(v)} /></Card>
+          <Card title="Share by department" sub="who owns the lost time"><Donut top={6} rows={withDept(F.deptA)} fmt={(v) => hrs(v)} centre="idle time" empty="No idle time in this period." onPick={(d) => setDeptOpen(d)} />{deptOpen && <DeptDrawer dept={deptOpen} rows={F.deptR[deptOpen] || []} fmt={(v) => hrs(v)} sub={`${who} · ${periodChip}`} onClose={() => setDeptOpen(null)} />}<NoDeptNote rows={F.deptA} fmt={(v) => hrs(v)} /></Card>
         </div>
         <div className="grid gap-3 xl:grid-cols-2">
           <Card title="When it happens" sub="idle time by hour of the day"><When hours={F.hoursA} fmt={(v) => `${Math.round(v)}`} unit=" min" empty="No idle time in this period." /></Card>
-          <Card title="Lines with idle time" sub="time, how often, main reason">
+          <Card title="Lines with idle time" sub="time and main reason">
             <Table label="Lines with idle time" rows={lineList} empty="No line in this period." cols={[
               { label: 'Line', get: (r) => <LineName l={r.line} /> },
               { label: 'Planned', right: true, get: (r) => hrs(r.t.plannedMin) },
               { label: 'Idle', right: true, get: (r) => <b className={r.t.lossMin > 0 ? 'text-[#C00000]' : ''}>{hrs(r.t.lossMin)}</b> },
-              { label: 'Stops', right: true, get: (r) => nf(r.stops) },
-              { label: 'Avg', right: true, get: (r) => (r.stops ? hrs(r.idle / r.stops) : '—') },
               { label: 'Availability', right: true, get: (r) => <Pct v={r.t.A} k="A" /> },
               { label: 'Main reason', get: (r) => r.topReason || '—' },
             ]} />
@@ -445,7 +473,7 @@ export default function OleFocusPage({ factor = 'A' }) {
     body = (
       <>
         <div className={`${card} grid grid-cols-2 gap-px overflow-hidden bg-[#D4D4D4] md:grid-cols-3 xl:grid-cols-5`}>
-          <Kpi icon={GaugeIcon} label="Performance" value={pc(T.P)} note="std time of output ÷ run time" color={toneOf(T.P, 'P')} />
+          <Kpi icon={GaugeIcon} label="Performance" value={pc(T.P)} note={oleConfig().pMode === 'std' ? 'std time of output ÷ run time' : oleConfig().pMode === 'plan' ? 'actual qty ÷ shift plan' : 'actual qty ÷ target of the run time'} color={toneOf(T.P, 'P')} />
           <Kpi icon={Target} label="Target qty" value={nf(target)} note="pcs planned in the run time" color={NAVY} />
           <Kpi icon={Package} label="Actual qty" value={nf(T.qty)} note={target ? `${pc(T.qty / target)} of target` : 'pcs made'} color={T.qty >= target ? GREEN : RED} />
           <Kpi icon={TrendingDown} label="Lines behind" value={`${behind} of ${lineList.length}`} note="below 100 % performance" color={behind ? RED : GREEN} />

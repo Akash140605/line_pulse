@@ -1,5 +1,4 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Cell } from 'recharts';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import HeaderBar, { segGroup, segBtn } from '../components/HeaderBar';
 import { PageLoader } from '../components/Loader';
@@ -16,7 +15,7 @@ import { ChevronRight, Layers } from 'lucide-react';
 import { exportPanel } from '../utils/domExcel';
 import { buildXlsx, downloadXlsx } from '../utils/xlsxWriter';
 import { fs } from '../theme';
-import { Pareto, Donut } from './OleFocusPage';
+import { Pareto } from './OleFocusPage';
 
 /**
  * Quality dashboard (23-11-2026) — one page for quality: pieces made against pieces reworked (old rejection counted as
@@ -49,15 +48,16 @@ function Title({ children, right }) {
 const Empty = () => <p className="py-4 text-center text-fs-13 font-semibold text-slate-500">No defect in this period.</p>;
 
 /** ranked bars of one hue; `right` = the text after the bar */
-function Ranked({ rows, label, max = 10, right }) {
+function Ranked({ rows, label, max = 10, right, onPick = null }) {
   const top = rows.slice(0, max);
   const hi = Math.max(1, ...top.map((r) => r.bad));
   if (!top.length) return <Empty />;
   return (
     <div className="flex flex-col gap-1" role="list" aria-label={label}>
       {top.map((r) => (
-        <div key={r.name} role="listitem" className="grid items-center gap-2 px-1 py-0.5 text-fs-13" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.2fr) 6.5rem' }} title={r.title || r.name}>
-          <span className="break-words font-semibold leading-tight text-slate-800">{r.label || r.name}</span>
+        <div key={r.name} role="listitem" className={`grid items-center gap-2 rounded px-1 py-0.5 text-fs-13 ${onPick ? 'cursor-pointer hover:bg-blue-50' : ''}`} style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.2fr) 6.5rem' }} title={onPick ? `${r.title || r.name} — click for details` : r.title || r.name}
+          {...(onPick ? { tabIndex: 0, 'data-testid': `qd-pick-${label}-${r.name}`, onClick: () => onPick(r), onKeyDown: (e) => { if (e.key === 'Enter') onPick(r); } } : {})}>
+          <span className={`break-words font-semibold leading-tight ${onPick ? 'text-[#1F3864]' : 'text-slate-800'}`}>{r.label || r.name}</span>
           <span className="h-3 overflow-hidden rounded bg-slate-100"><span className="block h-full rounded" style={{ width: `${(r.bad / hi) * 100}%`, background: NAVY }} /></span>
           <span className="text-right font-mono font-bold text-slate-900">{right(r)}</span>
         </div>
@@ -84,6 +84,9 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
   const Q = useMemo(() => (R && sheet ? qualityDash({ days: R.days, ids: IDS.map(String), stations: names, sheet, rca: D.ent.rca || {}, oneDay }) : null),
     [R, sheet, D.ent.rca, IDS.join(), names, oneDay]); // eslint-disable-line react-hooks/exhaustive-deps
   const [stage, setStage] = useState(null);   // { idx, line } of the stage drawer (click a stage)
+  const [pick, setPick] = useState(null);   // 27-11-2026: { field: 'defect' | 'cat' | 'model', value } → its entries (drawer)
+  const [mSort, setMSort] = useState({ k: 'bad', dir: -1 });
+  const [mQ, setMQ] = useState('');
   // 25-11-2026: the assembly stages (HVIR → Leakage → Functional → Front → Pre-final → Final): stage FPY and RTY = Π, per line
   const S = useMemo(() => {
     if (!R) return null;
@@ -103,7 +106,6 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
 
   if (!ALL.length) return <div className={`${card} text-fs-14 font-semibold text-slate-600`}>This login has no line.</div>;
   const t = Q?.total;
-  const heatMax = Math.max(1, ...(Q?.heat || []).flatMap((h) => Object.values(h.by)));
   return (
     <div className="flex flex-col gap-3" aria-label="Quality dashboard" role="region">
       <HeaderBar label="Quality dashboard filters">
@@ -124,11 +126,14 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
       {D.err && <div role="alert" className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-fs-14 font-semibold text-slate-700">{D.err}</div>}
       {!Q ? <PageLoader label="Reading the lines" sub="Production, defects, stages" /> : (
         <div ref={bodyRef} className="flex flex-col gap-3">
-          <section className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-6" aria-label="Quality of the period">
+          {/* 27-11-2026: no PPM; Good Qty, Rework Passed and Dismantle beside the defects (as asked) */}
+          <section className="grid grid-cols-2 gap-2 md:grid-cols-4" aria-label="Quality of the period">
             <Tile testid="qd-made" name="Total Production" value={nf(t.made)} sub={group} />
+            <Tile testid="qd-good" name="Good Qty" value={nf(Math.max(0, t.made - t.bad))} sub={t.made ? `${pc((t.made - t.bad) / t.made)} right first time` : '—'} tone="text-emerald-700" />
             <Tile testid="qd-bad" name="Defect" value={nf(t.bad)} sub={`${nf(t.defects)} defect types`} tone={t.bad ? 'text-red-700' : 'text-slate-900'} />
-            <Tile testid="qd-pct" name="Defect %" value={pc(t.pct)} sub={t.ppm == null ? '—' : `${nf(t.ppm)} PPM · limit ${limit.toFixed(1)}%`} tone={rateTone(t.pct)} />
+            <Tile testid="qd-pass" name="Rework Passed" value={nf(Math.max(0, (t.rwk || 0) - (t.dismantle || 0)))} sub={`passed after rework${t.rej ? ` · ${nf(t.rej)} rejected` : ''}`} tone="text-slate-900" />
             <Tile testid="qd-dis" name="Dismantle" value={nf(t.dismantle)} sub={t.bad ? `${Math.round((t.dismantle / t.bad) * 100)}% of the defects` : '—'} tone={t.dismantle ? 'text-red-700' : 'text-slate-900'} />
+            <Tile testid="qd-pct" name="Defect %" value={pc(t.pct)} sub={`defect ÷ production · limit ${limit.toFixed(1)}%`} tone={rateTone(t.pct)} />
             <Tile testid="qd-fpy" name="FPY (%)" value={yp(t.fpy)} sub={`Target ${qs.fpyTarget}%`} tone={yTone(t.fpy, fpyT)} />
             <Tile testid="qd-rty" name="RTY (%)" value={yp(S?.all.rty ?? t.rty)} sub={`Π of the 6 stages · target ${qs.rtyTarget}%`} tone={yTone(S?.all.rty ?? t.rty, rtyT)} />
           </section>
@@ -137,47 +142,22 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
           {S && <FtyTable rows={S.rows} rtyT={rtyT} target={qs.rtyTarget} />}
 
           {/* 26-11-2026: as on OLE Quality — why parts are reworked (Pareto) and the share of every defect */}
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-            <section className={`${card} xl:col-span-2`} aria-label="Why parts are reworked">
-              <Title right="Pareto of the defects">Why parts are reworked</Title>
-              <Pareto rows={Q.defects.map((d) => ({ label: d.name, value: d.bad }))} unit=" pcs" color={RED} empty="No defect in this period." />
-            </section>
-            <section className={card} aria-label="Defects by reason">
-              <Title right="share of every defect">Defects by reason</Title>
-              <Donut top={5} rows={Q.defects.map((d) => ({ label: d.name, value: d.bad }))} unit=" pcs" centre="defect pcs" empty="No defect in this period." />
-            </section>
-          </div>
+          {/* 27-11-2026: the "Defects by reason" donut taken off (as asked) — the Pareto shows the same defects */}
+          <section className={card} aria-label="Why parts are reworked">
+            <Title right="Pareto of the defects">Why parts are reworked</Title>
+            <Pareto rows={Q.defects.map((d) => ({ label: d.name, value: d.bad }))} unit=" pcs" color={RED} empty="No defect in this period." />
+          </section>
 
+          {pick && <PickDrawer pick={pick} sheet={sheet || []} onClose={() => setPick(null)} group={group} period={periodText} />}
           {S && stage && <StageDrawer S={S} sheet={sheet || []} stations={stations} pick={stage} setPick={setStage} onClose={() => setStage(null)} fpyT={fpyT} group={group} period={periodText} ids={IDS.map(String)} />}
 
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-            <section className={card} aria-label="Rework trend">
-              <Title right={`defect % · red over ${limit.toFixed(1)}%${oneDay ? '' : ' · click a day to open it'}`}>{oneDay ? 'Hour by hour' : 'Day by day'}</Title>
-              <div className="h-[240px]">
-                {!Q.trend.length ? <p className="grid h-full place-items-center text-fs-13 font-semibold text-slate-500">No pieces in this period.</p> : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={Q.trend.map((d) => ({ ...d, v: d.pct == null ? 0 : Number(d.pct.toFixed(2)) }))} margin={{ top: 18, right: 8, left: 0, bottom: 0 }} barCategoryGap="20%"
-                      onClick={(e) => { const k = e?.activePayload?.[0]?.payload?.key; if (k && !oneDay) setRange({ start: k, end: k }); }} style={{ cursor: oneDay ? 'default' : 'pointer' }}>
-                      <CartesianGrid stroke={GRID} strokeDasharray="3 4" vertical={false} />
-                      <XAxis dataKey="label" tick={tick()} tickLine={false} axisLine={{ stroke: '#CBD5E1' }} interval={0} />
-                      <YAxis tick={tick()} tickLine={false} axisLine={false} width={52} tickFormatter={(v) => `${Number(v).toFixed(v >= 10 ? 0 : 2)}%`} />
-                      <Tooltip cursor={{ fill: 'rgba(148,163,184,0.14)' }} isAnimationActive={false}
-                        labelFormatter={(_, p) => { const d = p?.[0]?.payload; return d ? (oneDay ? hourCol(Number(d.key)) : dmy(d.key)) : ''; }}
-                        formatter={(v, _, p) => [`${v}% · ${nf(p.payload.bad)} of ${nf(p.payload.made)} pcs`, 'Defect']} />
-                      <Bar dataKey="v" radius={[4, 4, 0, 0]} maxBarSize={34} isAnimationActive={false}>
-                        {Q.trend.map((d) => <Cell key={d.key} fill={d.pct != null && d.pct > limit ? RED : NAVY} />)}
-                        <LabelList dataKey="v" position="top" formatter={(v) => (v && (Q.trend.length <= 14 || v > limit) ? v : '')} style={{ fontSize: fs(11), fill: '#334155', fontWeight: 700 }} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </section>
+          {/* 27-11-2026: Day by day (defect %) taken off (as asked) */}
+          <div className="grid grid-cols-1 gap-3">
             <section className={card} aria-label="Lines">
               <Title right={worstText(Q.worstLine, lineName)}>Line by line</Title>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-fs-13">
-                  <thead><tr><th className={th}>Line</th><th className={`${th} text-right`}>Production</th><th className={`${th} text-right`}>Defect</th><th className={`${th} text-right`}>%</th><th className={`${th} text-right`}>PPM</th><th className={`${th} text-right`}>Dismantle</th><th className={`${th} text-right`}>FPY</th><th className={th}>Top defect</th><th className={`${th} text-right`}>RCA</th></tr></thead>
+                  <thead><tr><th className={th}>Line</th><th className={`${th} text-right`}>Production</th><th className={`${th} text-right`}>Defect</th><th className={`${th} text-right`}>%</th><th className={`${th} text-right`}>Dismantle</th><th className={`${th} text-right`}>FPY</th><th className={th}>Top defect</th><th className={`${th} text-right`}>RCA</th></tr></thead>
                   <tbody>
                     {Q.lines.map((r) => (
                       <tr key={r.line} className="cursor-pointer hover:bg-slate-50" title={`Only ${lineName(r.line)}`} onClick={() => setSel(sel === r.line ? 'all' : r.line)}>
@@ -185,7 +165,6 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
                         <td className={`${td} text-right font-mono`}>{nf(r.made)}</td>
                         <td className={`${td} text-right font-mono font-bold`}>{nf(r.bad)}</td>
                         <td className={`${td} text-right font-mono font-bold ${rateTone(r.pct)}`}>{pc(r.pct)}</td>
-                        <td className={`${td} text-right font-mono`}>{r.ppm == null ? '—' : nf(r.ppm)}</td>
                         <td className={`${td} text-right font-mono`}>{nf(r.dismantle)}</td>
                         <td className={`${td} text-right font-mono font-bold ${yTone(r.fpy, fpyT)}`}>{yp(r.fpy)}</td>
                         <td className={`${td} break-words text-slate-700`} title={r.top}>{r.top || '—'}</td>
@@ -201,65 +180,61 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
             <section className={card} aria-label="Top defects">
               <Title right="pcs · share · Σ running">Top defects (Pareto)</Title>
-              <Ranked rows={Q.defects} label="Top defects" right={(r) => <>{nf(r.bad)} <span className="text-fs-11 font-semibold text-slate-500">{Math.round(r.share || 0)}% · Σ{Math.round(r.cum || 0)}</span></>} />
+              <Ranked rows={Q.defects} label="Top defects" onPick={(r) => setPick({ field: 'defect', value: r.name })} right={(r) => <>{nf(r.bad)} <span className="text-fs-11 font-semibold text-slate-500">{Math.round(r.share || 0)}% · Σ{Math.round(r.cum || 0)}</span></>} />
             </section>
             <section className={card} aria-label="Category">
               <Title right="pcs · share">Category</Title>
-              <Ranked rows={Q.cats} label="Category" right={(r) => <>{nf(r.bad)} <span className="text-fs-11 font-semibold text-slate-500">{Math.round(r.share || 0)}%</span></>} />
+              <Ranked rows={Q.cats} label="Category" onPick={(r) => setPick({ field: 'cat', value: r.name })} right={(r) => <>{nf(r.bad)} <span className="text-fs-11 font-semibold text-slate-500">{Math.round(r.share || 0)}%</span></>} />
             </section>
             <section className={card} aria-label="Stations">
-              <Title right="pcs · station FPY">Stations</Title>
-              <Ranked rows={Q.stations.filter((s) => s.bad > 0)} label="Stations" right={(r) => <>{nf(r.bad)} <span className={`text-fs-11 font-semibold ${yTone(r.fpy, fpyT)}`}>{yp(r.fpy)}</span></>} />
+              <Title right="pcs · stage FPY · click for details">Stations</Title>
+              {/* 27-11-2026: all six stages, 0 where nothing was found; a click opens the stage */}
+              <Ranked rows={S ? KPI_STAGES.map((n, i) => ({ name: n, bad: S.all.stages?.[i] || 0, fpy: S.all.fpy?.[i] ?? (S.all.qty ? 1 : null), idx: i })) : Q.stations} label="Stations" onPick={S ? (r) => setStage({ idx: r.idx, line: sel === 'all' ? '' : String(sel) }) : null}
+                right={(r) => <>{nf(r.bad)} <span className={`text-fs-11 font-semibold ${yTone(r.fpy, fpyT)}`}>{yp(r.fpy)}</span></>} />
             </section>
           </div>
 
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
             <section className={card} aria-label="Models">
               <Title right={worstText(Q.worstModel, (n) => n)}>Models</Title>
-              {!Q.models.length ? <Empty /> : (
-                <div className="max-h-[360px] overflow-auto">
-                  <table className="w-full border-collapse text-fs-13">
-                    <thead className="sticky top-0"><tr><th className={th}>Model</th><th className={`${th} text-right`}>Production</th><th className={`${th} text-right`}>Defect</th><th className={`${th} text-right`}>%</th><th className={`${th} text-right`}>PPM</th><th className={th}>Top defect</th></tr></thead>
-                    <tbody>
-                      {Q.models.map((r) => (
-                        <tr key={r.name} className="hover:bg-slate-50">
-                          <td className={`${td} whitespace-nowrap font-semibold text-slate-800`}>{r.name}</td>
-                          <td className={`${td} text-right font-mono`}>{nf(r.made)}</td>
-                          <td className={`${td} text-right font-mono font-bold`}>{nf(r.bad)}</td>
-                          <td className={`${td} text-right font-mono font-bold ${r.bad ? rateTone(r.pct) : 'text-slate-500'}`}>{pc(r.pct)}</td>
-                          <td className={`${td} text-right font-mono`}>{r.ppm == null ? '—' : nf(r.ppm)}</td>
-                          <td className={`${td} break-words text-slate-700`} title={r.top}>{r.top || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              {!Q.models.length ? <Empty /> : (() => {
+                const q = mQ.trim().toLowerCase();
+                const val = (r, k) => (k === 'name' || k === 'top' ? String(r[k] || '') : r[k] ?? -1);
+                const list = Q.models.filter((r) => !q || r.name.toLowerCase().includes(q) || String(r.top || '').toLowerCase().includes(q))
+                  .slice().sort((a, b) => { const x = val(a, mSort.k), y = val(b, mSort.k); return (typeof x === 'string' ? x.localeCompare(y) : x - y) * mSort.dir || b.bad - a.bad; });
+                const head = (k, l, right) => (
+                  <th className={`${th} ${right ? 'text-right' : ''}`} aria-sort={mSort.k === k ? (mSort.dir > 0 ? 'ascending' : 'descending') : undefined}>
+                    <button type="button" data-testid={`qd-msort-${k}`} onClick={() => setMSort((o) => ({ k, dir: o.k === k ? -o.dir : k === 'name' || k === 'top' ? 1 : -1 }))} className={`inline-flex items-center gap-1 font-bold ${mSort.k === k ? 'text-[#2E75B6]' : ''}`}>{l}<span aria-hidden="true" className="text-fs-11">{mSort.k === k ? (mSort.dir > 0 ? '▲' : '▼') : '↕'}</span></button></th>);
+                return (<>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <input type="search" value={mQ} onChange={(e) => setMQ(e.target.value)} placeholder="Search model or defect" aria-label="Search model or defect" data-testid="qd-mq"
+                      className="h-8 w-56 rounded-md border border-slate-300 bg-white px-2 text-fs-13 focus:border-blue-500 focus:outline-none" />
+                    <select aria-label="Sort models" value={`${mSort.k}|${mSort.dir}`} onChange={(e) => { const [k, d] = e.target.value.split('|'); setMSort({ k, dir: Number(d) }); }} className="h-8 rounded-md border border-slate-300 bg-white px-2 text-fs-13" data-testid="qd-msort">
+                      {[['bad|-1', 'Defect most first'], ['pct|-1', 'Defect % high → low'], ['pct|1', 'Defect % low → high'], ['made|-1', 'Production most first'], ['name|1', 'Model A → Z']].map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+                      {!['bad|-1', 'pct|-1', 'pct|1', 'made|-1', 'name|1'].includes(`${mSort.k}|${mSort.dir}`) && <option value={`${mSort.k}|${mSort.dir}`}>{mSort.k} {mSort.dir > 0 ? '↑' : '↓'}</option>}
+                    </select>
+                    <span className="ml-auto text-fs-12 text-slate-500">{list.length} of {Q.models.length} models · click a model for its defects</span>
+                  </div>
+                  <div className="max-h-[360px] overflow-auto">
+                    <table className="w-full border-collapse text-fs-13" data-testid="qd-models">
+                      <thead className="sticky top-0"><tr>{head('name', 'Model')}{head('made', 'Production', true)}{head('bad', 'Defect', true)}{head('pct', '%', true)}{head('top', 'Top defect')}</tr></thead>
+                      <tbody>
+                        {list.map((r) => (
+                          <tr key={r.name} className="cursor-pointer hover:bg-blue-50" title={`${r.name} — click for its defects`} onClick={() => setPick({ field: 'model', value: r.name })}>
+                            <td className={`${td} whitespace-nowrap font-semibold text-[#1F3864]`}>{r.name}</td>
+                            <td className={`${td} text-right font-mono`}>{nf(r.made)}</td>
+                            <td className={`${td} text-right font-mono font-bold`}>{nf(r.bad)}</td>
+                            <td className={`${td} text-right font-mono font-bold ${r.bad ? rateTone(r.pct) : 'text-slate-500'}`}>{pc(r.pct)}</td>
+                            <td className={`${td} break-words text-slate-700`} title={r.top}>{r.top || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>);
+              })()}
             </section>
-            <section className={card} aria-label="Line and hour">
-              <Title right="defect pcs">Line × hour of the day</Title>
-              {!Q.hours.length ? <Empty /> : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-center text-fs-12">
-                    <thead><tr><th className={th}>Line</th>{Q.hours.map((h) => <th key={h} className={`${th} text-center font-mono`} title={hourCol(h)}>{p2(h)}</th>)}<th className={`${th} text-right`}>Total</th></tr></thead>
-                    <tbody>
-                      {Q.heat.map((r) => (
-                        <tr key={r.line}>
-                          <td className={`${td} whitespace-nowrap text-left font-bold text-slate-800`}>{lineName(r.line)}</td>
-                          {Q.hours.map((h) => {
-                            const n = r.by[h] || 0;
-                            const a = n ? 0.12 + 0.78 * (n / heatMax) : 0;
-                            return <td key={h} className="border border-white px-1 py-1.5 font-mono font-bold" title={`${lineName(r.line)} ${hourCol(h)}: ${n} pcs`}
-                              style={{ background: n ? `rgba(31,56,100,${a.toFixed(2)})` : '#F8FAFC', color: a > 0.5 ? '#fff' : '#0F172A' }}>{n || ''}</td>;
-                          })}
-                          <td className={`${td} text-right font-mono font-extrabold`}>{nf(r.total)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
+            {/* 27-11-2026: Line × hour of the day taken off (as asked) */}
           </div>
         </div>
       )}
@@ -398,6 +373,62 @@ function StageFlow({ S, fpyT, rtyT, qs, onPick }) {
  * stage FPY, pcs, PPM, dismantled, RCA written · the defects most first · by line · by model · by hour · day by day ·
  * category and station · every entry of the period. Line chips and stage chips switch it without closing.
  */
+/** 27-11-2026: a defect, a category or a model clicked → what was found: by model / defect, line, stage and every entry */
+function PickDrawer({ pick, sheet, onClose, group, period }) {
+  const { field, value } = pick;
+  const rows = useMemo(() => sheet.filter((r) => String(r[field] || '') === String(value)), [sheet, field, value]);
+  const tot = rows.reduce((a, r) => a + (r.total || 0), 0), dis = rows.reduce((a, r) => a + (r.dismantle || 0), 0);
+  const by = (k) => { const m = new Map(); for (const r of rows) { const key = String(r[k] || '—'); const o = m.get(key) || { key, total: 0, dismantle: 0 }; o.total += r.total || 0; o.dismantle += r.dismantle || 0; m.set(key, o); } return [...m.values()].sort((a, b) => b.total - a.total); };
+  const lineLbl = (l) => KPI_LINES.find((k) => k.line === String(l))?.label || `Line ${l}`;
+  const what = { defect: 'Defect', cat: 'Category', model: 'Model' }[field];
+  const groups = [field === 'model' ? ['defect', 'Defect-wise'] : ['model', 'Model-wise'], ...(field === 'cat' ? [['defect', 'Defect-wise']] : []), ['line', 'Line-wise'], ['stage', 'Stage-wise']];
+  const box = 'rounded-lg border border-slate-200 bg-white p-2.5', h4 = 'mb-1.5 text-fs-12 font-extrabold uppercase tracking-wide text-[#1F3864]';
+  return (
+    <MesDrawer title={`${what} · ${value}`} sub={`${group} · ${period} · ${nf(tot)} pcs${dis ? ` · ${nf(dis)} dismantled` : ''}`} icon={Layers} onClose={onClose} label={`${value} details`} width={64} bodyClass="p-3">
+      <div className="flex flex-col gap-3" data-testid="qd-pick">
+        <div className="grid grid-cols-3 gap-2">
+          {[['Defect pcs', nf(tot), 'text-red-700'], ['Dismantle', nf(dis), dis ? 'text-red-700' : 'text-slate-900'], ['Entries', nf(rows.length), 'text-slate-900']].map(([k, v, c]) => (
+            <div key={k} className={box}><div className="text-fs-12 font-semibold text-slate-500">{k}</div><div className={`font-mono text-fs-20 font-extrabold ${c}`}>{v}</div></div>))}
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {groups.map(([k, t]) => { const list = by(k); const hi = Math.max(1, ...list.map((x) => x.total)); return (
+            <div key={k} className={box}><div className={h4}>{t}</div>
+              {list.slice(0, 12).map((x) => (
+                <div key={x.key} className="grid items-center gap-2 py-0.5 text-fs-12" style={{ gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr) 72px' }}>
+                  <span className="break-words font-semibold leading-tight text-slate-800">{k === 'line' ? lineLbl(x.key) : x.key}</span>
+                  <span className="h-2.5 overflow-hidden rounded-full bg-slate-100"><span className="block h-full rounded-full bg-[#1F3864]" style={{ width: `${Math.max(3, (x.total / hi) * 100)}%` }} /></span>
+                  <span className="text-right font-mono font-bold">{nf(x.total)} <span className="font-normal text-slate-500">{tot ? `${Math.round((x.total / tot) * 100)}%` : ''}</span></span>
+                </div>))}
+            </div>); })}
+        </div>
+        <div className={box}>
+          <div className={h4}>Entries · {nf(rows.length)}</div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-fs-12">
+              <thead><tr className="bg-[#DCE6F2] text-left text-[#1F3864]">{['Date', 'Line', 'Hour', 'Stage', 'Model', 'Defect', 'Category', 'Pcs', 'Dismantle', 'Corrective action'].map((h, i) => <th key={h} className={`px-1.5 py-1 ${i === 7 || i === 8 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+              <tbody>
+                {[...rows].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) || Number(a.line) - Number(b.line)).slice(0, 300).map((r, i) => (
+                  <tr key={i} className="border-b border-slate-100 align-top">
+                    <td className="whitespace-nowrap px-1.5 py-1 font-mono">{dmy(r.date)}</td>
+                    <td className="whitespace-nowrap px-1.5 py-1">{lineLbl(r.line)}</td>
+                    <td className="whitespace-nowrap px-1.5 py-1 font-mono">{Object.keys(r.hours || {}).map((h) => p2(Number(h))).join(', ')}</td>
+                    <td className="px-1.5 py-1">{r.stage || '—'}</td>
+                    <td className="px-1.5 py-1">{r.model || '—'}</td>
+                    <td className="px-1.5 py-1 font-semibold">{r.defect || '—'}</td>
+                    <td className="px-1.5 py-1">{r.cat || '—'}</td>
+                    <td className="px-1.5 py-1 text-right font-mono font-bold text-red-700">{nf(r.total)}</td>
+                    <td className="px-1.5 py-1 text-right font-mono">{r.dismantle ? nf(r.dismantle) : ''}</td>
+                    <td className="px-1.5 py-1 text-slate-700">{r.action ? r.action : <span className="text-amber-700">not written</span>}</td>
+                  </tr>))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </MesDrawer>
+  );
+}
+
 function StageDrawer({ S, sheet, stations, pick, setPick, onClose, fpyT, group, period, ids }) {
   const { idx, line } = pick;
   const d = useMemo(() => stageDetail(sheet, stations, idx, line), [sheet, stations, idx, line]);
@@ -516,7 +547,7 @@ function StageDrawer({ S, sheet, stations, pick, setPick, onClose, fpyT, group, 
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-fs-12" data-testid="qd-sd-rows">
                   <thead><tr className="bg-[#DCE6F2] text-left text-[#1F3864]">
-                    <th className="px-1.5 py-1">Date</th><th className="px-1.5 py-1">Line</th><th className="px-1.5 py-1">Hour</th><th className="px-1.5 py-1">Model</th><th className="px-1.5 py-1">Defect</th><th className="px-1.5 py-1">Category</th><th className="px-1.5 py-1 text-right">Pcs</th><th className="px-1.5 py-1 text-right">Dismantle</th><th className="px-1.5 py-1">Cause / action</th>
+                    <th className="px-1.5 py-1">Date</th><th className="px-1.5 py-1">Line</th><th className="px-1.5 py-1">Hour</th><th className="px-1.5 py-1">Model</th><th className="px-1.5 py-1">Defect</th><th className="px-1.5 py-1">Category</th><th className="px-1.5 py-1 text-right">Pcs</th><th className="px-1.5 py-1 text-right">Dismantle</th><th className="px-1.5 py-1">Corrective action</th>
                   </tr></thead>
                   <tbody>
                     {d.rows.slice(0, 300).map((r, i) => (
@@ -529,7 +560,7 @@ function StageDrawer({ S, sheet, stations, pick, setPick, onClose, fpyT, group, 
                         <td className="px-1.5 py-1">{r.cat || '—'}</td>
                         <td className="px-1.5 py-1 text-right font-mono font-bold text-red-700">{nf(r.total)}</td>
                         <td className="px-1.5 py-1 text-right font-mono">{r.dismantle ? nf(r.dismantle) : ''}</td>
-                        <td className="px-1.5 py-1 text-slate-700">{r.cause || r.action ? <>{r.cause}{r.cause && r.action ? ' → ' : ''}{r.action}</> : <span className="text-amber-700">not written</span>}</td>
+                        <td className="px-1.5 py-1 text-slate-700">{r.action ? r.action : <span className="text-amber-700">not written</span>}</td>
                       </tr>
                     ))}
                   </tbody>

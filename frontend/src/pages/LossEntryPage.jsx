@@ -1304,7 +1304,7 @@ function HourDialog({ autoNo = false, L, r, date, reasons, prev, next, onClose, 
                   <tbody>{ms.map((m) => { const d = m.qty - (m.target || 0); return (
                     <tr key={m.model} className="border-t border-slate-100"><td className="py-0 font-mono font-semibold text-slate-800" title={m.avg ? `${m.model} — no cycle time in the model master: the line's average cycle of the day is used` : m.model}>{m.model}{m.avg && <span className="ml-1 rounded-[2px] bg-[#FFEB9C] px-1 text-fs-10 font-bold text-[#9C5700]">avg CT</span>}</td>
                       <td className="text-right font-mono text-slate-700">{(() => { const t = mt?.rows.find((x) => x.model === m.model); return t?.runMin != null ? fmtMin(t.runMin) : scans == null ? '…' : '—'; })()}</td><td className="text-right font-mono">{m.target == null ? <span className="text-fs-12 font-bold text-[#9C5700]" title="No cycle time in the model master: no target">No target</span> : nf(m.target)}</td><td className="text-right font-mono font-bold">{nf(m.qty)}</td>
-                      <td className={`text-right font-mono font-bold ${m.target == null ? 'text-slate-400' : d < 0 ? 'text-red-700' : 'text-emerald-700'}`}>{m.target == null ? '—' : d < 0 ? `Short ${nf(-d)}` : d > 0 ? `Excess ${nf(d)}` : 'On target'}</td></tr>
+                      <td className={`text-right font-mono font-bold ${m.target == null ? 'text-slate-400' : d < 0 ? 'text-red-700' : 'text-emerald-700'}`}>{m.target == null ? '—' : d < 0 ? `−${nf(-d)}` : d > 0 ? `+${nf(d)}` : '0'}</td></tr>
                   ); })}</tbody>
                 </table></div>
               );

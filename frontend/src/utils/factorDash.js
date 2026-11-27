@@ -5,7 +5,7 @@
  *   R   = oleRange(...) of the period · ids = the lines shown
  * → plain objects, no React (tests/factorDash.calc.test.js)
  */
-import { oleSum, normEntry, modelPerf, planTargetOf, oleConfig } from './ole';
+import { oleSum, normEntry, modelPerf, planTargetOf, oleConfig, goodOf } from './ole';
 
 const ranT = (t) => !!t && ((t.plannedMin || 0) > 0 || (t.qty || 0) > 0);
 const top = (m) => [...m.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
@@ -35,7 +35,7 @@ export function availDash(R, ids0) {
   const lines = Object.fromEntries(ids.map((l) => [l, { line: l, t: oleSum((R?.days || []).map((d) => d.byLine[l]?.total)), stops: 0, written: 0, reasons: new Map(), depts: new Map() }]));
   const reasons = new Map(), depts = new Map(), models = new Map(), heat = new Map();
   let stops = 0, written = 0;
-  for (const { l, r } of hourRows(R, ids)) {
+  for (const { d, l, r } of hourRows(R, ids)) {
     const idle = (r.lossMin || 0);
     if (idle > 0) { const h = heat.get(l) || {}; h[r.hour] = (h[r.hour] || 0) + idle; heat.set(l, h); }
     const e = r.e || normEntry(r.entry);
@@ -47,7 +47,8 @@ export function availDash(R, ids0) {
       const o = reasons.get(k) || { name: k, dept: dk, min: 0, n: 0, lines: new Set(), models: new Map() };
       o.min += min; o.n += 1; o.lines.add(l); if (x.model) add(o.models, x.model, min); reasons.set(k, o);
       const dp = depts.get(dk) || { name: dk, min: 0, n: 0, reasons: new Map() }; dp.min += min; dp.n += 1; add(dp.reasons, k, min); depts.set(dk, dp);
-      if (x.model) { const m = models.get(x.model) || { name: x.model, min: 0, n: 0, reasons: new Map() }; m.min += min; m.n += 1; add(m.reasons, k, min); models.set(x.model, m); }
+      if (x.model) { const m = models.get(x.model) || { name: x.model, min: 0, n: 0, reasons: new Map(), items: [] }; m.min += min; m.n += 1; add(m.reasons, k, min); models.set(x.model, m);
+        m.items.push({ date: d.date, line: String(l), hour: r.hour, reason: k, dept: dk, min, note: x.note || x.remark || '' }); }   // 27-11-2026: a model clicked → every entry
     }
   }
   const days = dayTotals(R, ids).map((d) => ({ date: d.date, A: d.all.A, planned: d.all.plannedMin, run: d.all.actualMin, idle: d.all.lossMin, by: Object.fromEntries(ids.map((l) => [l, ranT(d.by[l]) ? d.by[l].A : null])) }));
@@ -116,6 +117,7 @@ export function perfDash(R, ids0) {
   return {
     total: { P: T.P, qty: T.qty, target, ach: target ? T.qty / target : null, short: target == null ? null : T.qty - target,
       std: stdCt(T), act: actCt(T), speed: T.speedMin || 0, run: T.actualMin,
+      good: goodOf(T), rework: T.rework || 0, rejects: T.rejects || 0, dismantle: T.dismantle || 0,   // 27-11-2026: Good Qty · Rework · Dismantle tiles
       slow: judged.filter((m) => m.var > 0.005).length, models: M.length, judged: judged.length, worstDay },
     days, lines, models: M,
     slow: judged.filter((m) => m.lostMin > 0).sort((a, b) => b.lostMin - a.lostMin),
@@ -150,9 +152,14 @@ export function modelHours(R, line, model) {
     for (const x of r.models || []) {
       const q = Number(x.quantity) || 0;
       if (!q || (x.model || '—') !== model) continue;
-      const actSec = r.actualMin > 0 ? r.actualMin * 60 * (q / r.qty) : null;
       const std = Number(x.std) > 0 ? Number(x.std) : null;
-      out.push({ key: `${d.date}|${r.hour}`, date: d.date, hour: r.hour, extra: !!r.extra, qty: q, hourQty: r.qty, actSec, std, act: actSec != null ? actSec / q : null,
+      // 27-11-2026: the hour's run time (idle out) is shared by the std time of each model's pieces (was by the piece count —
+      // 3 pcs of a 24 s model beside 135 pcs of a 20 s model got the hour's average cycle); without std on every model: by pieces
+      const all = (r.models || []).filter((y) => Number(y.quantity) > 0);
+      const byStd = std && all.every((y) => Number(y.std) > 0);
+      const share = byStd ? (q * std) / all.reduce((a, y) => a + Number(y.quantity) * Number(y.std), 0) : q / r.qty;
+      const actSec = r.actualMin > 0 ? r.actualMin * 60 * share : null;
+      out.push({ key: `${d.date}|${r.hour}`, date: d.date, hour: r.hour, extra: !!r.extra, qty: q, hourQty: r.qty, actSec, std, runMin: r.actualMin, idleMin: r.lossMin || 0, mixed: all.length > 1, byStd, act: actSec != null ? actSec / q : null,
         var: std && actSec != null ? (actSec / q - std) / std : null, lostMin: std && actSec != null ? (actSec - q * std) / 60 : null,
         others: (r.models || []).filter((y) => (y.model || '—') !== model && Number(y.quantity) > 0).map((y) => ({ name: y.model || '—', value: Number(y.quantity) })) });
     }

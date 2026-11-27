@@ -768,7 +768,7 @@ export function HourBars({ hours, nowHour, hourModels, lunch = null, targetPph =
                 <div className="mb-2 grid shrink-0 grid-cols-3 gap-1.5 text-center" data-testid="hour-split">
                   <div className="rounded-md bg-white/10 px-1 py-1"><div className="text-fs-11 font-bold uppercase tracking-wide text-slate-300">Target</div><div className="font-mono text-fs-16 font-extrabold text-white">{t ?? '—'}</div></div>
                   <div className="rounded-md bg-white/10 px-1 py-1"><div className="text-fs-11 font-bold uppercase tracking-wide text-slate-300">Made</div><div className="font-mono text-fs-16 font-extrabold" style={{ color: col }}>{t != null ? tq : r0.quantity}</div></div>
-                  <div className="rounded-md bg-white/10 px-1 py-1"><div className="text-fs-11 font-bold uppercase tracking-wide text-slate-300">{t != null ? (tq >= t ? 'Excess' : 'Short') : 'No cycle'}</div><div className="font-mono text-fs-16 font-extrabold text-white">{t != null ? Math.abs(tq - t) : nt}</div></div>
+                  <div className="rounded-md bg-white/10 px-1 py-1"><div className="text-fs-11 font-bold uppercase tracking-wide text-slate-300">{t != null ? 'vs Target' : 'No cycle'}</div><div className={`font-mono text-fs-16 font-extrabold ${t != null ? (tq >= t ? 'text-emerald-300' : 'text-red-300') : 'text-white'}`}>{t != null ? (tq - t > 0 ? `+${tq - t}` : tq - t < 0 ? `−${t - tq}` : '0') : nt}</div></div>
                   {nt > 0 && t != null && <div className="col-span-3 text-left text-fs-11 font-semibold text-sky-200">+ {nt} pcs of a model without a cycle time (own light-blue bar, not counted)</div>}
                 </div>
               )}

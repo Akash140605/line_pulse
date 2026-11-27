@@ -382,7 +382,7 @@ function MonthModels({ row, R, ids, onClose, co = () => '' }) {
   const list = modelPerf(Rm, ids).sort((a, b) => Number(a.line) - Number(b.line) || b.qty - a.qty);
   const tot = list.reduce((a, x) => ({ qty: a.qty + x.qty, target: a.target + (x.target || 0), lost: a.lost + (x.lostMin || 0) }), { qty: 0, target: 0, lost: 0 });
   const sec = (v) => (v == null ? '—' : `${Math.round(v * 10) / 10}s`);
-  const se = (v) => (v == null ? '—' : v > 0 ? `Excess ${nf(v)}` : v < 0 ? `Short ${nf(-v)}` : 'On target');
+  const se = (v) => (v == null ? '—' : v > 0 ? `+${nf(v)}` : v < 0 ? `−${nf(-v)}` : '0');
   const th = 'whitespace-nowrap border border-[#BFBFBF] px-2 py-1.5 font-bold';
   return (
     <MesDrawer title={`${row.full} — model wise`} sub={`${groupNameOf(ids)} · ${row.run} day${row.run === 1 ? '' : 's'} run · OLE ${row.on ? `${row.ole}%` : '—'}`} icon={CalendarDays} onClose={onClose} width={70} fit label={`${row.full} models`}>

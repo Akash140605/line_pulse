@@ -9,7 +9,7 @@ import { nf, dmy, p2, useOleData, useOleLines, groupNameOf, companyOf, CompanyCe
 import { useAllLineSettings } from '../hooks/useLineSettings';
 import { useLastScans } from '../hooks/useLastScans';
 import { oleRange, okFrom, watchFrom, hm } from '../utils/ole';
-import { Pareto, Donut, DeptOwners, withDept, NoDeptNote } from './OleFocusPage';
+import { Pareto, Donut, DeptDrawer, withDept, NoDeptNote } from './OleFocusPage';
 import { availDash, perfDash, modelHours } from '../utils/factorDash';
 import MesDrawer from '../components/MesDrawer';
 import { exportPanel } from '../utils/domExcel';
@@ -30,7 +30,7 @@ const hh = (min) => (min == null ? '—' : `${(min / 60).toFixed(1)} h`);
 // under an hour in minutes (a slow model loses minutes, not hours)
 const dur = (min) => (min == null ? '—' : min < 60 ? `${Math.round(min)} min` : `${(min / 60).toFixed(1)} h`);
 const sec = (s) => (s == null ? '—' : `${Math.round(s * 10) / 10}s`);
-const signed = (v) => (v == null ? '—' : v > 0 ? `Excess ${nf(v)}` : v < 0 ? `Short ${nf(-v)}` : 'On target');
+const signed = (v) => (v == null ? '—' : v > 0 ? `+${nf(v)}` : v < 0 ? `−${nf(-v)}` : '0');   // 27-11-2026: + / − (colour shows excess / short)
 const LineName = ({ l }) => <span className="whitespace-nowrap font-bold text-slate-900">Line {l}{plantOf(l) ? <span className="ml-1 text-fs-12 font-semibold text-slate-500">({plantOf(l)})</span> : null}</span>;
 
 function Tile({ name, value, sub, tone = 'text-slate-900', testid }) {
@@ -48,7 +48,7 @@ function Title({ children, right }) {
 const Empty = ({ text }) => <p className="py-4 text-center text-fs-13 font-semibold text-slate-500">{text}</p>;
 
 /** ranked bars of one hue: rows = [{ key, label, value, right, title }] */
-function Ranked({ rows, label, max = 10, empty }) {
+function Ranked({ rows, label, max = 10, empty, onPick = null }) {
   const [all, setAll] = useState(false);
   const list = all ? rows : rows.slice(0, max);
   const hi = Math.max(1e-9, ...list.map((r) => r.value));
@@ -56,7 +56,8 @@ function Ranked({ rows, label, max = 10, empty }) {
   return (
     <div className="flex flex-col gap-1" role="list" aria-label={label}>
       {list.map((r) => (
-        <div key={r.key} role="listitem" className="grid items-center gap-2 px-1 py-0.5 text-fs-13" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.1fr) 7.5rem' }} title={r.title || r.label}>
+        <div key={r.key} role="listitem" className={`grid items-center gap-2 rounded px-1 py-0.5 text-fs-13 ${onPick ? 'cursor-pointer hover:bg-blue-50' : ''}`} style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.1fr) 7.5rem' }} title={onPick ? `${r.title || ''} — click for details` : r.title || r.label}
+          {...(onPick ? { tabIndex: 0, 'data-testid': `ranked-${r.key}`, onClick: () => onPick(r.key), onKeyDown: (e) => { if (e.key === 'Enter') onPick(r.key); } } : {})}>
           <span className="break-words font-semibold leading-tight text-slate-800">{r.label}</span>
           <span className="h-3 overflow-hidden rounded bg-slate-100"><span className="block h-full rounded" style={{ width: `${(r.value / hi) * 100}%`, background: NAVY }} /></span>
           <span className="text-right font-mono font-bold text-slate-900">{r.right}</span>
@@ -87,6 +88,8 @@ export default function FactorDashboardPage({ factor = 'A' }) {
   const X = useMemo(() => (R ? (isA ? availDash(R, IDS) : perfDash(R, IDS)) : null), [R, IDS, isA]);
   const bodyRef = useRef(null);
   const [mdl, setMdl] = useState(null);   // 26-11-2026: a model row clicked → its hours (drawer)
+  const [deptOpen, setDeptOpen] = useState(null);
+  const [idleModel, setIdleModel] = useState(null);   // 27-11-2026: a model of the idle list clicked → its entries   // 27-11-2026: a department clicked → its reasons (drawer)
   const openDay = (date) => setRange({ start: date, end: date });
   const openLine = (l) => setSel((s0) => (s0 === String(l) ? 'all' : String(l)));
   const ok = okFrom(factor), watch = watchFrom(factor);
@@ -99,9 +102,6 @@ export default function FactorDashboardPage({ factor = 'A' }) {
 
   if (!ALL.length) return <div className={`${card} text-fs-14 font-semibold text-slate-600`}>This login has no line.</div>;
   const t = X?.total;
-  const heatVals = (X?.heat || []).flatMap((h) => Object.values(h.by).map((x) => (isA ? x : x.plan ? x.qty / x.plan : null))).filter((x) => x != null);
-  const hours = [...new Set((X?.heat || []).flatMap((h) => Object.keys(h.by).map(Number)))].sort((a, b) => a - b);
-  const heatMax = Math.max(1, ...(isA ? heatVals : [1]));
   return (
     <div className="flex flex-col gap-3" aria-label={`${name} dashboard`} role="region" data-testid={`fd-${factor}`}>
       <HeaderBar label={`${name} dashboard filters`}>
@@ -120,24 +120,24 @@ export default function FactorDashboardPage({ factor = 'A' }) {
         <div ref={bodyRef} className="flex flex-col gap-3">
           {/* KPI tiles */}
           {isA ? (
-            <section className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7" aria-label="Availability of the period">
+            <section className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5" aria-label="Availability of the period">
               <Tile testid="fd-main" name="Availability" value={pct(t.A)} sub={`Target ${(ok * 100).toFixed(0)}% · ${group}`} tone={tone(t.A)} />
               <Tile name="Planned time" value={hh(t.planned)} sub="shift time without breaks" />
               <Tile name="Run time" value={hh(t.run)} sub={t.planned ? `${pct(t.run / t.planned)} of planned` : '—'} />
               <Tile name="Idle time" value={hh(t.idle)} sub={t.planned ? `${pct(t.idle / t.planned)} of planned` : '—'} tone={t.idle > 0 ? 'text-red-700' : 'text-slate-900'} />
-              <Tile name="Stops written" value={nf(t.stops)} sub={t.notWritten >= 3 ? `${hh(t.notWritten)} idle not written` : 'every idle minute written'} tone={t.notWritten >= 3 ? 'text-amber-700' : 'text-slate-900'} />
-              <Tile name="Average stop" value={t.avg == null ? '—' : `${Math.round(t.avg)} min`} sub="written minutes ÷ stops" />
               <Tile name="Top reason" value={X.reasons[0]?.name || '—'} sub={X.reasons[0] ? `${hh(X.reasons[0].min)}${X.reasons[0].dept !== 'Not set' ? ` · ${X.reasons[0].dept}` : ''}` : 'no idle time written'} tone={X.reasons[0] ? 'text-red-700' : 'text-slate-900'} />
             </section>
           ) : (
-            <section className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7" aria-label="Performance of the period">
+            <section className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5" aria-label="Performance of the period">
               <Tile testid="fd-main" name="Performance" value={pct(t.P)} sub={`Target ${(ok * 100).toFixed(0)}% · ${group}`} tone={tone(t.P)} />
               <Tile name="Plan target qty" value={nf(t.target)} sub="HPR / SAWM plan" />
               <Tile name="Actual qty" value={nf(t.qty)} sub={t.ach == null ? '—' : `${pct(t.ach)} of the plan`} tone={t.ach == null ? 'text-slate-900' : t.ach >= 1 ? 'text-emerald-700' : 'text-red-700'} />
               <Tile name="Short / excess" value={t.short == null ? '—' : nf(Math.abs(t.short))} sub={t.short == null ? '—' : t.short < 0 ? 'pieces short of the plan' : 'pieces over the plan'} tone={t.short == null ? 'text-slate-900' : t.short < 0 ? 'text-red-700' : 'text-emerald-700'} />
               <Tile name="Cycle time" value={sec(t.act)} sub={`actual · std ${sec(t.std)}`} tone={t.act != null && t.std != null && t.act > t.std * 1.005 ? 'text-red-700' : 'text-emerald-700'} />
               <Tile name="Speed loss" value={hh(t.speed)} sub="run time beyond the std cycle" tone={t.speed >= 3 ? 'text-red-700' : 'text-slate-900'} />
-              <Tile name="Slow models" value={`${nf(t.slow)} of ${nf(t.judged)}`} sub={X.slow[0] ? `most time lost: ${X.slow[0].model} (L${X.slow[0].line}) · ${dur(X.slow[0].lostMin)}${X.variation[0] && X.variation[0].key !== X.slow[0].key ? ` · highest variation: ${X.variation[0].model} +${(X.variation[0].var * 100).toFixed(1)}%` : ''}` : 'none slower than std'} tone={t.slow ? 'text-red-700' : 'text-emerald-700'} />
+              <Tile name="Good qty" value={nf(t.good)} sub={t.qty ? `${pct(t.good / t.qty)} of actual qty` : 'pcs right'} tone="text-emerald-700" />
+              <Tile name="Rework" value={nf(t.rework + t.rejects)} sub={`${nf(Math.max(0, t.rework - t.dismantle))} passed after rework${t.rejects ? ` · ${nf(t.rejects)} rejected` : ''}`} tone={t.rework + t.rejects ? 'text-red-700' : 'text-slate-900'} />
+              <Tile name="Dismantle" value={nf(t.dismantle)} sub="pieces opened up for rework" tone={t.dismantle ? 'text-red-700' : 'text-slate-900'} />
             </section>
           )}
 
@@ -155,8 +155,8 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                 </section>
                 <section className={card} aria-label="Share by department">
                   <Title right="who owns the lost time">Share by department</Title>
-                  <Donut top={6} rows={withDept(depts)} fmt={hrs} centre="idle time" empty="No idle time in this period." />
-                  <DeptOwners depts={withDept(depts)} byDept={byDept} fmt={hrs} />
+                  <Donut top={6} rows={withDept(depts)} fmt={hrs} centre="idle time" empty="No idle time in this period." onPick={(lab) => setDeptOpen(lab)} />
+                  {deptOpen && <DeptDrawer dept={deptOpen} rows={byDept[deptOpen] || []} fmt={hrs} sub={`${group} · ${periodText || ''}`} onClose={() => setDeptOpen(null)} />}
                   <NoDeptNote rows={depts} fmt={hrs} />
                 </section>
               </div>
@@ -183,30 +183,9 @@ export default function FactorDashboardPage({ factor = 'A' }) {
           {/* 26-11-2026: cycle time variation — model by model, hour by hour, day by day; and the reasons written as performance loss */}
           {!isA && (() => {
             const V = X.variation, hiV = Math.max(0.01, ...V.map((m) => Math.abs(m.var)));
-            const ctTip = (v, n) => [`${v}s`, n === 'act' ? 'Actual CT' : 'Std CT'];
-            const ctData = (list, key) => list.filter((d) => d.act != null).map((d) => ({ ...d, k: key(d), act: Math.round(d.act * 10) / 10, std: d.std == null ? null : Math.round(d.std * 10) / 10 }));
-            const hours = ctData(X.hourCT, (d) => `${p2(d.hour)}`), dayCt = ctData(X.days, (d) => d.date.slice(8, 10));
-            const ctChart = (data, label, onPick) => (
-              <div style={{ height: 250 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={data} margin={{ top: 18, right: 8, left: 0, bottom: 0 }} onClick={onPick ? (e) => { const d0 = e?.activePayload?.[0]?.payload; if (d0) onPick(d0); } : undefined} style={onPick ? { cursor: 'pointer' } : undefined}>
-                    <CartesianGrid stroke={GRID} vertical={false} />
-                    <XAxis dataKey="k" tick={tick()} interval={0} />
-                    <YAxis tick={tick()} width={40} unit="s" domain={[0, 'auto']} />
-                    <Tooltip formatter={ctTip} labelFormatter={(l, p) => (p?.[0]?.payload?.date ? dmy(p[0].payload.date) : `${l}:00`)} />
-                    <Bar dataKey="act" name="act" maxBarSize={30} radius={[3, 3, 0, 0]} isAnimationActive={false}>
-                      {data.map((d) => <Cell key={d.k} fill={d.std != null && d.act > d.std * 1.005 ? '#EB5757' : '#16A34A'} />)}
-                      <LabelList dataKey="act" position="top" style={{ fontSize: fs(10.5), fill: '#334155', fontWeight: 700 }} />
-                    </Bar>
-                    <Line dataKey="std" name="std" stroke={NAVY} strokeWidth={2} strokeDasharray="6 4" dot={false} isAnimationActive={false} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-                <p className="mt-1 text-fs-12 text-slate-600"><span className="font-bold text-red-700">Red</span> = slower than std · <span className="font-bold text-emerald-700">green</span> = at or faster · dashed line = std cycle{label ? ` · ${label}` : ''}</p>
-              </div>
-            );
             return (
               <>
-                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3">
                   <section className={card} aria-label="Cycle time variation by model">
                     <Title right="actual cycle against std · highest variation first · click a model for its hours">Cycle time variation · by model</Title>
                     {!V.length ? <Empty text="No model with enough pieces and a std cycle." /> : (
@@ -223,60 +202,24 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                       </div>
                     )}
                   </section>
-                  <section className={card} aria-label="Cycle time by hour of the day">
-                    <Title right="actual cycle vs std, every day of the period together">Cycle time · hour of the day</Title>
-                    {!hours.length ? <Empty text="No production in this period." /> : ctChart(hours, '')}
-                  </section>
                 </div>
-                {!oneDay && (
-                  <section className={card} aria-label="Cycle time day by day">
-                    <Title right="click a day to open it">Cycle time · day by day</Title>
-                    {!dayCt.length ? <Empty text="No production in this period." /> : ctChart(dayCt, '', (d0) => openDay(d0.date))}
+                {/* 27-11-2026: cycle time by hour / day by day taken off (as asked); the reasons only when some are written */}
+                {X.reasons.length > 0 && (
+                  <section className={card} aria-label="Performance loss reasons">
+                    <Title right="minutes written against a model (Loss entry)">Performance loss reasons</Title>
+                    <Pareto rows={X.reasons.map((r) => ({ label: r.name, value: r.min }))} fmt={(m) => dur(m)} time color="#EB5757" />
                   </section>
                 )}
-                <section className={card} aria-label="Performance loss reasons">
-                  <Title right="minutes written against a model (Loss entry)">Performance loss reasons</Title>
-                  {X.reasons.length ? <Pareto rows={X.reasons.map((r) => ({ label: r.name, value: r.min }))} fmt={(m) => dur(m)} time color="#EB5757" />
-                    : <p className="text-fs-13 text-slate-600">No performance loss reason written in this period. A loss written on Loss entry counts in Availability (idle time) — see the Availability dashboard; set "loss with a model → Performance" in Setup → OLE formulas to see such reasons here. The speed loss of every model is above.</p>}
-                </section>
               </>
             );
           })()}
 
-          {/* line × day */}
-          {!oneDay && (
-          <section className={card} aria-label={`${name} line by day`}>
-            <Title right={`${name} % per line and day · green ≥ ${(ok * 100).toFixed(0)}%, amber ≥ ${(watch * 100).toFixed(0)}%`}>{name} · line × day</Title>
-            {!X.days.length ? <Empty text="No production in this period." /> : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-fs-13 tabular-nums" aria-label={`${name} line by day table`}>
-                  <thead><tr><th className={th}>Line</th>{X.days.map((d) => <th key={d.date} className={`${th} cursor-pointer text-center hover:bg-blue-50`} onClick={() => openDay(d.date)} title={`Open ${dmy(d.date)}`}>{d.date.slice(8, 10)}</th>)}<th className={`${th} text-right`}>Period</th></tr></thead>
-                  <tbody>
-                    {IDS.map((l) => (
-                      <tr key={l}>
-                        <td className={`${td} cursor-pointer`} onClick={() => openLine(l)} title="Only this line"><LineName l={l} /></td>
-                        {X.days.map((d) => <td key={d.date} className={`${td} cursor-pointer text-center font-mono font-semibold hover:opacity-80 ${cellBg(d.by[l])}`} title={`Line ${l} · ${dmy(d.date)}: ${pct(d.by[l])} — click to open`} onClick={() => { setSel(String(l)); openDay(d.date); }}>{d.by[l] == null ? '' : Math.round(d.by[l] * 100)}</td>)}
-                        <td className={`${td} text-right font-mono font-extrabold ${tone(v(X.lines.find((x) => x.line === String(l)) || {}))}`}>{pct(v(X.lines.find((x) => x.line === String(l)) || {}))}</td>
-                      </tr>
-                    ))}
-                    {IDS.length > 1 && (
-                      <tr className="bg-slate-50">
-                        <td className={`${td} font-extrabold`}>All</td>
-                        {X.days.map((d) => <td key={d.date} className={`${td} text-center font-mono font-extrabold ${cellBg(v(d))}`}>{v(d) == null ? '' : Math.round(v(d) * 100)}</td>)}
-                        <td className={`${td} text-right font-mono font-extrabold ${tone(v(t))}`}>{pct(v(t))}</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-          )}   {/* 26-11-2026: one day has no line × day */}
+          {/* 27-11-2026: the line × day table taken off (as asked) — Day by day below shows the same days */}
 
           {/* 26-11-2026: one under the other — the line table has many columns and must not be cut */}
           <div className="grid grid-cols-1 gap-3">
-            {/* day by day */}
-            {!oneDay && (
+            {/* day by day — 27-11-2026: Availability only (taken off the Performance dashboard, as asked) */}
+            {!oneDay && isA && (
             <section className={card} aria-label={`${name} day by day`}>
               <Title right={`${t.worstDay ? `lowest ${dmy(t.worstDay.date)} · ${pct(v(t.worstDay))} · ` : ''}click a day to open it`}>Day by day</Title>
               {!X.days.length ? <Empty text="No production in this period." /> : (
@@ -302,11 +245,11 @@ export default function FactorDashboardPage({ factor = 'A' }) {
 
             {/* line by line */}
             <section className={card} aria-label={`${name} line by line`}>
-              <Title right={isA ? 'time, stops, main reason' : 'plan, pieces, cycle, slowest model'}>Line by line</Title>
+              <Title right={isA ? 'time, main reason' : 'plan, pieces, cycle, slowest model'}>Line by line</Title>
               <div className="overflow-x-auto">
                 {isA ? (
                   <table className="w-full border-collapse text-fs-13 tabular-nums" aria-label="Availability line by line table">
-                    <thead><tr>{['Line', 'Planned', 'Run', 'Idle', 'Stops', 'Avg', 'Availability', 'Main reason', 'Dept.'].map((h, i) => <th key={h} className={`${th} ${i > 0 && i < 7 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+                    <thead><tr>{['Line', 'Planned', 'Run', 'Idle', 'Availability', 'Main reason', 'Dept.'].map((h, i) => <th key={h} className={`${th} ${i > 0 && i < 5 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
                     <tbody>
                       {X.lines.map((r) => (
                         <tr key={r.line} className="cursor-pointer hover:bg-slate-50" title="Only this line" onClick={() => openLine(r.line)}>
@@ -314,8 +257,6 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                           <td className={`${td} text-right font-mono`}>{hh(r.planned)}</td>
                           <td className={`${td} text-right font-mono`}>{hh(r.run)}</td>
                           <td className={`${td} text-right font-mono font-bold ${r.idle > 0 ? 'text-red-700' : 'text-slate-500'}`}>{hh(r.idle)}</td>
-                          <td className={`${td} text-right font-mono`}>{nf(r.stops)}</td>
-                          <td className={`${td} text-right font-mono`}>{r.avg == null ? '—' : `${Math.round(r.avg)}m`}</td>
                           <td className={`${td} text-right font-mono font-extrabold ${tone(r.A)}`}>{pct(r.A)}</td>
                           <td className={`${td} font-semibold`}>{r.topReason || '—'}</td>
                           <td className={td}>{r.topDept && r.topDept !== 'Not set' ? r.topDept : '—'}</td>
@@ -352,9 +293,31 @@ export default function FactorDashboardPage({ factor = 'A' }) {
           {isA ? (
             <div className="grid grid-cols-1 gap-3">
               <section className={card} aria-label="Idle time by model">
-                <Title right="idle written against a model">Models</Title>
-                <Ranked label="Idle time by model" empty="No idle time written against a model." rows={X.models.map((m) => ({ key: m.name, label: <span><span className="mr-1 text-fs-11 font-bold uppercase text-slate-500">{co(m.name)}</span><span className="font-mono">{m.name}</span></span>, value: m.min, right: `${dur(m.min)} · ${m.n === 1 ? '1 time' : `${m.n} times`}`, title: `${m.name}: mostly ${m.top}` }))} />
+                <Title right="idle written against a model · click a model for its entries">Models</Title>
+                <Ranked label="Idle time by model" empty="No idle time written against a model." onPick={(k) => setIdleModel(k)} rows={X.models.map((m) => ({ key: m.name, label: <span><span className="mr-1 text-fs-11 font-bold uppercase text-slate-500">{co(m.name)}</span><span className="font-mono">{m.name}</span></span>, value: m.min, right: `${dur(m.min)} · ${m.n === 1 ? '1 time' : `${m.n} times`}`, title: `${m.name}: mostly ${m.top}` }))} />
               </section>
+              {idleModel && (() => {
+                const m = X.models.find((x) => x.name === idleModel); if (!m) return null;
+                const items = [...(m.items || [])].sort((p, q) => (p.date < q.date ? -1 : p.date > q.date ? 1 : 0) || Number(p.line) - Number(q.line) || p.hour - q.hour);
+                const byR = [...(m.reasons || new Map()).entries()].map(([name, min]) => ({ name, min, n: items.filter((x) => x.reason === name).length })).sort((p, q) => q.min - p.min);
+                const thd = 'px-2 py-1.5 font-bold', tdd = 'px-2 py-1.5 border-b border-[#E5E7EB]';
+                return (
+                  <MesDrawer title={`${co(m.name) ? `${co(m.name)} · ` : ''}${m.name} · idle time`} sub={`${group} · ${periodText} · ${dur(m.min)} in ${m.n === 1 ? '1 entry' : `${m.n} entries`}`} onClose={() => setIdleModel(null)} label={`${m.name} idle entries`} width={65} fit minWidth={560} bodyClass="p-2">
+                    <div data-testid="idle-model-drawer">
+                      <div className="mb-1 text-fs-13 font-extrabold uppercase tracking-wide text-[#1F3864]">Reasons</div>
+                      <table className="mb-3 w-full border-collapse text-fs-14 tabular-nums">
+                        <thead><tr className="bg-[#1F3864] text-left text-white">{['Reason', 'Times', 'Time lost', 'Share'].map((h, i) => <th key={h} className={`${thd} ${i ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+                        <tbody>{byR.map((r) => <tr key={r.name}><td className={`${tdd} font-semibold`}>{r.name}</td><td className={`${tdd} text-right`}>{nf(r.n)}</td><td className={`${tdd} text-right font-bold text-red-700`}>{dur(r.min)}</td><td className={`${tdd} text-right`}>{m.min ? `${Math.round((r.min / m.min) * 1000) / 10}%` : '—'}</td></tr>)}</tbody>
+                      </table>
+                      <div className="mb-1 text-fs-13 font-extrabold uppercase tracking-wide text-[#1F3864]">Every entry</div>
+                      <table className="w-full border-collapse text-fs-14 tabular-nums">
+                        <thead><tr className="bg-[#1F3864] text-left text-white">{['Date', 'Line', 'Hour', 'Reason', 'Dept.', 'Time'].map((h, i) => <th key={h} className={`${thd} ${i === 5 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+                        <tbody>{items.map((x, i) => <tr key={i} className={i % 2 ? 'bg-[#F8FAFC]' : ''}><td className={`${tdd} whitespace-nowrap`}>{dmy(x.date)}</td><td className={tdd}><LineName l={x.line} /></td><td className={`${tdd} whitespace-nowrap font-mono`}>{p2(x.hour)}:00–{p2((x.hour + 1) % 24)}:00</td><td className={`${tdd} font-semibold`}>{x.reason}</td><td className={tdd}>{x.dept && x.dept !== 'Not set' ? x.dept : '—'}</td><td className={`${tdd} text-right font-bold text-red-700`}>{dur(x.min)}</td></tr>)}</tbody>
+                      </table>
+                    </div>
+                  </MesDrawer>
+                );
+              })()}
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3">
@@ -389,59 +352,51 @@ export default function FactorDashboardPage({ factor = 'A' }) {
 
           {mdl && (() => {
             const hs = modelHours(R, mdl.line, mdl.model);
+            // 27-11-2026: total of the hours shown (the same figures as the rows)
+            const tq = hs.reduce((a, h) => a + h.qty, 0), tSec = hs.reduce((a, h) => a + (h.actSec || 0), 0), tStd = hs.reduce((a, h) => a + (h.std ? h.qty * h.std : 0), 0);
+            const tAct = tq ? tSec / tq : null, tStdCt = tq && tStd ? tStd / tq : null, tVar = tAct != null && tStdCt ? (tAct - tStdCt) / tStdCt : null;
+            const tLost = hs.reduce((a, h) => a + Math.max(0, h.lostMin || 0), 0);
+            const vText = (v) => (v == null ? '—' : `${v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%`);
             return (
-              <MesDrawer title={`Line ${mdl.line} — ${mdl.model}`} sub={`${co(mdl.model) ? `${co(mdl.model)} · ` : ''}${periodText} · std ${sec(mdl.std)} · actual ${sec(mdl.act)}`} onClose={() => setMdl(null)} label={`${mdl.model} hour by hour`} width={70} fit bodyClass="p-2">
-                {!hs.length ? <Empty text="No pieces of this model in this period." /> : (
-                  <table className="w-full border-collapse text-fs-13 tabular-nums" aria-label={`${mdl.model} hour by hour`}>
-                    <thead><tr>{['Date', 'Hour', 'Pieces', 'Hour total', 'Std CT', 'Actual CT', 'Var.', 'Time lost', 'Other models in the hour'].map((h, i) => <th key={h} className={`${th} ${i >= 2 && i <= 7 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+              <MesDrawer title={`Line ${mdl.line} — ${mdl.model}`} sub={`${co(mdl.model) ? `${co(mdl.model)} · ` : ''}${periodText} · ${nf(tq)} pcs in ${hs.length} hours · Std CT ${sec(tStdCt ?? mdl.std)} · Actual CT ${sec(tAct)}`} onClose={() => setMdl(null)} label={`${mdl.model} hour by hour`} width={75} fit bodyClass="p-2">
+                {!hs.length ? <Empty text="No pieces of this model in this period." /> : (<>
+                  <table className="w-full border-collapse text-fs-13 tabular-nums" aria-label={`${mdl.model} hour by hour`} data-testid="model-hours">
+                    <thead><tr>{['Date', 'Hour', 'Model Qty', 'Hour Qty (all models)', 'Run Time', 'Std CT', 'Actual CT', 'Var. vs Std', 'Time Lost vs Std', 'Other models in the hour'].map((h, i) => <th key={h} className={`${th} ${i >= 2 && i <= 8 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
                     <tbody>
                       {hs.map((h) => (
                         <tr key={h.key}>
                           <td className={`${td} whitespace-nowrap font-semibold`}>{dmy(h.date)}</td>
-                          <td className={`${td} whitespace-nowrap font-mono`}>{p2(h.hour)}:00–{p2((h.hour + 1) % 24)}:00</td>
+                          <td className={`${td} whitespace-nowrap font-mono`}>{p2(h.hour)}:00–{p2((h.hour + 1) % 24)}:00{h.extra && <span className="ml-1 rounded bg-amber-100 px-1 text-fs-11 text-amber-800">EXTRA</span>}</td>
                           <td className={`${td} text-right font-mono font-bold`}>{nf(h.qty)}</td>
                           <td className={`${td} text-right font-mono`}>{nf(h.hourQty)}</td>
+                          <td className={`${td} text-right font-mono`} title={h.idleMin ? `${Math.round(h.idleMin)} min idle taken out` : ''}>{h.runMin == null ? '—' : `${Math.round(h.runMin)} min`}{h.idleMin >= 1 && <span className="ml-1 text-fs-11 text-slate-500">(−{Math.round(h.idleMin)} idle)</span>}</td>
                           <td className={`${td} text-right font-mono`}>{sec(h.std)}</td>
-                          <td className={`${td} text-right font-mono ${h.var > 0.005 ? 'font-bold text-red-700' : 'text-emerald-700'}`}>{sec(h.act)}</td>
-                          <td className={`${td} text-right font-mono ${h.var > 0.005 ? 'text-red-700' : 'text-emerald-700'}`}>{h.var == null ? '—' : `${h.var > 0 ? '+' : ''}${(h.var * 100).toFixed(1)}%`}</td>
+                          <td className={`${td} text-right font-mono ${h.var > 0.005 ? 'font-bold text-red-700' : 'text-emerald-700'}`}>{sec(h.act)}{h.mixed && <sup className="ml-0.5 text-slate-500" title="hour with other models: run time shared by std time">*</sup>}</td>
+                          <td className={`${td} text-right font-mono ${h.var > 0.005 ? 'text-red-700' : 'text-emerald-700'}`}>{vText(h.var)}</td>
                           <td className={`${td} text-right font-mono ${h.lostMin >= 1 ? 'font-bold text-red-700' : 'text-slate-500'}`}>{h.lostMin == null ? '—' : dur(Math.max(0, h.lostMin))}</td>
                           <td className={td}>{h.others.map((o) => <div key={o.name} className="whitespace-nowrap"><span className="font-mono font-semibold">{o.name}</span> <span className="text-fs-12 text-slate-500">{nf(o.value)} pcs</span></div>)}</td>
                         </tr>
                       ))}
                     </tbody>
+                    <tfoot><tr className="bg-slate-100 font-bold">
+                      <td className={td} colSpan={2}>Total · {hs.length} hours</td>
+                      <td className={`${td} text-right font-mono`}>{nf(tq)}</td><td className={td} /><td className={`${td} text-right font-mono`}>{Math.round(tSec / 60)} min</td>
+                      <td className={`${td} text-right font-mono`}>{sec(tStdCt)}</td>
+                      <td className={`${td} text-right font-mono ${tVar > 0.005 ? 'text-red-700' : 'text-emerald-700'}`}>{sec(tAct)}</td>
+                      <td className={`${td} text-right font-mono ${tVar > 0.005 ? 'text-red-700' : 'text-emerald-700'}`}>{vText(tVar)}</td>
+                      <td className={`${td} text-right font-mono text-red-700`}>{dur(tLost)}</td><td className={td} />
+                    </tr></tfoot>
                   </table>
-                )}
+                  <p className="mt-2 text-fs-12 text-slate-600">
+                    <b>Run Time</b> = the hour's working minutes − idle time written. <b>Actual CT</b> = the model's share of the run time ÷ its pieces; * = hour with other models: the run time is shared by the std time of each model's pieces.
+                    <b> Var. vs Std</b> = (Actual CT − Std CT) ÷ Std CT. <b>Time Lost vs Std</b> = (Actual CT − Std CT) × pieces (only when slower). Model Qty and Hour Qty count every good scan.
+                  </p>
+                </>)}
               </MesDrawer>
             );
           })()}
 
-          {/* line × hour */}
-          <section className={card} aria-label={`${name} line by hour`}>
-            <Title right={isA ? 'idle minutes · darker = more' : 'pieces ÷ hour plan · green ≥ 100%'}>Line × hour of the day</Title>
-            {!hours.length ? <Empty text="No production in this period." /> : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-fs-13 tabular-nums" aria-label={`${name} line by hour table`}>
-                  <thead><tr><th className={th}>Line</th>{hours.map((h) => <th key={h} className={`${th} text-center`}>{p2(h)}</th>)}</tr></thead>
-                  <tbody>
-                    {X.heat.map((r) => (
-                      <tr key={r.line}>
-                        <td className={td}><LineName l={r.line} /></td>
-                        {hours.map((h) => {
-                          const x = r.by[h];
-                          if (isA) {
-                            const m = x || 0, a = m ? 0.15 + 0.85 * (m / heatMax) : 0;
-                            return <td key={h} className={`${td} text-center font-mono font-bold`} style={m ? { background: `rgba(185,28,28,${a.toFixed(2)})`, color: a > 0.55 ? '#fff' : '#7F1D1D' } : undefined} title={`Line ${r.line} · ${p2(h)}:00 — ${Math.round(m)} min idle`}>{m ? Math.round(m) : ''}</td>;
-                          }
-                          const a = x && x.plan ? x.qty / x.plan : null;
-                          return <td key={h} className={`${td} text-center font-mono font-semibold ${a == null ? '' : a >= 1 ? 'bg-emerald-50 text-emerald-800' : a >= watch ? 'bg-amber-50 text-amber-800' : 'bg-red-50 text-red-800'}`} title={x ? `Line ${r.line} · ${p2(h)}:00 — ${nf(x.qty)} of ${nf(x.plan)} planned` : ''}>{a == null ? (x?.qty ? nf(x.qty) : '') : `${Math.round(a * 100)}`}</td>;
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
+          {/* 27-11-2026: line × hour of the day taken off (as asked) */}
         </div>
       )}
     </div>

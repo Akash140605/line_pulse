@@ -15,7 +15,7 @@ const weakOf = (t) => FACT.filter(([k]) => t?.[k] != null).sort((a, b) => t[a[0]
 const pc1 = (v) => (v == null ? '—' : `${Math.round(v * 1000) / 10}%`);
 const tone = (v, k = null) => (v == null ? 'text-slate-500' : v >= okFrom(k) ? 'text-[#138A36]' : v >= watchFrom(k) ? 'text-[#9C5700]' : 'text-[#C00000]');   // the MES colours (19-11-2026)
 // 19-11-2026: in words, not + / − — "Short 28" · "Excess 116" · "On target"
-const signed = (v) => (v > 0 ? `Excess ${nf(v)}` : v < 0 ? `Short ${nf(-v)}` : 'On target');
+const signed = (v) => (v > 0 ? `+${nf(v)}` : v < 0 ? `−${nf(-v)}` : '0');   // 27-11-2026: + / −
 
 /** nothing ran (or a figure is missing): every figure 0 instead of a dash (the drawers) */
 export function zeroed(t) {
@@ -67,24 +67,90 @@ const qFormula = () => (oleConfig().qMode === 'rej' ? '(Actual − Rejected) ÷ 
 /** opens the stage-wise FPY window (StageFpyHost, mounted once on the page) */
 export const openStages = (t) => { try { window.dispatchEvent(new CustomEvent('lp:stage-fpy', { detail: t })); } catch { /* old browser */ } };
 
-/** Stage-wise FPY of a total: every stage, its defects, FPY = 1 − defects ÷ pieces made, RTY = product of the FPYs */
+/** Stage-wise FPY of a total: every stage, its defects, FPY = 1 − defects ÷ pieces made, RTY = product of the FPYs.
+ * 27-11-2026: a click on a stage opens what it found — every defect, model, line and day / hour (rejected, rework, dismantled). */
+const mergeBy = (a = [], b = []) => {
+  const m = new Map(a.map((x) => [x.name, { ...x }]));
+  for (const x of b) { const o = m.get(x.name) || { name: x.name, rej: 0, rwk: 0, dis: 0 }; o.rej += x.rej || 0; o.rwk += x.rwk || 0; o.dis += x.dis || 0; m.set(x.name, o); }
+  return [...m.values()];
+};
+const big = (l) => l.sort((a, b) => (b.rej + b.rwk) - (a.rej + a.rwk));
+const dmyOf = (d) => `${d.slice(8, 10)}-${d.slice(5, 7)}-${d.slice(0, 4)}`;
+const hrOf = (h) => `${String(h).padStart(2, '0')}:00–${String((Number(h) + 1) % 24).padStart(2, '0')}:00`;
+
+function StageTable({ title, rows, total, label = (x) => x.name, testid }) {
+  if (!rows?.length) return null;
+  const max = Math.max(1, ...rows.map((x) => x.rej + x.rwk));
+  return (
+    <div className="mb-3" data-testid={testid}>
+      <div className="mb-1 text-fs-13 font-extrabold uppercase tracking-wide text-[#1F3864]">{title}</div>
+      <table className="w-full text-fs-14">
+        <thead><tr className="bg-[#1F3864] text-left text-white">{[title.replace(/-wise$/, ''), 'Defect pcs', 'Rejected', 'Rework', 'Dism.', 'Share'].map((h, i) => <th key={h} className={`px-2 py-1.5 font-bold ${i ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+        <tbody>
+          {rows.map((x, i) => {
+            const n = x.rej + x.rwk;
+            return (
+              <tr key={x.name} className={`border-b border-[#E5E7EB] ${i % 2 ? 'bg-[#F8FAFC]' : ''}`}>
+                <td className="px-2 py-1.5 font-semibold">{label(x)}</td>
+                <td className="px-2 py-1.5 text-right font-mono font-bold text-[#C00000]">
+                  <span className="inline-flex items-center justify-end gap-2"><span className="inline-block h-1.5 rounded-full bg-[#EB5757]/70" style={{ width: `${Math.max(4, (n / max) * 60)}px` }} />{nf(n)}</span></td>
+                <td className="px-2 py-1.5 text-right font-mono">{x.rej ? nf(x.rej) : '—'}</td>
+                <td className="px-2 py-1.5 text-right font-mono">{x.rwk ? nf(x.rwk) : '—'}</td>
+                <td className="px-2 py-1.5 text-right font-mono">{x.dis ? nf(x.dis) : '—'}</td>
+                <td className="px-2 py-1.5 text-right font-mono text-[#555]">{total > 0 ? `${Math.round((n / total) * 1000) / 10}%` : '—'}</td>
+              </tr>);
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function StageFpyHost() {
   const [t, setT] = React.useState(null);
-  React.useEffect(() => { const on = (e) => setT(e.detail || null); window.addEventListener('lp:stage-fpy', on); return () => window.removeEventListener('lp:stage-fpy', on); }, []);
+  const [sel, setSel] = React.useState(null);
+  React.useEffect(() => { const on = (e) => { setSel(null); setT(e.detail || null); }; window.addEventListener('lp:stage-fpy', on); return () => window.removeEventListener('lp:stage-fpy', on); }, []);
   if (!t) return null;
   // the same stage written by its code on an entry ("FQC") and by its name in the setup: one row
   const byLab = new Map();
   for (const x of t.stages || []) {
     const k = String(x.label || x.name).trim().toUpperCase();
-    const o = byLab.get(k) || { ...x, rej: 0, rwk: 0, defects: [] };
-    o.rej += x.rej || 0; o.rwk += x.rwk || 0; o.rty = o.rty || x.rty; o.defects = [...o.defects, ...(x.defects || [])].sort((p, q) => q.qty - p.qty);
+    const o = byLab.get(k) || { ...x, key: k, rej: 0, rwk: 0, dis: 0, defects: [], detail: { defects: [], models: [], lines: [], days: [], hours: [] } };
+    o.rej += x.rej || 0; o.rwk += x.rwk || 0; o.dis += x.dis || 0; o.rty = o.rty || x.rty; o.defects = [...o.defects, ...(x.defects || [])].sort((p, q) => q.qty - p.qty);
+    const d = x.detail || {};
+    o.detail = { defects: big(mergeBy(o.detail.defects, d.defects)), models: big(mergeBy(o.detail.models, d.models)), lines: mergeBy(o.detail.lines, d.lines).sort((a, b) => Number(a.name) - Number(b.name)),
+      days: mergeBy(o.detail.days, d.days).sort((a, b) => (a.name < b.name ? -1 : 1)), hours: mergeBy(o.detail.hours, d.hours).sort((a, b) => Number(a.name) - Number(b.name)) };
     byLab.set(k, o);
   }
   const st = [...byLab.values()].map((x) => ({ ...x, fpy: t.qty > 0 ? Math.max(0, 1 - (x.rej + x.rwk) / t.qty) : null }))
     .sort((a, b) => (b.rty === a.rty ? 0 : b.rty ? 1 : -1) || (a.fpy ?? 1) - (b.fpy ?? 1));
   const worst = st.filter((x) => x.rty && x.fpy != null).sort((a, b) => a.fpy - b.fpy)[0];
+  const allBad = st.reduce((a, x) => a + x.rej + x.rwk, 0);
+  const s = sel ? st.find((x) => x.key === sel) : null;
+  if (s) {
+    const n = s.rej + s.rwk, D = s.detail || {};
+    const many = (l) => (l?.length || 0) > 1;
+    return (
+      <MesDrawer title={`${s.label || s.name} · ${t.title || 'Quality'}`} sub={`FPY ${yPct(s.fpy)} = 1 − ${nf(n)} defect pcs ÷ ${nf(t.qty)} pcs made`} onClose={() => setT(null)} onBack={() => setSel(null)}
+        crumbs={[{ label: 'Stage-wise FPY', onClick: () => setSel(null) }, { label: s.label || s.name }]} label={`Stage ${s.label || s.name}`} width={60} fit minWidth={560}>
+        <div className="p-2" data-testid="stage-detail">
+          <div className="mb-3 grid grid-cols-3 gap-px overflow-hidden rounded border border-[#D4D4D4] bg-[#D4D4D4] text-center lp-stage-kpis">
+            {[['Defect pcs', nf(n), 'text-[#C00000]'], ['Rejected', nf(s.rej)], ['Rework', nf(s.rwk)], ['Dismantled', nf(s.dis)], ['FPY', yPct(s.fpy), 'text-[#0E6E2E]'], ['Of all defects', allBad > 0 ? `${Math.round((n / allBad) * 1000) / 10}%` : '—']].map(([k, v, c]) => (
+              <div key={k} className="bg-white px-2 py-1.5"><div className="text-fs-12 font-semibold text-[#555]">{k}</div><div className={`font-mono text-fs-16 font-extrabold ${c || 'text-[#1F3864]'}`}>{v}</div></div>))}
+          </div>
+          {!n ? <p className="p-3 text-fs-14 text-[#555]">No defect written at this stage in this period — FPY 100%.</p> : (<>
+            <StageTable title="Defect-wise" rows={D.defects} total={n} testid="stage-defects" />
+            <StageTable title="Model-wise" rows={D.models} total={n} testid="stage-models" />
+            {many(D.lines) && <StageTable title="Line-wise" rows={D.lines} total={n} label={(x) => `Line ${x.name}`} testid="stage-lines" />}
+            {many(D.days) ? <StageTable title="Day-wise" rows={D.days} total={n} label={(x) => dmyOf(x.name)} testid="stage-days" />
+              : <StageTable title="Hour-wise" rows={D.hours} total={n} label={(x) => hrOf(x.name)} testid="stage-hours" />}
+          </>)}
+        </div>
+      </MesDrawer>
+    );
+  }
   return (
-    <MesDrawer title={`Stage-wise FPY · ${t.title || 'Quality'}`} sub={`RTY ${yPct(t.rty)} = product of the FPY of the ${st.filter((x) => x.rty).length} stages · ${nf(t.qty)} pcs made`} onClose={() => setT(null)} label="Stage-wise FPY" width={55} fit minWidth={520}>
+    <MesDrawer title={`Stage-wise FPY · ${t.title || 'Quality'}`} sub={`RTY ${yPct(t.rty)} = product of the FPY of the ${st.filter((x) => x.rty).length} stages · ${nf(t.qty)} pcs made · click a stage for its details`} onClose={() => setT(null)} label="Stage-wise FPY" width={55} fit minWidth={520}>
       <div className="p-2" data-testid="stage-fpy">
         <div className="mb-2 grid grid-cols-3 gap-px overflow-hidden rounded border border-[#D4D4D4] bg-[#D4D4D4] text-center">
           {[['Pieces made', nf(t.qty)], ['Right first time', `${nf(Math.max(0, (t.qty || 0) - (t.fpyBad || 0)))} pcs · FPY ${yPct(fpyOf(t))}`], ['RTY', yPct(t.rty)]].map(([k, v]) => (
@@ -92,15 +158,17 @@ export function StageFpyHost() {
         </div>
         {!st.length ? <p className="p-3 text-fs-14 text-[#555]">No stage set up and no defect written in this period.</p> : (
           <table className="w-full text-fs-14">
-            <thead><tr className="bg-[#1F3864] text-left text-white">{['Stage', 'Defect pcs', 'FPY', 'In RTY', 'Top defect'].map((h) => <th key={h} className="px-2 py-1.5 font-bold">{h}</th>)}</tr></thead>
+            <thead><tr className="bg-[#1F3864] text-left text-white">{['Stage', 'Defect pcs', 'FPY', 'Top defect', ''].map((h, i) => <th key={h || i} className="px-2 py-1.5 font-bold">{h}</th>)}</tr></thead>
             <tbody>
               {st.map((x) => (
-                <tr key={x.name} className={`border-b border-[#E5E7EB] ${worst && x.name === worst.name ? 'bg-red-50' : ''}`}>
-                  <td className="px-2 py-1.5 font-semibold">{x.label || x.name}</td>
+                <tr key={x.key} role="button" tabIndex={0} data-testid={`stage-row-${x.key}`} title={`${x.label || x.name}: every defect, model, line and day`}
+                  onClick={() => setSel(x.key)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSel(x.key); } }}
+                  className={`lp-stage-row cursor-pointer border-b border-[#E5E7EB] hover:bg-blue-50 ${worst && x.key === worst.key ? 'bg-red-50' : ''}`}>
+                  <td className="px-2 py-1.5 font-semibold text-[#1F3864] underline decoration-dotted" style={{ textUnderlineOffset: 3 }}>{x.label || x.name}</td>
                   <td className={`px-2 py-1.5 text-right font-mono ${x.rej + x.rwk ? 'font-bold text-[#C00000]' : ''}`}>{nf(x.rej + x.rwk)}</td>
                   <td className="px-2 py-1.5 text-right font-mono font-bold text-[#0E6E2E]">{yPct(x.fpy)}</td>
-                  <td className="px-2 py-1.5 text-center">{x.rty ? 'Yes' : 'No'}</td>
                   <td className="px-2 py-1.5 text-[#555]">{x.defects?.[0] ? `${x.defects[0].name} (${nf(x.defects[0].qty)})` : '—'}</td>
+                  <td className="w-6 px-1 py-1.5 text-right text-fs-16 font-bold text-[#1F3864]" aria-hidden="true">›</td>
                 </tr>))}
             </tbody>
             <tfoot><tr className="bg-[#F3F3F3] font-bold"><td className="px-2 py-1.5">RTY</td><td className="px-2 py-1.5 text-right font-mono text-[#C00000]">{nf(t.fpyBad || 0)}</td><td className="px-2 py-1.5 text-right font-mono text-[#0E6E2E]">{yPct(t.rty)}</td><td colSpan={2} className="px-2 py-1.5 text-fs-12 font-semibold text-[#555]">FPY of each stage = 1 − its defects ÷ pieces made · RTY = all stage FPYs multiplied{worst ? ` · weakest: ${worst.label || worst.name}` : ''}</td></tr></tfoot>
@@ -123,7 +191,7 @@ export function factorsOf(t, zero = false) {
     { k: 'A', name: 'Availability', value: t.A, formula: 'Run Time ÷ Planned Time', lossName: 'Availability Loss', loss: t.A == null ? null : 1 - t.A,
       rows: [['Planned Time', hrs(t.plannedMin)], ['Run Time', hrs(t.actualMin)], ['Idle Time', hrs(t.lossMin), t.lossMin ? 'text-[#C00000]' : '']] },
     { k: 'P', name: 'Performance', value: t.P, formula: oleConfig().pMode === 'std' ? 'Std Time Of Output ÷ Run Time' : oleConfig().pMode === 'plan' ? 'Actual Qty ÷ Plan Target Qty (shift)' : 'Actual Qty ÷ Target Qty (run time)', lossName: 'Performance Loss', loss: t.P == null ? null : Math.max(0, 1 - t.P),
-      rows: [['Plan Target Qty', target == null ? '—' : nf(target)], ['Actual Qty', nf(t.qty)], [target != null && t.qty < target ? 'Short Qty' : 'Excess Qty', target == null ? '—' : nf(Math.abs(t.qty - target)), target != null && t.qty < target ? 'text-[#C00000]' : 'text-[#138A36]']] },
+      rows: [['Plan Target Qty', target == null ? '—' : nf(target)], ['Actual Qty', nf(t.qty)], ['Short / Excess', target == null ? '—' : signed(t.qty - target), target != null && t.qty < target ? 'text-[#C00000]' : 'text-[#138A36]']] },
     // 23-11-2026: no rejection any more (a bad piece is reworked or dismantled) — the third row is the rework; an old
     // rejection still shows in its place when the period has one
     // 26-11-2026: the formula as it is counted — Good = Actual − Rework (− Rejected); setup "rejections only": Actual − Rejected

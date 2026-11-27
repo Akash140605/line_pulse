@@ -6775,3 +6775,11 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 }
 .lp-pdash .lp-pd-var [role="listitem"]:nth-child(odd), .lp-adash .lp-ad-models [role="listitem"]:nth-child(odd) { background: #F8FAFC; }
 .lp-pdash .lp-pd-var [role="listitem"]:hover, .lp-adash .lp-ad-models [role="listitem"]:hover { background: #EFF6FF; }
+
+/* 27-11-2026 TV table: sizes follow the table's width (never cut); plain px first for TV browsers without cqw */
+.lp-tvt { container-type: inline-size; grid-template-columns: minmax(0,1.15fr) repeat(3,minmax(0,1fr)) !important; }
+.lp-tvt-fh { font-size: calc(15px * var(--fs-tv,1)); font-size: calc(min(17px, 3.1cqw) * var(--fs-tv,1)); padding-left: 8px !important; padding-right: 8px !important; }
+.lp-tvt-fl { font-size: calc(19px * var(--fs-tv,1)); font-size: calc(min(22px, 3.9cqw) * var(--fs-tv,1)); white-space: normal !important; line-height: 1.05; padding: 0 10px !important; }
+.lp-tvt-ft { font-size: calc(30px * var(--fs-tv,1)); font-size: calc(min(36px, 6.4cqw) * var(--fs-tv,1)); }
+.lp-tvt-fa { font-size: calc(40px * var(--fs-tv,1)); font-size: calc(min(52px, 8.6cqw) * var(--fs-tv,1)); }
+.lp-tvt-fp { font-size: calc(22px * var(--fs-tv,1)); font-size: calc(min(28px, 4.4cqw) * var(--fs-tv,1)); padding: 2px 8px !important; }

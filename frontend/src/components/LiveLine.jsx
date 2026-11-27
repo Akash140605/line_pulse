@@ -1340,16 +1340,16 @@ export default function LiveLine({ total, hourLabel, hourQty, model, company, av
       ['Cycle', tcTxt || '—', fmtSeconds(cyc), cycAch, tcTxt ? `${H.cycle}\nAchieved = target cycle ÷ actual cycle` : 'No target cycle for this model yet'],
     ];
     const f = (n) => ({ fontSize: `calc(${n}px * var(--fs-tv, 1))` });
-    const pill = (v) => <span className="lp-tvt-pill" style={{ ...f(30), background: v >= 100 ? '#059669' : v >= 90 ? '#D97706' : '#DC2626' }}>{v}%</span>;
+    const pill = (v) => <span className="lp-tvt-pill lp-tvt-fp" style={{ background: v >= 100 ? '#059669' : v >= 90 ? '#D97706' : '#DC2626' }}>{v}%</span>;
     return (
       <div className="lp-tvt col-span-2 row-span-2 rounded-xl bg-white/[.07] border border-white/10" data-testid="today-table" aria-label="Target, actual and achieved">
-        {['', 'Target', 'Actual', 'Achieved'].map((h, i) => <span key={`h${i}`} className={`lp-tvt-h bg-white/10 border-b border-white/15 text-sky-100 ${i ? 'lp-tvt-c' : ''}`} style={f(17)}>{h}</span>)}
+        {['', 'Target', 'Actual', 'Achieved'].map((h, i) => <span key={`h${i}`} className={`lp-tvt-h lp-tvt-fh bg-white/10 border-b border-white/15 text-sky-100 ${i ? 'lp-tvt-c' : ''}`}>{h}</span>)}
         {rows.map(([lab, t, a, c, hint], r) => (
           <React.Fragment key={lab}>
-            <span title={hint} className={`lp-tvt-lab text-sky-100 ${r < 2 ? 'border-b border-white/10' : ''}`} style={f(22)}>{lab}</span>
-            <span title={hint} className={`lp-tvt-c lp-tvt-t font-mono tabular-nums text-sky-300 ${r < 2 ? 'border-b border-white/10' : ''}`} style={f(String(t).length > 4 ? 30 : 36)} data-testid={r === 0 ? 'tv-today-target' : undefined}>{t}</span>
-            <span title={hint} className={`lp-tvt-c lp-tvt-a font-mono tabular-nums text-white ${r < 2 ? 'border-b border-white/10' : ''}`} style={f(String(a).length > 4 ? 40 : 50)}>{a}</span>
-            <span title={hint} className={`lp-tvt-c ${r < 2 ? 'border-b border-white/10' : ''}`}>{c == null ? <span className="font-mono font-bold text-sky-100" style={f(26)}>—</span> : pill(c)}</span>
+            <span title={hint} className={`lp-tvt-lab lp-tvt-fl text-sky-100 ${r < 2 ? 'border-b border-white/10' : ''}`}>{lab}</span>
+            <span title={hint} className={`lp-tvt-c lp-tvt-t lp-tvt-ft font-mono tabular-nums text-sky-300 ${r < 2 ? 'border-b border-white/10' : ''}`} style={{ '--n': String(t).length }} data-testid={r === 0 ? 'tv-today-target' : undefined}>{t}</span>
+            <span title={hint} className={`lp-tvt-c lp-tvt-a lp-tvt-fa font-mono tabular-nums text-white ${r < 2 ? 'border-b border-white/10' : ''}`} style={{ '--n': String(a).length }}>{a}</span>
+            <span title={hint} className={`lp-tvt-c ${r < 2 ? 'border-b border-white/10' : ''}`}>{c == null ? <span className="lp-tvt-ft font-mono font-bold text-sky-100">—</span> : pill(c)}</span>
           </React.Fragment>
         ))}
         {noTgtDay > 0 && <span className="lp-tvt-foot text-sky-100" style={f(14)}>{noTgtDay} pcs without a cycle time — not counted in Achieved</span>}

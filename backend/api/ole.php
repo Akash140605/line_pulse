@@ -445,7 +445,7 @@ try {
             if ($status === 'closed' && !$isAdmin && trim((string)($it['action'] ?? '')) === '') store_fail(400, 'Write the corrective action before closing.');
             $td = (string)($it['targetDate'] ?? '');
             // 20-11-2026: 5-Why (why 1 … why 5) and the close date (the day the action was done; today when closed without one)
-            $whys = array_slice(array_map(fn($w) => ole_txt($w, 300), array_values((array)($it['whys'] ?? []))), 0, 5);
+            $whys = array_slice(array_map(fn($w) => ole_txt($w, 300), array_values((array)($it['whys'] ?? []))), 0, 7);   // 27-11-2026: up to 7 whys (3 at least on the form)
             while ($whys && end($whys) === '') array_pop($whys);
             $cd = (string)($it['closeDate'] ?? '');
             $cd = preg_match('/^\d{4}-\d{2}-\d{2}$/', $cd) ? $cd : '';

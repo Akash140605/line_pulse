@@ -6704,3 +6704,6 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 
 /* 27-11-2026 Daily CAPA: a field filled by itself */
 .lp-autofill{background:#f0f9ff!important;border-color:#7dd3fc!important}
+
+/* 27-11-2026 CAPA verification */
+.lp-amber-solid{background:#b45309}

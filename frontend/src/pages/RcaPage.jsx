@@ -8,7 +8,7 @@ import { savedUi } from '../hooks/useUiSettings';
 import { api } from '../api';
 import { useAllLineSettings } from '../hooks/useLineSettings';
 import { serverToday } from '../utils/serverTime';
-import { oleRange, issuesOf, rcaStatus, KIND_TEXT, needsRca, RCA_FROM } from '../utils/ole';
+import { oleRange, issuesOf, rcaStatus, KIND_TEXT, needsRca, RCA_FROM, normEntry } from '../utils/ole';
 import { deptName } from '../utils/lossan';
 import { RCA_CATS, RCA_CAT_HINT, guessRcaCat, guessDept } from '../utils/deptRules';
 import { nf, dmy, p2, inp, card, StatusChip, useOleLines, monthOf, monthRange, useOleData } from '../components/OleParts';
@@ -106,11 +106,69 @@ export default function RcaPage({ isAdmin = false, myDept = '' }) {
   );
 }
 
+/**
+ * 27-11-2026: what the assembly line wrote about one loss (date, line, kind, reason) — read from the hourly loss entries
+ * of that day: pieces / minutes by hour, model and stage, pieces dismantled, and the cause / action / owner written there.
+ */
+export function lossFacts(entries, i) {
+  const o = { value: 0, dis: 0, hours: new Map(), models: new Map(), stages: new Map(), cause: '', action: '', owner: '', found: false };
+  const list = { stop: 'stops', loss: 'losses', reject: 'rejects', rework: 'rework' }[i.kind];
+  const num = i.kind === 'stop' || i.kind === 'loss' ? 'min' : 'qty';
+  const pre = `${i.date}|${Number(i.line)}|`;
+  for (const [k, raw] of Object.entries(entries || {})) {
+    if (!k.startsWith(pre)) continue;
+    const h = Number(k.slice(pre.length)); const e = normEntry(raw);
+    for (const x of e[list] || []) {
+      if ((x.reason || 'Not given') !== i.reason) continue;
+      const v = Number(x[num]) || 0; if (!(v > 0)) continue;
+      o.found = true; o.value += v; o.dis += Number(x.dismantle) || 0;
+      o.hours.set(h, (o.hours.get(h) || 0) + v);
+      if (x.model) o.models.set(x.model, (o.models.get(x.model) || 0) + v);
+      if (x.station) o.stages.set(x.station, (o.stages.get(x.station) || 0) + v);
+      if (!o.cause && x.cause) o.cause = String(x.cause).trim();
+      if (!o.action && x.action) o.action = String(x.action).trim();
+      if (!o.owner && x.owner) o.owner = String(x.owner).trim();
+    }
+  }
+  return o;
+}
+const sortV = (m) => [...m.entries()].sort((a, b) => b[1] - a[1]);
+/** the problem as the line would say it: what, how many, where, which model, when */
+export function problemText(i, F) {
+  const u = i.kind === 'stop' || i.kind === 'loss' ? 'min' : 'pcs';
+  const q = u === 'min' ? `${nf(F.value)} min` : `${nf(F.value)} pcs${F.dis ? ` (${nf(F.value - F.dis)} passed after rework, ${nf(F.dis)} dismantled)` : ''}`;
+  const st = sortV(F.stages).map(([s]) => s).join(', ');
+  const md = sortV(F.models).map(([m, v]) => `${m} ${nf(v)}`).join(', ');
+  const hr = [...F.hours.entries()].sort((a, b) => a[0] - b[0]).map(([h, v]) => `${p2(h)}:00–${p2(h + 1)}:00 (${nf(v)})`).join(', ');
+  return `${KIND_TEXT[i.kind] || 'Loss'}: ${i.reason} — ${q}${st ? ` at ${st}` : ''}, Line ${i.line}, ${dmy(i.date)}${hr ? `, hours ${hr}` : ''}${md ? `. Models: ${md}` : ''}.`;
+}
+
+// 27-11-2026: why-why — 3 at least, '+ Why' up to 7
+export const MIN_WHY = 3, MAX_WHY = 7;
+const nWhy0 = (x) => Math.min(MAX_WHY, Math.max(MIN_WHY, x?.whys?.length || 0, x?.capa?.whyQ?.length || 0));
+const whyAsk = (prev) => (String(prev || '').trim() ? `Why ${String(prev).trim().replace(/[.?!]+$/, '')}?` : '');
+
 export function RcaDialog({ i, x, canWrite, isAdmin, onClose, onSaved }) {
   const head = useMemo(() => capaHead(savedUi().capa), []);
-  const [f, setF] = useState({ cat: x?.cat || guessRcaCat(i.reason, i.dept || x?.dept), rootCause: x?.rootCause || '', whys: [0, 1, 2, 3, 4].map((k) => x?.whys?.[k] || ''), action: x?.action || '', preventive: x?.preventive || '', owner: x?.owner || '', targetDate: x?.targetDate || '', closeDate: x?.closeDate || '', status: x?.status || 'submitted', evidence: x?.evidence || [],
+  const [f, setF] = useState({ cat: x?.cat || guessRcaCat(i.reason, i.dept || x?.dept), rootCause: x?.rootCause || '', whys: Array.from({ length: nWhy0(x) }, (_, k) => x?.whys?.[k] || ''), action: x?.action || '', preventive: x?.preventive || '', owner: x?.owner || '', targetDate: x?.targetDate || '', closeDate: x?.closeDate || '', status: x?.status || 'submitted', evidence: x?.evidence || [],
     // 24-11-2026: the paper CAPA form (Corrective and Preventive Action Plan)
-    capa: { ...EMPTY_CAPA, hall: head.hall, ...(x?.capa || {}), whyQ: [0, 1, 2, 3, 4].map((k) => x?.capa?.whyQ?.[k] || '') } });
+    capa: { ...EMPTY_CAPA, hall: head.hall, ...(x?.capa || {}), whyQ: Array.from({ length: nWhy0(x) }, (_, k) => x?.capa?.whyQ?.[k] || '') } });
+  // 27-11-2026: the assembly line's own record of this loss fills the form (only the boxes still empty)
+  const [F, setFacts] = useState(null);
+  useEffect(() => {
+    let live = true;
+    api.oleEntries(i.date, i.date).then((e) => {
+      if (!live) return;
+      const fx = lossFacts(e?.entries, i); setFacts(fx);
+      if (!fx.found) return;
+      setF((o) => ({ ...o,
+        rootCause: o.rootCause || fx.cause, action: o.action || fx.action, owner: o.owner || fx.owner,
+        capa: { ...o.capa, equip: o.capa.equip || sortV(fx.stages).map(([s]) => s).join(', ').slice(0, 80), problem: o.capa.problem || problemText(i, fx).slice(0, 1000),
+          correction: o.capa.correction || (i.kind === 'rework' || i.kind === 'reject' ? `Suspect pieces checked and reworked${fx.dis ? `; ${nf(fx.dis)} dismantled` : ''}.` : ''), caResp: o.capa.caResp || o.owner || fx.owner },
+      }));
+    }).catch(() => setFacts({ found: false }));
+    return () => { live = false; };
+  }, [i.date, i.line, i.kind, i.reason]); // eslint-disable-line react-hooks/exhaustive-deps
   const [busy, setBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -122,11 +180,15 @@ export function RcaDialog({ i, x, canWrite, isAdmin, onClose, onSaved }) {
     // 20-11-2026: 5-Why — the last why written is the root cause when the box is left empty
     const lastWhy = [...f.whys].reverse().find((w) => w.trim()) || '';
     const rootCause = f.rootCause.trim() || lastWhy.trim();
-    if (!rootCause) { setErr('Write the root cause (or the 5 whys).'); return; }
+    const answered = f.whys.filter((w) => w.trim()).length;
+    if (answered < MIN_WHY) { setErr(`Write at least ${MIN_WHY} whys (why → answer → why again). ${answered} written.`); return; }
+    if (!rootCause) { setErr('Write the root cause (or the whys).'); return; }
     if (!RCA_CATS.includes(f.cat)) { setErr('Choose the category of the root cause (6M).'); return; }
     if (status === 'closed' && !f.action.trim()) { setErr('Write the corrective action before closing.'); return; }
     setBusy(true);
-    try { await api.saveRca([{ date: i.date, line: Number(i.line), kind: i.kind, reason: i.reason, ...f, rootCause, whys: f.whys.map((w) => w.trim()), evidence: f.evidence.map((e) => ({ id: e.id })), closeDate: status === 'closed' ? (f.closeDate || serverToday()) : '', status }]); onSaved(); }
+    // an empty why question becomes "Why <the answer before>?"
+    const capa = { ...f.capa, whyQ: f.whys.map((_, k) => (f.capa.whyQ[k] || '').trim() || (k === 0 ? `Why did ${i.reason} happen?` : whyAsk(f.whys[k - 1]))) };
+    try { await api.saveRca([{ date: i.date, line: Number(i.line), kind: i.kind, reason: i.reason, ...f, capa, rootCause, whys: f.whys.map((w) => w.trim()), evidence: f.evidence.map((e) => ({ id: e.id })), closeDate: status === 'closed' ? (f.closeDate || serverToday()) : '', status }]); onSaved(); }
     catch (e) { setErr(`Could not save: ${e.message}`); setBusy(false); }
   };
   const pdf = async () => {
@@ -159,25 +221,48 @@ export function RcaDialog({ i, x, canWrite, isAdmin, onClose, onSaved }) {
             </div>
             <span className="text-fs-12 text-slate-500">{RCA_CAT_HINT[f.cat] || ''}</span>
           </fieldset>
+          {/* 27-11-2026: the assembly line facts of this loss, from the loss entry (read only) */}
+          <fieldset className={sec} aria-label="Assembly line details" data-testid="rca-line-facts">
+            <legend className={leg}>Assembly line details <span className="font-normal text-slate-500">(from the loss entry)</span></legend>
+            {!F ? <span className="text-fs-13 text-slate-500">Reading the loss entry …</span> : !F.found ? <span className="text-fs-13 text-slate-500">No hourly entry found for this {i.kind === 'stop' || i.kind === 'loss' ? 'reason' : 'defect'}.</span> : (
+              <div className="grid gap-2 text-fs-13" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
+                <div><div className="text-fs-11 font-bold uppercase text-slate-500">Line · date</div><b>Line {i.line}</b> · {dmy(i.date)}</div>
+                <div><div className="text-fs-11 font-bold uppercase text-slate-500">Department</div><b>{deptName(i.dept || x?.dept) || guessDept(i.kind, i.reason)}</b></div>
+                {i.kind === 'stop' || i.kind === 'loss'
+                  ? <div><div className="text-fs-11 font-bold uppercase text-slate-500">Idle time</div><b className="font-mono text-red-700">{nf(F.value)} min</b></div>
+                  : <div data-testid="rca-qty"><div className="text-fs-11 font-bold uppercase text-slate-500">Rework · passed · dismantle</div><b className="font-mono text-red-700">{nf(F.value)}</b> · <b className="font-mono text-emerald-700">{nf(F.value - F.dis)}</b> · <b className="font-mono text-amber-700">{nf(F.dis)}</b> pcs</div>}
+                <div><div className="text-fs-11 font-bold uppercase text-slate-500">Stage</div>{sortV(F.stages).map(([s, v]) => <div key={s}><b>{s}</b>{F.stages.size > 1 && <span className="font-mono text-slate-500"> · {nf(v)}</span>}</div>)}{!F.stages.size && '—'}</div>
+                <div><div className="text-fs-11 font-bold uppercase text-slate-500">Model</div>{sortV(F.models).map(([m, v]) => <div key={m} className="flex justify-between gap-2"><span className="font-mono">{m}</span><b className="font-mono">{nf(v)}</b></div>)}{!F.models.size && '—'}</div>
+                <div data-testid="rca-hours"><div className="text-fs-11 font-bold uppercase text-slate-500">Hour</div>{[...F.hours.entries()].sort((a, b) => a[0] - b[0]).map(([h, v]) => <div key={h} className="flex justify-between gap-2"><span className="font-mono">{p2(h)}:00–{p2(h + 1)}:00</span><b className="font-mono">{nf(v)}</b></div>)}</div>
+              </div>)}
+          </fieldset>
           <div className="grid gap-3 sm:grid-cols-3">
-            <label className={L}>Equipment<input disabled={!canWrite} className={inp} value={f.capa.equip} maxLength={80} onChange={(e) => setC('equip', e.target.value)} placeholder="Machine / station" aria-label="Equipment" /></label>
+            <label className={L}>Stage / fixture<input disabled={!canWrite} className={inp} value={f.capa.equip} maxLength={80} onChange={(e) => setC('equip', e.target.value)} placeholder="Stage, fixture or tool on the line" aria-label="Stage / fixture" /></label>
             <label className={L}>Hall no.<input disabled={!canWrite} className={inp} value={f.capa.hall} maxLength={40} onChange={(e) => setC('hall', e.target.value)} aria-label="Hall no" /></label>
             <label className={L}>Date<input disabled className={inp} value={dmy(i.date)} aria-label="Date" /></label>
           </div>
-          <label className={L}>Identification of problem<textarea disabled={!canWrite} className={ta} value={f.capa.problem} maxLength={1000} onChange={(e) => setC('problem', e.target.value)} placeholder={`${KIND_TEXT[i.kind]}: ${i.reason} — Line ${i.line}, ${dmy(i.date)} (written like this when left empty)`} aria-label="Identification of problem" /></label>
-          <label className={L}>Correction <span className="font-normal text-slate-500">(done at once, on the spot)</span><textarea disabled={!canWrite} className={ta} value={f.capa.correction} maxLength={1000} onChange={(e) => setC('correction', e.target.value)} aria-label="Correction" /></label>
+          <label className={L}>Identification of problem <span className="font-normal text-slate-500">(what · how many · where · model · hour)</span><textarea disabled={!canWrite} className={ta} value={f.capa.problem} maxLength={1000} onChange={(e) => setC('problem', e.target.value)} placeholder={`${KIND_TEXT[i.kind]}: ${i.reason} — Line ${i.line}, ${dmy(i.date)} (written like this when left empty)`} aria-label="Identification of problem" /></label>
+          <label className={L}>Correction / containment <span className="font-normal text-slate-500">(done at once on the line)</span><textarea disabled={!canWrite} className={ta} value={f.capa.correction} maxLength={1000} onChange={(e) => setC('correction', e.target.value)} placeholder={i.kind === 'stop' || i.kind === 'loss' ? 'e.g. material arranged, line restarted, operator shifted' : 'e.g. WIP and line stock checked 100%, suspect pieces segregated and reworked'} aria-label="Correction" /></label>
           <fieldset className={sec} aria-label="Why-why analysis">
-            <legend className={leg}>Why-why analysis</legend>
+            <legend className={leg}>Why-why analysis <span className="font-normal text-slate-500">({f.whys.filter((w) => w.trim()).length} of {MIN_WHY} needed)</span></legend>
             {f.whys.map((w, k) => (
               <div key={k} className="grid items-center gap-1.5" style={{ gridTemplateColumns: '52px minmax(0,1fr) 32px minmax(0,1fr)' }}>
                 <span className="text-fs-13 font-extrabold text-[#1F3864]">Why {k + 1}</span>
-                <input disabled={!canWrite} className={inp} value={f.capa.whyQ[k]} maxLength={300} aria-label={`Why ${k + 1} question`} placeholder={k === 0 ? 'Why did it happen?' : `Why? (from answer ${k})`}
+                <input disabled={!canWrite} className={inp} value={f.capa.whyQ[k]} maxLength={300} aria-label={`Why ${k + 1} question`} placeholder={k === 0 ? (i.kind === 'stop' || i.kind === 'loss' ? 'Why did the line stop?' : `Why did "${i.reason}" come${F?.stages?.size ? ` at ${sortV(F.stages)[0][0]}` : ''}?`) : whyAsk(f.whys[k - 1]) || `Why? (from answer ${k})`}
                   onChange={(e) => setF((o) => ({ ...o, capa: { ...o.capa, whyQ: o.capa.whyQ.map((v, j) => (j === k ? e.target.value : v)) } }))} />
                 <span className="text-fs-13 font-bold text-slate-600">Ans.</span>
-                <input disabled={!canWrite} className={inp} value={w} maxLength={300} aria-label={`Why ${k + 1} answer`} placeholder="Answer"
+                <input disabled={!canWrite} className={`${inp} ${k < MIN_WHY && err && !w.trim() ? 'border-red-500 bg-red-50' : ''}`} value={w} maxLength={300} aria-label={`Why ${k + 1} answer`} placeholder={k < MIN_WHY ? 'Answer (needed)' : 'Answer'}
                   onChange={(e) => setF((o) => ({ ...o, whys: o.whys.map((v, j) => (j === k ? e.target.value : v)) }))} />
               </div>
             ))}
+            {canWrite && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" disabled={f.whys.length >= MAX_WHY} data-testid="why-add" onClick={() => setF((o) => ({ ...o, whys: [...o.whys, ''], capa: { ...o.capa, whyQ: [...o.capa.whyQ, ''] } }))}
+                  className="h-8 rounded-lg border border-blue-700 bg-white px-3 text-fs-13 font-bold text-blue-800 hover:bg-blue-50 disabled:opacity-40">+ Why</button>
+                {f.whys.length > MIN_WHY && <button type="button" data-testid="why-remove" onClick={() => setF((o) => ({ ...o, whys: o.whys.slice(0, -1), capa: { ...o.capa, whyQ: o.capa.whyQ.slice(0, -1) } }))}
+                  className="h-8 rounded-lg border border-slate-300 bg-white px-3 text-fs-13 font-bold text-slate-600 hover:bg-slate-100">− Remove last</button>}
+                <span className="text-fs-12 text-slate-500">{MIN_WHY} whys at least · up to {MAX_WHY} · ask why again on each answer till the real cause comes</span>
+              </div>)}
           </fieldset>
           <label className={L}>Root cause <span className="font-normal text-slate-500">(the last answer if left empty)</span><textarea disabled={!canWrite} className={ta} value={f.rootCause} onChange={(e) => set('rootCause', e.target.value)} maxLength={1000} aria-label="Root cause" /></label>
           <fieldset className={sec} aria-label="Implementation of action plan">

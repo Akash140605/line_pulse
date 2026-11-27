@@ -26,7 +26,9 @@ const KIND = { stop: 'Planned stoppage', loss: 'Unplanned loss', reject: 'Reject
 export function capaRows(r = {}, head = {}) {
   const c = { ...EMPTY_CAPA, ...(r.capa || {}) };
   const H = capaHead(head);
-  const whys = [0, 1, 2, 3, 4].map((k) => ({ q: c.whyQ?.[k] || '', a: r.whys?.[k] || '' }));
+  // 27-11-2026: as many whys as written (3 at least, 7 at most)
+  const nW = Math.min(7, Math.max(3, (c.whyQ || []).length, (r.whys || []).length));
+  const whys = Array.from({ length: nW }, (_, k) => ({ q: c.whyQ?.[k] || (k === 0 && r.whys?.[0] ? `Why did ${r.reason || 'it'} happen?` : k > 0 && r.whys?.[k - 1] ? `Why ${String(r.whys[k - 1]).replace(/[.?!]+$/, '')}?` : ''), a: r.whys?.[k] || '' }));
   return {
     head: H,
     equip: c.equip || '',
@@ -120,7 +122,7 @@ function drawForm(ctx, F, page, pages, size, grow = 0) {   // grow: extra height
   // EQUIP / DATE | HALL NO | REVISE NO / REV DATE
   const h2 = 34;
   box(ctx, x0, y, c1, h2); box(ctx, x0 + c1, y, c2, h2); box(ctx, x0 + c1 + c2, y, c3, h2);
-  textIn(ctx, `EQUIP. -  ${F.equip}`, x0 + 6, y + 5, c1 - 12, { size: 10, bold: true });
+  textIn(ctx, `STAGE -  ${F.equip}`, x0 + 6, y + 5, c1 - 12, { size: 10, bold: true });
   textIn(ctx, `DATE  -  ${F.date}`, x0 + 6, y + 19, c1 - 12, { size: 10, bold: true });
   textIn(ctx, `HALL NO-  ${F.hall}`, x0 + c1 + 6, y + 11, c2 - 12, { size: 11, bold: true });
   const xr = x0 + c1 + c2, a = 62, b = 30, c = 42;

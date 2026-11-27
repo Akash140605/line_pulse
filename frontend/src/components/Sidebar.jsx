@@ -3,7 +3,7 @@ import useMediaQuery from '../hooks/useMediaQuery';
 import DixonLogo, { DixonMark } from './DixonLogo';
 import CommandPalette from './CommandPalette';
 import { FOLDER_DEFAULT, RETIRED_PAGES } from '../utils/uiSettings';
-import { Box, Barcode, Building2, LayoutDashboard, Gauge, Clock, ShieldAlert, Boxes, BarChart3, ListOrdered, TrendingUp, Sigma, ChevronsLeft, ChevronsRight, ChevronDown, ChevronRight, Folder, FolderOpen, Search, LineChart, Timer, Filter, Sparkles, Target, ClipboardList, Settings2, ClipboardCheck, Crosshair, Wrench, LayoutGrid, ShieldCheck, CalendarDays, Database, FileSpreadsheet, Sunrise, PackageX, RotateCcw, CalendarRange, ListChecks, Layers , CalendarClock, GitCompare, Menu, X } from 'lucide-react';
+import { Box, Barcode, Building2, LayoutDashboard, Gauge, Clock, ShieldAlert, Boxes, BarChart3, ListOrdered, TrendingUp, Sigma, ChevronsLeft, ChevronsRight, ChevronDown, ChevronRight, Folder, FolderOpen, Search, LineChart, Timer, Filter, Sparkles, Target, ClipboardList, Settings2, ClipboardCheck, Crosshair, Wrench, LayoutGrid, ShieldCheck, CalendarDays, Database, FileSpreadsheet, Sunrise, PackageX, RotateCcw, CalendarRange, BadgeCheck, ListChecks, Layers , CalendarClock, GitCompare, Menu, X } from 'lucide-react';
 
 export const PAGES = [
   { id: 'overview', label: 'Plant overview', icon: LayoutDashboard, color: 'text-sky-300' },
@@ -30,6 +30,7 @@ export const PAGES = [
   { id: 'capaday', label: 'Daily CAPA — rework', icon: ClipboardList, color: 'text-amber-300' },
   { id: 'idleday', label: 'Daily CAPA — idle time', icon: ClipboardList, color: 'text-sky-300' },
   { id: 'capatrack', label: 'CAPA tracker', icon: ListChecks, color: 'text-sky-300' },
+  { id: 'capaverify', label: 'CAPA verification', icon: BadgeCheck, color: 'text-sky-300' },
   { id: 'entrydash', label: 'Entry dashboard', icon: ListChecks, color: 'text-sky-300' },
   { id: 'lossan', label: 'Loss analysis', icon: BarChart3, color: 'text-sky-300' },
   { id: 'rejan', label: 'Rejection analysis', icon: PackageX, color: 'text-sky-300' },

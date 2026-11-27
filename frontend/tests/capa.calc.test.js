@@ -15,7 +15,9 @@ describe('CAPA form', () => {
     const F = capaRows(rec, {});
     expect([F.equip, F.date, F.hall]).toEqual(['Packing station', '24-11-2026', 'Hall 2']);
     expect(F.whys[0]).toEqual({ q: 'Why did line stop?', a: 'No box at line' });
-    expect(F.whys[4]).toEqual({ q: '', a: '' });
+    // 27-11-2026: 3 whys at least (more when written); an empty question asks why on the answer before
+    expect(F.whys.length).toBe(3);
+    expect(F.whys[2]).toEqual({ q: 'Why Store late?', a: '' });
     expect(F.corrective).toEqual({ text: 'Box buffer 2 h', target: '26-11-2026', resp: 'Neeraj' });
     expect(F.preventive).toEqual({ text: 'Kanban card', target: '05-12-2026', resp: 'Store head' });
     expect(F.verify.sign).toBe('QA · 28-11-2026');

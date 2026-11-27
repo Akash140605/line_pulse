@@ -75,7 +75,7 @@ export default function CapaRegisterPage() {
     catch (e) { setErr(`PDF could not be made: ${e.message}`); } finally { setPdfBusy(''); }
   };
   const excel = () => {
-    const H = ['Date', 'Line', 'Type', 'Reason', 'Department', 'Equipment', 'Hall', 'Problem', 'Correction', 'Why 1', 'Why 2', 'Why 3', 'Why 4', 'Why 5', 'Root cause', 'Corrective action', 'CA target', 'CA responsibility',
+    const H = ['Date', 'Line', 'Type', 'Reason', 'Department', 'Stage / fixture', 'Hall', 'Problem', 'Correction', 'Why 1', 'Why 2', 'Why 3', 'Why 4', 'Why 5', 'Root cause', 'Corrective action', 'CA target', 'CA responsibility',
       'Preventive action', 'PA target', 'PA responsibility', 'Status', 'Overdue', 'Implemented', 'Verified by', 'Verified on', 'Close date', 'Photos / files', 'Last saved'];
     const body = rows.map((r) => { const c = r.capa || {}; return [dmy(r.date), `Line ${r.line}`, KIND_TEXT[r.kind] || r.kind, r.reason, deptName(r.dept), c.equip || '', c.hall || '', c.problem || '', c.correction || '',
       ...[0, 1, 2, 3, 4].map((k) => [c.whyQ?.[k], r.whys?.[k]].filter(Boolean).join(' → ')), r.rootCause || '', r.action || '', dmy(c.caTarget || r.targetDate), c.caResp || r.owner || '',

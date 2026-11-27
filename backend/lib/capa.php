@@ -13,7 +13,7 @@ function capa_date($v): string { $v = (string)($v ?? ''); return preg_match('/^\
 function capa_clean($c): ?array
 {
     if (!is_array($c)) return null;
-    $q = array_slice(array_map(fn($w) => capa_txt($w, 300), array_values((array)($c['whyQ'] ?? []))), 0, 5);
+    $q = array_slice(array_map(fn($w) => capa_txt($w, 300), array_values((array)($c['whyQ'] ?? []))), 0, 7);
     while ($q && end($q) === '') array_pop($q);
     $impl = (string)($c['implemented'] ?? '');
     return [

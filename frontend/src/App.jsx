@@ -309,7 +309,7 @@ function MainView({ line, onLineChange, ui }) {
             <ErrorBoundary key={page}><Suspense fallback={PAGE_FALLBACK}><DailyCapaPage key={page} kind={page === 'capaday' ? 'rework' : 'idle'} isAdmin /></Suspense></ErrorBoundary>
           )}
           {page === 'capatrack' && (
-            <ErrorBoundary key="capatrack"><Suspense fallback={PAGE_FALLBACK}><CapaTrackerPage /></Suspense></ErrorBoundary>
+            <ErrorBoundary key="capatrack"><Suspense fallback={PAGE_FALLBACK}><CapaTrackerPage isAdmin /></Suspense></ErrorBoundary>
           )}
           {page === 'capaverify' && (
             <ErrorBoundary key="capaverify"><Suspense fallback={PAGE_FALLBACK}><CapaVerifyPage isAdmin /></Suspense></ErrorBoundary>
@@ -692,7 +692,7 @@ function Dashboard({ line, onLineChange, embedded = false, pageProp = null, read
               {page === 'lqentry' && <LossQualityEntryPage canEdit={!readOnly} isAdmin={!readOnly} />}
               {page === 'rca' && <RcaPage isAdmin={!readOnly} />}
               {(page === 'capaday' || page === 'idleday') && <DailyCapaPage key={page} kind={page === 'capaday' ? 'rework' : 'idle'} isAdmin={!readOnly} />}
-              {page === 'capatrack' && <CapaTrackerPage />}
+              {page === 'capatrack' && <CapaTrackerPage isAdmin={!readOnly} />}
               {page === 'capaverify' && <CapaVerifyPage isAdmin={!readOnly} />}
               {page === 'daily' && <MorningEntryPage />}
               {page === 'kpientry' && <KpiEntryPage />}
@@ -914,7 +914,7 @@ function ManagementView() {
               {page === 'custprod' && <CustomerProductionPage />}
               {page === 'rcadash' && <RcaDashboardPage onOpen={setPage} canOpen={pages.map((p) => p.id)} />}
               {(page === 'capaday' || page === 'idleday') && <DailyCapaPage key={page} kind={page === 'capaday' ? 'rework' : 'idle'} isAdmin={false} />}
-              {page === 'capatrack' && <CapaTrackerPage />}
+              {page === 'capatrack' && <CapaTrackerPage myDept={me?.dept || ''} />}
               {page === 'capaverify' && <CapaVerifyPage isAdmin={false} />}
               {page === 'lossan' && <LossAnalysisPage onOpen={setPage} canOpen={pages.map((p) => p.id)} />}
               {(page === 'rejan' || page === 'rwkan') && <QualityAnalysisPage key={page} kind={page === 'rejan' ? 'reject' : 'rework'} onOpen={setPage} canOpen={pages.map((p) => p.id)} />}

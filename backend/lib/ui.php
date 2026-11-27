@@ -337,6 +337,7 @@ const UI_NOTIFY_RULES = [
     'lossPending' => [['admin', 'sup'], ['min', 'num', 30, 5, 240]],
     'morning' => [['admin', 'sup'], ['at', 'time', '09:30']],
     'rejects' => [['admin', 'dept', 'view'], ['pcs', 'num', 10, 1, 1000]],
+    'capa' => [['admin', 'dept'], ['days', 'num', 1, 0, 30]],   // 27-11-2026: CAPA loop follow-up
 ];
 function ui_notify($n): array
 {

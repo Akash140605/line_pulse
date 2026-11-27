@@ -79,10 +79,25 @@ export default function CapaVerifyPage({ isAdmin = true }) {
   const [line, setLine] = useState('all');
   const [dept, setDept] = useState('all');
   const [show, setShow] = useState('toverify');
+  // 27-11-2026: the admin takes out RCAs saved by mistake (to the archive) and can put them back
+  const [sel, setSel] = useState(() => new Set());
+  const [arc, setArc] = useState(null);
+  const [note, setNote] = useState(null);
+  const keyOf = (r) => `${r.date}|${r.line}|${r.kind}|${r.reason}`;
   const depts = [...new Set(rows.map((r) => r.dept))].sort();
   const base = rows.filter((r) => (line === 'all' || String(r.line) === line) && (dept === 'all' || r.dept === dept));
-  const T = { all: base.length, toverify: base.filter((r) => r.vs === 'toverify').length, due: base.filter((r) => r.due).length, effective: base.filter((r) => r.vs === 'effective').length, noteff: base.filter((r) => r.vs === 'noteff').length };
-  const shown = base.filter((r) => show === 'all' || (show === 'due' ? r.due : r.vs === show));
+  const T = { few: base.filter((r) => r.nWhy < 3).length, all: base.length, toverify: base.filter((r) => r.vs === 'toverify').length, due: base.filter((r) => r.due).length, effective: base.filter((r) => r.vs === 'effective').length, noteff: base.filter((r) => r.vs === 'noteff').length };
+  const shown = base.filter((r) => show === 'all' || (show === 'few' ? r.nWhy < 3 : show === 'due' ? r.due : r.vs === show));
+  const removeSel = async () => {
+    const keys = [...sel].filter((k) => shown.some((r) => keyOf(r) === k));
+    if (!keys.length) return;
+    if (!window.confirm(`Take out ${keys.length} RCA${keys.length > 1 ? 's' : ''}? They go to the archive (not deleted) and can be put back from "Removed".`)) return;
+    setNote(null);
+    try { const r = await api.rcaRemove(keys); setNote({ bad: false, text: `${r?.moved ?? keys.length} RCA taken out — kept in the archive ("Removed").` }); setSel(new Set()); setArc(null); setTick((t) => t + 1); }
+    catch (e) { setNote({ bad: true, text: `Could not take out: ${e.message}` }); }
+  };
+  const loadArc = async () => { try { const r = await api.rcaRemoved(); setArc(r?.items || []); } catch (e) { setNote({ bad: true, text: `Archive could not be read: ${e.message}` }); } };
+  const restore = async (k) => { try { await api.rcaRestore([k]); setNote({ bad: false, text: 'Put back.' }); await loadArc(); setTick((t) => t + 1); } catch (e) { setNote({ bad: true, text: `Could not put back: ${e.message}` }); } };
   const [open, setOpen] = useState(null);
   const head = useMemo(() => capaHead(savedUi().capa), []);
   const [pdfBusy, setPdfBusy] = useState('');
@@ -114,21 +129,46 @@ export default function CapaVerifyPage({ isAdmin = true }) {
         <Tile k="effective" name="Effective" value={T.effective} tone="text-emerald-700" />
         <Tile k="noteff" name="Not effective" value={T.noteff} tone={T.noteff ? 'text-amber-700' : 'text-slate-900'} />
       </div>
+      {isAdmin && (
+        <div className="flex flex-wrap items-center gap-2 no-print" aria-label="Clean up">
+          <button type="button" onClick={() => setShow('few')} aria-pressed={show === 'few'} data-testid="cv-few" className={`rounded-lg border px-3 py-1.5 text-fs-13 font-bold ${show === 'few' ? 'border-amber-700 bg-amber-100 text-amber-900' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'}`}>Saved with less than 3 whys <span className="font-mono">{T.few}</span></button>
+          <button type="button" disabled={!sel.size} onClick={removeSel} data-testid="cv-remove" className="rounded-lg border border-red-600 bg-white px-3 py-1.5 text-fs-13 font-bold text-red-700 hover:bg-red-50 disabled:opacity-40">Take out selected ({sel.size})</button>
+          <button type="button" onClick={() => (arc ? setArc(null) : loadArc())} data-testid="cv-archive" className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-fs-13 font-bold text-slate-700 hover:bg-slate-100">{arc ? 'Hide removed' : 'Removed (archive)'}</button>
+          <span className="text-fs-12 text-slate-500">Taken out = moved to the archive, never deleted; it can be put back.</span>
+        </div>)}
+      {note && <div role="status" className={`rounded-xl border px-4 py-2 text-fs-13 font-semibold ${note.bad ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>{note.text}</div>}
+      {arc && (
+        <section className={card} aria-label="Removed RCAs" data-testid="cv-arc">
+          <h3 className="lp-caps mb-2 border-l-4 border-dixon-navy pl-2 text-fs-15 font-extrabold tracking-wide text-dixon-navy">Removed RCAs (archive) · {arc.length}</h3>
+          {!arc.length ? <p className="text-fs-13 text-slate-500">Nothing removed.</p> : (
+            <div className="overflow-auto" style={{ maxHeight: 320 }}>
+              <table className="w-full text-fs-13">
+                <thead><tr>{['Date', 'Line', 'Defect / reason', 'Root cause', 'Action', 'Removed by', ''].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
+                <tbody>{[...arc].reverse().map((a, j) => (
+                  <tr key={`${a.key}|${j}`}>
+                    <td className={td}>{dmy(a.rec?.date)}</td><td className={td}>Line {a.rec?.line}</td><td className={td}><b>{a.rec?.reason}</b></td>
+                    <td className={td}>{a.rec?.rootCause}</td><td className={td}>{a.rec?.action}</td><td className={`${td} whitespace-nowrap`}>{a.removedBy} · {a.removedAt}</td>
+                    <td className={td}><button type="button" onClick={() => restore(a.key)} className="rounded-lg border border-slate-300 px-2 py-1 text-fs-12 font-bold text-slate-700 hover:bg-slate-100">Put back</button></td>
+                  </tr>))}</tbody>
+              </table>
+            </div>)}
+        </section>)}
 
       {err && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-fs-13 font-semibold text-red-800">{err}</div>}
       <section className={card} aria-label="CAPA to verify">
         <h3 className="lp-caps mb-2 border-l-4 border-dixon-navy pl-2 text-fs-15 font-extrabold tracking-wide text-dixon-navy">
-          {{ all: 'All actions', toverify: 'To verify', due: 'Verification due', effective: 'Verified — effective', noteff: 'Verified — not effective' }[show]} <span className="font-normal text-slate-500">· {shown.length}</span>
+          {{ few: 'Saved with less than 3 whys', all: 'All actions', toverify: 'To verify', due: 'Verification due', effective: 'Verified — effective', noteff: 'Verified — not effective' }[show]} <span className="font-normal text-slate-500">· {shown.length}</span>
         </h3>
         {!data && !err ? <p className="text-fs-14 text-slate-500">Reading the CAPAs …</p> : !shown.length ? <p className="text-fs-14 text-slate-500">Nothing here.</p> : (
           <div className="overflow-x-auto">
             <table className="w-full text-fs-13 tabular-nums" style={{ minWidth: 1300 }} data-testid="cv-table">
-              <thead><tr>{['Date', 'Line', 'Defect / reason', 'Dept.', 'Root cause', 'Whys', 'Corrective action', 'Responsibility', 'Target', `${WIN} days before`, `${WIN} days after action`, 'Verification', ''].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
+              <thead><tr>{isAdmin && <th className={th}><input type="checkbox" aria-label="Select all shown" checked={shown.length > 0 && shown.every((r) => sel.has(keyOf(r)))} onChange={(e) => setSel(e.target.checked ? new Set(shown.map(keyOf)) : new Set())} /></th>}{['Date', 'Line', 'Defect / reason', 'Dept.', 'Root cause', 'Whys', 'Corrective action', 'Responsibility', 'Target', `${WIN} days before`, `${WIN} days after action`, 'Verification', ''].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
               <tbody>
                 {shown.map((r) => {
                   const better = r.after != null && r.after < r.before, worse = r.after != null && r.after > 0 && r.after >= r.before;
                   return (
                     <tr key={`${r.date}|${r.line}|${r.kind}|${r.reason}`} data-testid="cv-row" className={r.due ? 'bg-red-50/50' : ''}>
+                      {isAdmin && <td className={td}><input type="checkbox" aria-label={`Select ${r.reason} ${dmy(r.date)} Line ${r.line}`} checked={sel.has(keyOf(r))} onChange={(e) => setSel((s) => { const n = new Set(s); if (e.target.checked) n.add(keyOf(r)); else n.delete(keyOf(r)); return n; })} /></td>}
                       <td className={`${td} whitespace-nowrap font-bold`}>{dmy(r.date)}</td>
                       <td className={`${td} whitespace-nowrap`}>Line {r.line}</td>
                       <td className={td}><b>{r.reason}</b><div className="text-fs-11 font-semibold uppercase text-slate-500">{KIND_TEXT[r.kind]}</div></td>
@@ -168,7 +208,7 @@ export default function CapaVerifyPage({ isAdmin = true }) {
   );
 }
 
-function VerifyDialog({ r, onClose, onSaved, onPdf }) {
+export function VerifyDialog({ r, onClose, onSaved, onPdf }) {
   const today = serverToday();
   const me = useAuth()?.user || '';
   const c0 = r.capa || {};

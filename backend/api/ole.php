@@ -478,6 +478,45 @@ try {
         echo json_encode(['ok' => true, 'saved' => count($clean)], JSON_UNESCAPED_UNICODE);
         exit;
     }
+    // 27-11-2026: the admin takes RCAs out (saved by mistake) — never deleted: they go to the archive 'ole_rca_removed'
+    // with who / when, and can be put back (action rcaRestore). action rcaRemoved lists the archive.
+    if ($action === 'rcaRemove' || $action === 'rcaRestore' || $action === 'rcaRemoved') {
+        if (!$isAdmin) store_fail(403, 'Only the admin can remove or restore RCAs.');
+        if ($action === 'rcaRemoved') { echo json_encode(['items' => array_values(store_read('ole_rca_removed', ['items' => []])['items'] ?? [])], JSON_UNESCAPED_UNICODE); exit; }
+        $keys = [];
+        foreach ((array)($body['keys'] ?? []) as $k) { $k = (string)$k; if (preg_match('/^\d{4}-\d{2}-\d{2}\|\d{1,2}\|(stop|loss|reject|rework)\|.{1,60}$/u', $k)) $keys[$k] = true; }
+        if (!$keys || count($keys) > 500) store_fail(400, 'Send 1–500 RCA keys');
+        $now = ems_now(); $who = (string)($me['user'] ?? 'admin'); $moved = 0;
+        if ($action === 'rcaRemove') {
+            $took = [];
+            store_update('ole_rca', function (array $d) use ($keys, &$took) {
+                $list = $d['items'] ?? [];
+                foreach (array_keys($keys) as $k) if (isset($list[$k])) { $took[$k] = $list[$k]; unset($list[$k]); }
+                return ['items' => $list];
+            }, ['items' => []]);
+            if ($took) store_update('ole_rca_removed', function (array $d) use ($took, $now, $who) {
+                $arc = $d['items'] ?? [];
+                foreach ($took as $k => $r) $arc[] = ['key' => $k, 'rec' => $r, 'removedBy' => $who, 'removedAt' => $now];
+                return ['items' => array_slice($arc, -5000)];
+            }, ['items' => []]);
+            $moved = count($took);
+        } else {
+            $back = [];
+            store_update('ole_rca_removed', function (array $d) use ($keys, &$back) {
+                $arc = $d['items'] ?? []; $keep = [];
+                foreach ($arc as $a) { $k = (string)($a['key'] ?? ''); if (isset($keys[$k]) && !isset($back[$k])) $back[$k] = $a['rec']; else $keep[] = $a; }
+                return ['items' => $keep];
+            }, ['items' => []]);
+            if ($back) store_update('ole_rca', function (array $d) use ($back) {
+                $list = $d['items'] ?? [];
+                foreach ($back as $k => $r) if (!isset($list[$k])) $list[$k] = $r;   // a newer RCA written meanwhile wins
+                return ['items' => $list];
+            }, ['items' => []]);
+            $moved = count($back);
+        }
+        echo json_encode(['ok' => true, 'moved' => $moved], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
     if (!in_array($action, ['save', 'day', 'setup', 'kpi'], true)) store_fail(400, 'action must be save, day, setup, kpi, reasons or rca');
     $canFill = $isAdmin || ($me && ($me['role'] ?? '') === 'management' && !empty($me['oleEdit']));
     if (!$canFill) store_fail(403, 'This login cannot fill the OLE entries. The admin can allow it under Users and passwords.');

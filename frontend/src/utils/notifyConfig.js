@@ -21,6 +21,9 @@ export const NOTIFY_RULES = [
     param: { key: 'at', label: 'Alert after', unit: '(time of day)', kind: 'time', def: '09:30' } },
   { id: 'rejects', label: 'High rejection', about: 'The rejected quantity of a line today exceeds the set number of pieces.', sev: 'high', to: ['admin', 'dept', 'view'], page: 'qentry',
     param: { key: 'pcs', label: 'Alert above', unit: 'rejected pieces per line per day', kind: 'num', def: 10, min: 1, max: 1000 } },
+  // 27-11-2026: the CAPA loop (utils/capaLoop.js) — a department login sees only its own department's CAPAs
+  { id: 'capa', label: 'CAPA follow-up (loop)', about: 'A CAPA step is late — not written, action past its target, verification due — or the defect came back after the action. Shows the escalation (L1 owner · L2 department head · L3 plant head).', sev: 'high', to: ['admin', 'dept'], page: 'capatrack',
+    param: { key: 'days', label: 'Alert when late by', unit: 'days or more (0 = on the due day)', kind: 'num', def: 1, min: 0, max: 30 } },
 ];
 export const RULE_BY_ID = Object.fromEntries(NOTIFY_RULES.map((r) => [r.id, r]));
 export const WELCOME_DEFAULT = { on: true, title: '{greeting}, {name}', text: 'Welcome to Dixon Line Pulse. Please review the notifications for your lines.' };

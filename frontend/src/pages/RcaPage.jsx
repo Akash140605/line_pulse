@@ -184,10 +184,15 @@ export function RcaDialog({ i, x, canWrite, isAdmin, onClose, onSaved }) {
     if (answered < MIN_WHY) { setErr(`Write at least ${MIN_WHY} whys (why → answer → why again). ${answered} written.`); return; }
     if (!rootCause) { setErr('Write the root cause (or the whys).'); return; }
     if (!RCA_CATS.includes(f.cat)) { setErr('Choose the category of the root cause (6M).'); return; }
+    // 27-11-2026: saved only when complete — the action, who does it and by when
+    const miss = [!f.action.trim() && 'corrective action', !f.owner.trim() && 'responsibility', !f.targetDate && 'target date'].filter(Boolean);
+    if (miss.length) { setErr(`Fill before saving: ${miss.join(', ')}.`); return; }
     if (status === 'closed' && !f.action.trim()) { setErr('Write the corrective action before closing.'); return; }
     setBusy(true);
     // an empty why question becomes "Why <the answer before>?"
-    const capa = { ...f.capa, whyQ: f.whys.map((_, k) => (f.capa.whyQ[k] || '').trim() || (k === 0 ? `Why did ${i.reason} happen?` : whyAsk(f.whys[k - 1]))) };
+    // 27-11-2026 (CAPA loop): a not-effective action done again goes back to verification
+    const redo = status === 'closed' && (f.capa.implemented === 'no' || f.capa.implemented === 'partly');
+    const capa = { ...f.capa, ...(redo ? { implemented: '', verifyNote: `Earlier: ${f.capa.implemented === 'no' ? 'not effective' : 'partly'}${f.capa.verifyDate ? ` (${dmy(f.capa.verifyDate)})` : ''}${f.capa.verifyNote ? ` — ${f.capa.verifyNote}` : ''}`.slice(0, 300) } : {}), whyQ: f.whys.map((_, k) => (f.capa.whyQ[k] || '').trim() || (k === 0 ? `Why did ${i.reason} happen?` : whyAsk(f.whys[k - 1]))) };
     try { await api.saveRca([{ date: i.date, line: Number(i.line), kind: i.kind, reason: i.reason, ...f, capa, rootCause, whys: f.whys.map((w) => w.trim()), evidence: f.evidence.map((e) => ({ id: e.id })), closeDate: status === 'closed' ? (f.closeDate || serverToday()) : '', status }]); onSaved(); }
     catch (e) { setErr(`Could not save: ${e.message}`); setBusy(false); }
   };

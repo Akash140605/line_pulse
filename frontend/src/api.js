@@ -350,6 +350,10 @@ export const api = {
   saveOleKpi: (row) => post('ole.php', {}, { action: 'kpi', ...row }),
   /** RCA of losses (one reason of one kind on one line and day): admin or a login of that department. */
   saveRca: (items) => post('ole.php', {}, { action: 'rca', items }),
+  // 27-11-2026: RCAs saved by mistake go to the archive (never deleted) and can be put back
+  rcaRemove: (keys) => post('ole.php', {}, { action: 'rcaRemove', keys }),
+  rcaRestore: (keys) => post('ole.php', {}, { action: 'rcaRestore', keys }),
+  rcaRemoved: () => post('ole.php', {}, { action: 'rcaRemoved' }),
   /** 20-11-2026: RCA evidence (photo / PDF / Excel …) and profile pictures — files.php. data = base64 */
   uploadFile: (name, data) => post('files.php', {}, { action: 'upload', for: 'rca', name, data }),
   /** a kept file as a blob: URL (asked with the login header, kept for the session) */

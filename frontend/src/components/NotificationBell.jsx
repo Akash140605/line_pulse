@@ -10,6 +10,10 @@ import { serverNow, serverToday } from '../utils/serverTime';
 import { shiftOfDay, SHIFT_PLANT } from '../utils/shift';
 import { refreshMs } from '../utils/refreshConfig';
 import { buildNotices, receives, welcomeText, NOTIFY_RULES, groupOf, WELCOME_DEFAULT } from '../utils/notify';
+import { issuesFromEntries, loopRows } from '../utils/capaLoop';
+import { addDaysYmd } from '../utils/rcaEffect';
+import { deptName } from '../utils/lossan';
+import { guessDept } from '../utils/deptRules';
 
 /**
  * 23-11-2026: the bell in the top bar — the alerts this login receives (Setup → Notifications), newest first,
@@ -50,6 +54,8 @@ function BellInner() {
   const auto = useAutoTargets();
   const [rows, setRows] = useState(null);
   const [day, setDay] = useState(null);   // { entries, setup } of today
+  const [capa, setCapa] = useState(null);   // 27-11-2026: the CAPA loop of the last 45 days
+  const capaAt = useRef(0);
   const [tick, setTick] = useState(0);
   const [open, setOpen] = useState(false);
   const [read, setRead] = useState(() => readSet(me?.user || ''));
@@ -60,6 +66,7 @@ function BellInner() {
   const mine = useMemo(() => NOTIFY_RULES.filter((r) => receives(cfg, r.id, me)).map((r) => r.id), [cfg, me]);
   const needLive = mine.some((id) => ['offline', 'noCycle', 'lowHour', 'lossPending', 'morning'].includes(id));
   const needDay = mine.some((id) => ['lossPending', 'morning', 'rejects'].includes(id));
+  const needCapa = mine.includes('capa');
   useEffect(() => { setRead(readSet(me?.user || '')); }, [me?.user]);
   useEffect(() => {
     if (!mine.length) return undefined;
@@ -75,13 +82,21 @@ function BellInner() {
         if (!alive) return;
         if (lv.status === 'fulfilled' && lv.value) setRows((lv.value.lines || []).filter((x) => x.backup || !x.day || x.day === today));
         if (dy.status === 'fulfilled' && dy.value) setDay({ entries: dy.value.entries || {}, setup: dy.value.setup || {} });
+        // the CAPA loop: read again every 10 minutes at most
+        if (needCapa && Date.now() - capaAt.current > 600_000) {
+          capaAt.current = Date.now();
+          try {
+            const e = await api.oleEntries(addDaysYmd(today, -45), today);
+            if (alive) setCapa(loopRows(issuesFromEntries(e?.entries || {}, lines), e?.rca || {}, e?.entries || {}, today).map((r) => ({ ...r, dept: deptName(r.rec?.dept || r.dept) || guessDept(r.kind, r.reason) })));
+          } catch { /* the bell never stops the screen */ }
+        }
         setTick((t) => t + 1);
       } finally { busy.current = false; }
     };
     const t0 = setTimeout(load, 4000);   // after the page's own first reads
     const id = setInterval(load, Math.max(60_000, refreshMs('dash') * 3));
     return () => { alive = false; clearTimeout(t0); clearInterval(id); };
-  }, [mine.join(','), needLive, needDay, today]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mine.join(','), needLive, needDay, needCapa, today]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const notices = useMemo(() => {
     if (!me || !mine.length) return [];
@@ -89,9 +104,9 @@ function BellInner() {
     const lineSet = Object.fromEntries(lines.map((l) => [l, { targets: sets[l]?.targets || {}, shift: shiftOfDay(day?.setup || {}, today, l, sets[l]?.shift || null) || SHIFT_PLANT }]));
     // the bell must never stop the screens: unexpected data gives no alerts instead of an error
     try {
-      return buildNotices({ date: today, nowMin: now.getHours() * 60 + now.getMinutes(), rows: Array.isArray(rows) ? rows : null, lineSet, entries: day?.entries && typeof day.entries === 'object' ? day.entries : null, setups: day?.setup && typeof day.setup === 'object' ? day.setup : null, cfg, me, autoReady: !!auto });
+      return buildNotices({ date: today, nowMin: now.getHours() * 60 + now.getMinutes(), rows: Array.isArray(rows) ? rows : null, lineSet, entries: day?.entries && typeof day.entries === 'object' ? day.entries : null, setups: day?.setup && typeof day.setup === 'object' ? day.setup : null, cfg, me, autoReady: !!auto, capa });
     } catch (e) { console.warn('[notifications]', e); return []; }
-  }, [rows, day, sets, auto, cfg, me, mine.length, today, tick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rows, day, sets, auto, cfg, me, mine.length, today, tick, capa]); // eslint-disable-line react-hooks/exhaustive-deps
   const unread = notices.filter((n) => !read.has(n.id));
 
   const mark = (ids) => { const s = new Set(read); ids.forEach((i) => s.add(i)); setRead(s); writeSet(me.user, s); };

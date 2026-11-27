@@ -1070,3 +1070,12 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 
 /* 27-11-2026 CAPA verification */
 .lp-amber-solid{background:#b45309}
+
+/* 27-11-2026 CAPA loop */
+.lp-loop{display:flex;align-items:stretch;gap:6px;overflow-x:auto}
+.lp-loop-step{flex:1 1 0;min-width:150px;display:flex;flex-direction:column;gap:6px}
+.lp-loop-box{flex:1;text-align:left;border:1px solid #cbd5e1;border-radius:12px;background:linear-gradient(180deg,#fff,#f1f5f9);padding:8px 10px;transition:box-shadow .15s,border-color .15s}
+.lp-loop-box:hover{border-color:#60a5fa}
+.lp-loop-on{border-color:#1d4ed8!important;box-shadow:0 0 0 2px #93c5fd}
+.lp-loop-side{border:1px solid transparent;border-radius:8px;padding:3px 8px;text-align:left;font-size:12px;font-weight:700}
+.lp-loop-arrow{align-self:center;flex:0 0 auto}

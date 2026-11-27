@@ -115,10 +115,10 @@ export default function DailyCapaPage({ kind = 'rework', isAdmin = true, myDept 
       const cat = t.cat && RCA_CATS.includes(t.cat) ? t.cat : L?.cat && RCA_CATS.includes(L.cat) ? (from.cat = 'Last time', L.cat) : guessRcaCat(t.reason, t.dept);
       const targetDate = addDaysYmd(date, 7); from.targetDate = 'A week after the day';
       const whys = whys0(L?.whys); if (L?.whys?.some((w) => tidy(w))) from.whys = `Last time (${dmy(L.date)}, Line ${L.line})`;
-      o[rcaKey(t)] = { cat, rootCause, whys, action, preventive, owner, targetDate, status: 'pending', saved: false, dirty: !!rootCause, auto: !!rootCause, from };
+      o[rcaKey(t)] = { cat, rootCause, whys, action, preventive, owner, targetDate, status: 'pending', saved: false, dirty: false, auto: Object.keys(from).some((x) => x !== 'targetDate'), from };   // 27-11-2026: filled-in suggestions are saved only after someone completes the row
     }
     // a row someone is typing in is kept when the day is read again (every 20 s for today)
-    setF((prev) => { for (const k of Object.keys(o)) if (prev[k]?.dirty && !prev[k]?.auto && !o[k].saved) o[k] = prev[k]; return o; });
+    setF((prev) => { for (const k of Object.keys(o)) if (prev[k]?.dirty && !o[k].saved) o[k] = prev[k]; return o; });
   }, [top.map((t) => rcaKey(t)).join(), D.ent.rca, lastOf]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = (k, field, v) => setF((o) => ({ ...o, [k]: { ...o[k], [field]: v, dirty: true, auto: false, from: { ...(o[k]?.from || {}), [field]: undefined } } }));
   const [busy, setBusy] = useState(false);
@@ -126,23 +126,27 @@ export default function DailyCapaPage({ kind = 'rework', isAdmin = true, myDept 
   const sameDept = (a, b) => deptName(a).toLowerCase() === deptName(b).toLowerCase();
   const canWrite = (t) => isAdmin || (myDept && sameDept(myDept, t.dept));
   const dirty = top.filter((t) => f[rcaKey(t)]?.dirty && canWrite(t));
-  const save = async (close = false) => {
+  // 27-11-2026: a row is saved only when it is complete — 6M, 3 whys, root cause (or the last why), corrective action,
+  // responsibility and target date. The sheet never closes a CAPA: the action is marked done later (CAPA loop).
+  const missingOf = (r) => { const m = []; const ws = (r.whys || []).filter((w) => tidy(w)).length; if (!r.cat) m.push('6M'); if (ws < MIN_WHY) m.push(`${MIN_WHY - ws} why`); if (!tidy(r.action)) m.push('corrective action'); if (!tidy(r.owner)) m.push('responsibility'); if (!r.targetDate) m.push('target date'); return m; };
+  const save = async () => {
     setMsg(null);
     const items = [], skipped = [];
-    for (const t of (close ? top : dirty)) {
+    for (const t of dirty) {
       const r = f[rcaKey(t)]; if (!r || !canWrite(t)) continue;
       const ws = (r.whys || []).map((w) => tidy(w));
       const rc = tidy(r.rootCause) || [...ws].reverse().find(Boolean) || '';   // the last why is the root cause when the box is empty
-      if (ws.filter(Boolean).length < MIN_WHY || !rc) { if (r.dirty) skipped.push(t.reason); continue; }
+      const miss = missingOf(r);
+      if (miss.length || !rc) { skipped.push(`${t.reason} (${miss.join(', ') || 'root cause'})`); continue; }
       while (ws.length && !ws[ws.length - 1]) ws.pop();
       items.push({ date, line: Number(line), kind: t.kind, reason: t.reason, cat: r.cat, rootCause: rc, whys: ws, action: tidy(r.action), preventive: tidy(r.preventive),
-        owner: tidy(r.owner), targetDate: r.targetDate, status: close && tidy(r.action) ? 'closed' : (r.status === 'closed' ? 'closed' : 'submitted') });
+        owner: tidy(r.owner), targetDate: r.targetDate, status: r.status === 'closed' ? 'closed' : 'submitted' });
     }
-    if (!items.length) { setMsg({ bad: true, text: skipped.length ? `Write ${MIN_WHY} whys first: ${skipped.join(', ')}` : 'Nothing changed.' }); return; }
+    if (!items.length) { setMsg({ bad: true, text: skipped.length ? `Not saved — fill the row first: ${skipped.join(' · ')}` : 'Nothing changed.' }); return; }
     setBusy(true);
     try {
       await api.saveRca(items);
-      setMsg({ bad: false, text: `${items.length} saved as RCA${skipped.length ? ` · less than ${MIN_WHY} whys, not saved: ${skipped.join(', ')}` : ''}` });
+      setMsg({ bad: false, text: `${items.length} saved as RCA${skipped.length ? ` · not complete, not saved: ${skipped.join(' · ')}` : ''}` });
       D.reloadEnt?.();
     } catch (e) { setMsg({ bad: true, text: e?.message || 'Could not save.' }); }
     setBusy(false);
@@ -241,15 +245,14 @@ export default function DailyCapaPage({ kind = 'rework', isAdmin = true, myDept 
                           placeholder={fl === 'rootCause' ? 'The last why if left empty' : fl === 'action' ? 'What was done / will be done' : 'So it does not come again'} title={r.from?.[fl] || ''} className={`${inp} ${r.from?.[fl] ? 'lp-autofill' : ''}`} />{r.from?.[fl] && <div className="text-fs-10 text-slate-500">{r.from[fl]}</div>}</td>))}
                       <td className={`${td} min-w-[120px]`}><input aria-label={`Row ${i + 1} responsibility`} disabled={!can} maxLength={60} value={r.owner || ''} onChange={(e) => set(k, 'owner', e.target.value)} placeholder="Name" title={r.from?.owner || ''} className={`${inp} ${r.from?.owner ? 'lp-autofill' : ''}`} />{r.from?.owner && <div className="text-fs-10 text-slate-500">{r.from.owner}</div>}</td>
                       <td className={td} style={{ minWidth: 130 }}><input type="date" aria-label={`Row ${i + 1} target date`} disabled={!can} value={r.targetDate || ''} onChange={(e) => set(k, 'targetDate', e.target.value)} title={r.from?.targetDate || ''} className={`${inp} ${r.from?.targetDate ? 'lp-autofill' : ''}`} /></td>
-                      <td className={`${td} whitespace-nowrap`}>{r.auto && r.dirty ? <span className="rounded bg-sky-100 px-1.5 py-0.5 text-fs-12 font-bold text-sky-800" title="Filled from what is already known — check and save">auto-filled · check</span> : r.dirty ? <span className="rounded bg-amber-100 px-1.5 py-0.5 text-fs-12 font-bold text-amber-800">not saved</span> : <StatusChip st={r.status || 'pending'} />}</td>
+                      <td className={`${td} whitespace-nowrap`}>{r.dirty ? <><span className="rounded bg-amber-100 px-1.5 py-0.5 text-fs-12 font-bold text-amber-800">not saved</span>{missingOf(r).length > 0 && <div className="mt-1 text-fs-11 font-semibold text-red-700" data-testid="capa-missing">Fill: {missingOf(r).join(', ')}</div>}</> : r.auto && !r.saved ? <span className="rounded bg-sky-100 px-1.5 py-0.5 text-fs-12 font-bold text-sky-800" title="Suggestions from the loss entry / last time — complete the row, then save">suggested · complete it</span> : <StatusChip st={r.status || 'pending'} />}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
             <div className="mt-3 flex flex-wrap items-center gap-2 no-print">
-              <button type="button" disabled={busy || !dirty.length} onClick={() => save(false)} data-testid="capa-save" className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-blue-800 px-4 text-fs-14 font-bold text-white hover:bg-blue-900 disabled:opacity-50"><Save size={16} />Save sheet{dirty.length ? ` (${dirty.length})` : ''}</button>
-              {isAdmin && <button type="button" disabled={busy} onClick={() => save(true)} className="h-10 rounded-lg bg-slate-800 px-4 text-fs-14 font-bold text-white disabled:opacity-50">Save &amp; close the rows with an action</button>}
+              <button type="button" disabled={busy || !dirty.length} onClick={save} data-testid="capa-save" className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-blue-800 px-4 text-fs-14 font-bold text-white hover:bg-blue-900 disabled:opacity-50"><Save size={16} />Save sheet{dirty.length ? ` (${dirty.length})` : ''}</button>
               {msg && <span role="status" className={`text-fs-13 font-semibold ${msg.bad ? 'text-red-700' : 'text-emerald-700'}`}>{msg.text}</span>}
               <span className="ml-auto text-fs-12 text-slate-500">Saved as the RCA of each {kind === 'rework' ? 'defect' : 'reason'} — the RCA dashboard and the CAPA register show it too.</span>
             </div>

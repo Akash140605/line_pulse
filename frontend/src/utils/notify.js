@@ -54,7 +54,7 @@ const toMin = (t) => { const s = hm(t); return s ? Number(s.slice(0, 2)) * 60 + 
  *   setups   { "date|line": morning entry } of the day
  *   autoReady  the target methods are worked out (else "no cycle time" is not judged)
  */
-export function buildNotices({ date, nowMin, rows = null, lineSet = {}, entries = null, setups = null, cfg, me, autoReady = false }) {
+export function buildNotices({ date, nowMin, rows = null, lineSet = {}, entries = null, setups = null, cfg, me, autoReady = false, capa = null }) {
   const out = [];
   if (!cfg?.on || !me) return out;
   const want = (id) => receives(cfg, id, me);
@@ -114,6 +114,25 @@ export function buildNotices({ date, nowMin, rows = null, lineSet = {}, entries 
     }
     for (const [L, n] of Object.entries(by)) {
       if (n > R.rejects.pcs) push('rejects', L, { id: `rejects|${date}|${L}|${Math.floor(n / Math.max(1, R.rejects.pcs))}`, at: nowMin, title: `${nameOf(L)}: high rejection`, text: `${nf(n)} pieces rejected today (limit ${nf(R.rejects.pcs)}).` });
+    }
+  }
+  // 27-11-2026: the CAPA loop — late steps and defects that came back, one alert per line (its own department for a dept login)
+  if (want('capa') && Array.isArray(capa)) {
+    const myDept = me.role === 'admin' ? '' : String(me.dept || '').trim().toLowerCase();
+    const by = {};
+    for (const r of capa) {
+      if (!r || !['write', 'action', 'redo', 'verify', 'back'].includes(r.stage)) continue;
+      if (myDept && String(r.dept || '').trim().toLowerCase() !== myDept) continue;
+      const lateDays = r.due ? Math.round((new Date(`${date}T00:00:00Z`) - new Date(`${r.due}T00:00:00Z`)) / 864e5) : -1;
+      if (r.stage !== 'back' && lateDays < (R.capa?.days ?? 1)) continue;
+      const L = String(r.line); const o = by[L] || (by[L] = { n: 0, esc: 0, st: {} });
+      o.n += 1; o.esc = Math.max(o.esc, r.esc || 0); o.st[r.stage] = (o.st[r.stage] || 0) + 1;
+    }
+    const NAME = { write: 'not written', action: 'action late', redo: 'redo late', verify: 'to verify', back: 'came back' };
+    const ESCN = ['', 'L1 owner', 'L2 department head', 'L3 plant head'];
+    for (const [L, o] of Object.entries(by)) {
+      push('capa', L, { id: `capa|${date}|${L}|${o.n}|${o.esc}`, at: nowMin, title: `${nameOf(L)}: ${o.n} CAPA step${o.n > 1 ? 's' : ''} late${o.esc ? ` — ${ESCN[o.esc]}` : ''}`,
+        text: Object.entries(o.st).map(([k, v]) => `${v} ${NAME[k]}`).join(' · ') });
     }
   }
   const rank = { high: 0, mid: 1, low: 2 };

@@ -26,7 +26,7 @@ const pc = (v) => (v == null ? '—' : `${(v * 100).toFixed(2)}%`);
 const hm = (m) => (m >= 60 ? `${Math.floor(m / 60)} h ${Math.round(m % 60)} min` : `${Math.round(m)} min`);
 
 /** the day's top reasons of a line: rework + rejection (pcs) or idle time (min), with stages, models and what the grid already says */
-function topOf(rows, kind) {
+function topOf(rows, kind, limit = TOP) {
   const m = new Map();
   for (const r of rows || []) {
     const e = r.e || normEntry(r.entry);
@@ -48,7 +48,7 @@ function topOf(rows, kind) {
       }
     }
   }
-  return [...m.values()].sort((a, b) => b.value - a.value).slice(0, TOP);
+  return [...m.values()].sort((a, b) => b.value - a.value).slice(0, limit || undefined);
 }
 
 export default function DailyCapaPage({ kind = 'rework', isAdmin = true, myDept = '' }) {
@@ -62,7 +62,9 @@ export default function DailyCapaPage({ kind = 'rework', isAdmin = true, myDept 
   const day = useMemo(() => (D.al ? oleRange({ lines: D.al.lines, settings, entries: D.ent.entries, days: D.ent.days, setups: D.ent.setup, start: date, end: date, today, nowMin: D.endMin, ids: IDS }).days?.[0] : null),
     [D.al, settings, D.ent.entries, date, today, D.endMin, IDS]);
   const rows = day?.byLine?.[line]?.rows || [];
-  const top = useMemo(() => topOf(rows, kind), [rows, kind]);
+  // 27-11-2026: every defect / reason of the day by default; Top 5 on a click
+  const [all, setAll] = useState(true);
+  const top = useMemo(() => topOf(rows, kind, all ? 0 : TOP), [rows, kind, all]);
   const Q = useMemo(() => (kind === 'rework' ? qualityOf(rows, D.ent.reasons.station || []) : null), [rows, kind, D.ent.reasons]);
   const made = rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
   const lowRty = Q?.rty != null && Q.rty < RTY_MIN;
@@ -121,6 +123,9 @@ export default function DailyCapaPage({ kind = 'rework', isAdmin = true, myDept 
         <div className="flex overflow-hidden rounded-lg border border-slate-300" role="group" aria-label="Line">
           {IDS.map((l) => <button key={l} type="button" aria-pressed={line === l} onClick={() => setLine(l)} className={`h-9 px-3 text-fs-13 font-bold ${line === l ? 'bg-blue-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}>Line {l}</button>)}
         </div>
+        <div className="flex overflow-hidden rounded-lg border border-slate-300" role="group" aria-label="Rows">
+          {[[true, 'All'], [false, `Top ${TOP}`]].map(([v, t]) => <button key={t} type="button" aria-pressed={all === v} data-testid={`capa-${v ? 'all' : 'top'}`} onClick={() => setAll(v)} className={`h-9 px-3 text-fs-13 font-bold ${all === v ? 'bg-blue-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}>{t}</button>)}
+        </div>
         <div className="ml-auto flex gap-2 no-print">
           <button type="button" onClick={() => window.print()} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-fs-13 font-bold text-slate-700 hover:bg-slate-100"><Printer size={15} />Print</button>
           <button type="button" onClick={() => exportPanel(bodyRef.current, title, `Line ${line} · ${dmy(date)}`)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-fs-13 font-bold text-slate-700 hover:bg-slate-100"><FileSpreadsheet size={15} />Excel</button>
@@ -130,14 +135,14 @@ export default function DailyCapaPage({ kind = 'rework', isAdmin = true, myDept 
       <div ref={bodyRef} className="flex flex-col gap-3">
         <section className={card} aria-label="Sheet head">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <div><div className="text-fs-18 font-extrabold text-[#1F3864]">{title}</div><div className="text-fs-13 text-slate-600">Line {line} · {dmy(date)} · top {TOP} {kind === 'rework' ? 'defects' : 'idle reasons'} of the day</div></div>
+            <div><div className="text-fs-18 font-extrabold text-[#1F3864]">{title}</div><div className="text-fs-13 text-slate-600">Line {line} · {dmy(date)} · {all ? `all ${top.length}` : `top ${TOP}`} {kind === 'rework' ? 'defects' : 'idle reasons'} of the day</div></div>
             {kind === 'rework' ? (<>
               <div className="text-fs-13"><span className="text-slate-500">Made</span> <b className="font-mono">{nf(made)}</b></div>
               <div className="text-fs-13"><span className="text-slate-500">Rework + rejection</span> <b className="font-mono text-red-700">{nf(Q ? Q.rej + Q.rwk : 0)}</b></div>
               <div className="text-fs-13"><span className="text-slate-500">RTY</span> <b className={`font-mono ${lowRty ? 'text-red-700' : 'text-emerald-700'}`}>{pc(Q?.rty)}</b> <span className="text-slate-500">(min {RTY_MIN * 100}%)</span></div>
-            </>) : <div className="text-fs-13"><span className="text-slate-500">Idle time (top {TOP})</span> <b className="font-mono text-red-700">{hm(total)}</b></div>}
+            </>) : <div className="text-fs-13"><span className="text-slate-500">Idle time{all ? '' : ` (top ${TOP})`}</span> <b className="font-mono text-red-700">{hm(total)}</b></div>}
             {kind === 'rework' && Q?.rty != null && (lowRty
-              ? <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1 text-fs-13 font-bold text-white" data-testid="rty-low"><AlertTriangle size={15} />RTY under 97% — CAPA needed for these {top.length}</span>
+              ? <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1 text-fs-13 font-bold text-white" data-testid="rty-low"><AlertTriangle size={15} />RTY under 97% — CAPA needed</span>
               : <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 text-fs-13 font-bold text-white"><CheckCircle2 size={15} />RTY 97% or more</span>)}
           </div>
         </section>

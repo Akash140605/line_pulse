@@ -25,3 +25,22 @@ describe('Method D target from the master', () => {
     setFallbackRule(null);
   });
 });
+
+// 27-11-2026: the live screens fill a missing Line 3 / 4 target from the master too
+import { withMasterFallback } from '../src/utils/targetMethods';
+describe('Live screen: master fallback', () => {
+  it('fills only the missing models of a Method D line, keeps the rest', () => {
+    setMasterRows([{ company: 'SAMSUNG', model: 'WT70C3000RR/TL', cycle: 18, lines: [3] }, { company: 'VOLTAS', model: '70DLIM BK4GTD', cycle: 21.05, lines: [4] }]);
+    setFallbackRule({ from: '2026-08-01', add: 3, lines: { 3: { method: 'D', add: 0 }, 4: { method: 'D', add: 0 } } });
+    const t3 = withMasterFallback({}, '3', [{ mmId: 590, model: 'WT70C3000RR', company: 'SAMSUNG' }]);
+    expect(t3['590'].cycle).toBe(18);
+    const t4 = withMasterFallback({ 7: { cycle: 30 } }, '4', [{ mmId: 7, model: 'X' }, { mmId: 8, model: '70DLIM BK4GTD', companyTitle: 'VOLTAS' }]);
+    expect(t4['7'].cycle).toBe(30);
+    expect(t4['8'].cycle).toBe(21.1);
+    const same = { 1: { cycle: 20 } };
+    expect(withMasterFallback(same, '4', [{ mmId: 1, model: 'A' }])).toBe(same);
+    setFallbackRule({ from: '2026-08-01', add: 3, lines: { 3: { method: 'A', add: 3 } } });
+    expect(withMasterFallback({}, '3', [{ mmId: 590, model: 'WT70C3000RR', company: 'SAMSUNG' }])['590']).toBeUndefined();
+    setFallbackRule(null);
+  });
+});

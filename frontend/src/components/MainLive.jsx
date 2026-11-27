@@ -11,6 +11,7 @@ import useMediaQuery from '../hooks/useMediaQuery';
 import { api, LINE_IDS } from '../api';
 import { useAllLineSettings } from '../hooks/useLineSettings';
 import { targetOf, pphOf, hourPlanOf } from '../utils/targets';
+import { withMasterFallback } from '../utils/targetMethods';
 import useDaySetups from '../hooks/useDaySetups';
 import { workSecInHour, hourSpanLabel, SHIFT_PLANT, realCycleSec, runCycleOf, shiftOfDay } from '../utils/shift';
 import { serverNow } from '../utils/serverTime';
@@ -314,7 +315,9 @@ export default function MainLive({ tv = false }) {
           }
           const h = l.lastHour;
           const hqAll = h != null ? (l.hours.find((x) => x.hour === h)?.quantity ?? 0) : null;
-          const ls = { ...(settings[l.line] || {}), shift: shiftOf(l.line) };
+          const ls0 = settings[l.line] || {};
+          // 27-11-2026: a model of today with no target in the line's set takes the master's (Method D) — Line 3 / 4 never blank
+          const ls = { ...ls0, shift: shiftOf(l.line), targets: withMasterFallback(ls0.targets, l.line, [...(l.hourModels || []), ...(l.running ? [l.running] : []), ...(l.mmId != null ? [{ mmId: l.mmId, model: l.model, company: l.company }] : [])]) };
           const tc = targetOf(ls.targets, l.mmId ?? l.running?.mmId);
           // this hour's target for the running model: working seconds of the hour so far (lunch excluded) ÷ target cycle
           const now = serverNow();

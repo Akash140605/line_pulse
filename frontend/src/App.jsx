@@ -58,6 +58,7 @@ import useRunningModel from './hooks/useRunningModel';
 import TargetBoard from './components/TargetBoard';
 import TargetsEditor from './components/TargetsEditor';
 import { targetOf, pphOf, hourPlanOf } from './utils/targets';
+import { withMasterFallback } from './utils/targetMethods';
 import { settingsOn } from './utils/targetPeriods';
 import { workSecInHour, hourSpanLabel, realCycleSec, runCycleOf, setupShift } from './utils/shift';
 import useDaySetups from './hooks/useDaySetups';
@@ -385,7 +386,9 @@ function Dashboard({ line, onLineChange, embedded = false, pageProp = null, read
   const daySu = daySetups[`${d.focusDate}|${line}`] || null;
   const dayShift = useMemo(() => setupShift(daySu), [JSON.stringify(daySu)]); // eslint-disable-line react-hooks/exhaustive-deps
   // 20-11-2026: the targets of the method in force on the focus day (target method by date)
-  const lsDay = useMemo(() => settingsOn(lsMaster, d.focusDate), [lsMaster, d.focusDate]);
+  const lsDay0 = useMemo(() => settingsOn(lsMaster, d.focusDate), [lsMaster, d.focusDate]);
+  // 27-11-2026: a model of the line with no target in its set takes the master's (Method D lines) — never blank
+  const lsDay = useMemo(() => (lsDay0 ? { ...lsDay0, targets: withMasterFallback(lsDay0.targets, String(line), d.models || []) } : lsDay0), [lsDay0, line, d.models]);
   const ls = dayShift ? { ...lsDay, shift: dayShift, daySetup: daySu } : lsDay;
   const reg = useLosses(String(line), d.range?.start, d.range?.end);
   const [editor, setEditor] = useState(null);   // { tab, focus }

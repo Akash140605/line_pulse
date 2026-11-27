@@ -931,3 +931,9 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 /* 27-11-2026 Stage-wise FPY: a stage row opens its details */
 .lp-stage-row:focus-visible { outline: 2px solid #2563EB; outline-offset: -2px; background: #EFF6FF; }
 @media (min-width: 640px) { .lp-stage-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; } }
+
+/* 27-11-2026: all four lines together on one screen (2 × 2) from 1024 px — each card half the screen high */
+@media (min-width: 1024px) {
+  .lp-live-2:not(.lp-live-2h) { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: max(300px, calc((100vh - 186px) / 2)); }
+  .lp-live-2:not(.lp-live-2h) > .lp-live-wide { grid-column: span 2 / span 2; }
+}

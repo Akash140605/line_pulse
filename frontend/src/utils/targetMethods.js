@@ -149,6 +149,20 @@ export function masterTargetOf(line, m, date = null) {
   const r = masterFor({ model: m.model, company: m.companyTitle || m.company, modelCode: m.modelCode });
   return r && Number(r.cycle) > 0 ? Math.round((Number(r.cycle) + (Number(cfg.add) || 0)) * 10) / 10 : null;
 }
+/**
+ * 27-11-2026: the live screens — a model running on a Method D line whose target is not in the line's set yet (Line 3 / 4
+ * model list late, a browser with an old set) takes its cycle straight from the master, as OLE already does.
+ * models = [{ mmId, model, company | companyTitle, modelCode }] → the same targets object when nothing is added.
+ */
+export function withMasterFallback(targets, line, models) {
+  let out = targets || {};
+  for (const m of models || []) {
+    if (!m || m.mmId == null || Number(out?.[String(m.mmId)]?.cycle) > 0) continue;
+    const c = masterTargetOf(line, m);
+    if (c > 0) { if (out === targets || out === undefined) out = { ...(targets || {}) }; out[String(m.mmId)] = { cycle: c, model: m.model, company: m.companyTitle || m.company || '', method: 'D', source: 'master-fallback' }; }
+  }
+  return out;
+}
 /** The master row of a line model even without a cycle time (its details), or null when it is not in the master at all. */
 export const masterAnyFor = (m) => matchIn(MASTER_ALL, m) || matchIn(MASTER, m);
 

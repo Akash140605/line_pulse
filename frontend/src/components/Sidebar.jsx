@@ -29,6 +29,7 @@ export const PAGES = [
   { id: 'rca', label: 'RCA Entry', icon: Wrench, color: 'text-sky-300' },
   { id: 'capaday', label: 'Daily CAPA — rework', icon: ClipboardList, color: 'text-amber-300' },
   { id: 'idleday', label: 'Daily CAPA — idle time', icon: ClipboardList, color: 'text-sky-300' },
+  { id: 'capatrack', label: 'CAPA tracker', icon: ListChecks, color: 'text-sky-300' },
   { id: 'entrydash', label: 'Entry dashboard', icon: ListChecks, color: 'text-sky-300' },
   { id: 'lossan', label: 'Loss analysis', icon: BarChart3, color: 'text-sky-300' },
   { id: 'rejan', label: 'Rejection analysis', icon: PackageX, color: 'text-sky-300' },

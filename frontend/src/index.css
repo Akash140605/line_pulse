@@ -1060,3 +1060,10 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 }
 
 @media (min-width: 1280px) { .lp-adash { grid-template-rows: auto auto minmax(0, 1fr) !important; } .lp-adash .lp-ad-lines { max-height: 46vh; } }
+
+/* 27-11-2026 CAPA tracker */
+@media (min-width:1280px){.lp-ctrack-grid{grid-template-columns:minmax(0,1fr) minmax(0,2.2fr)}}
+.lp-ct-cell:hover{box-shadow:0 0 0 2px #93c5fd}
+
+/* 27-11-2026 Daily CAPA: a field filled by itself */
+.lp-autofill{background:#f0f9ff!important;border-color:#7dd3fc!important}

@@ -96,6 +96,7 @@ const CustomerProductionPage = lazy(() => import('./pages/CustomerProductionPage
 const LossQualityEntryPage = lazy(() => import('./pages/LossEntryPage').then((m) => ({ default: m.LossQualityEntryPage })));
 const RcaPage = lazy(() => import('./pages/RcaPage'));
 const DailyCapaPage = lazy(() => import('./pages/DailyCapaPage'));
+const CapaTrackerPage = lazy(() => import('./pages/CapaTrackerPage'));
 const MorningEntryPage = lazy(() => import('./pages/MorningEntryPage'));
 const KpiEntryPage = lazy(() => import('./pages/KpiEntryPage'));
 const LossAnalysisPage = lazy(() => import('./pages/LossAnalysisPage'));
@@ -138,7 +139,7 @@ function PhoneFold({ summary, children }) {
     </div>
   );
 }
-const OWN_PERIOD_PAGES = ['capaday', 'idleday', 'capa', 'universe', 'qdash', 'adash', 'pdash', 'custprod', 'serials', 'repcmp', 'methodplan', 'rwkdash', 'rcadash', 'kpidash', 'lqentry', 'kpientry', 'dash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'entrydash', 'oledrill', 'master', 'reports', 'ole', 'oleentry', 'qentry', 'rca', 'quality', 'targetcheck', 'linetargets', 'daily', 'lossan', 'rejan', 'rwkan'];
+const OWN_PERIOD_PAGES = ['capaday', 'idleday', 'capatrack', 'capa', 'universe', 'qdash', 'adash', 'pdash', 'custprod', 'serials', 'repcmp', 'methodplan', 'rwkdash', 'rcadash', 'kpidash', 'lqentry', 'kpientry', 'dash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'entrydash', 'oledrill', 'master', 'reports', 'ole', 'oleentry', 'qentry', 'rca', 'quality', 'targetcheck', 'linetargets', 'daily', 'lossan', 'rejan', 'rwkan'];
 
 const PANEL_TITLES = {
   trend: 'Daily production trend',
@@ -158,7 +159,7 @@ const todayStr = () => serverToday();   // DB server ka din (is PC ki ghadi gala
 
 /* ───────────── Main view: all four lines together ───────────── */
 // pages that work for all lines together; the others (hourly, takt, spread …) need one line, so Main does not list them
-const MAIN_PAGE_IDS = ['capaday', 'idleday', 'capa', 'universe', 'qdash', 'adash', 'pdash', 'custprod', 'serials', 'repcmp', 'methodplan', 'rwkdash', 'rcadash', 'kpidash', 'lqentry', 'kpientry', 'overview', 'dash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'entrydash', 'oledrill', 'master', 'reports', 'ole', 'daily', 'oleentry', 'qentry', 'rca', 'lossan', 'rejan', 'rwkan', 'quality', 'linetargets', 'targetcheck', 'ai', 'targets', 'models', 'explorer', 'control', 'hourly', 'formulas', 'setup'];
+const MAIN_PAGE_IDS = ['capaday', 'idleday', 'capatrack', 'capa', 'universe', 'qdash', 'adash', 'pdash', 'custprod', 'serials', 'repcmp', 'methodplan', 'rwkdash', 'rcadash', 'kpidash', 'lqentry', 'kpientry', 'overview', 'dash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'entrydash', 'oledrill', 'master', 'reports', 'ole', 'daily', 'oleentry', 'qentry', 'rca', 'lossan', 'rejan', 'rwkan', 'quality', 'linetargets', 'targetcheck', 'ai', 'targets', 'models', 'explorer', 'control', 'hourly', 'formulas', 'setup'];
 // one-line pages the admin also opens from Main: the line's own page with Line 1–4 buttons above it (like management)
 const MAIN_LINE_PAGES = ['hourly'];
 // Main pages without their own line buttons keep the Line 1–4 / Main switch in the header; the others pick lines on the page
@@ -305,6 +306,9 @@ function MainView({ line, onLineChange, ui }) {
           )}
           {(page === 'capaday' || page === 'idleday') && (
             <ErrorBoundary key={page}><Suspense fallback={PAGE_FALLBACK}><DailyCapaPage key={page} kind={page === 'capaday' ? 'rework' : 'idle'} isAdmin /></Suspense></ErrorBoundary>
+          )}
+          {page === 'capatrack' && (
+            <ErrorBoundary key="capatrack"><Suspense fallback={PAGE_FALLBACK}><CapaTrackerPage /></Suspense></ErrorBoundary>
           )}
           {page === 'rwkdash' && (
             <ErrorBoundary key="rwkdash"><Suspense fallback={PAGE_FALLBACK}><ReworkDashboardPage /></Suspense></ErrorBoundary>
@@ -684,6 +688,7 @@ function Dashboard({ line, onLineChange, embedded = false, pageProp = null, read
               {page === 'lqentry' && <LossQualityEntryPage canEdit={!readOnly} isAdmin={!readOnly} />}
               {page === 'rca' && <RcaPage isAdmin={!readOnly} />}
               {(page === 'capaday' || page === 'idleday') && <DailyCapaPage key={page} kind={page === 'capaday' ? 'rework' : 'idle'} isAdmin={!readOnly} />}
+              {page === 'capatrack' && <CapaTrackerPage />}
               {page === 'daily' && <MorningEntryPage />}
               {page === 'kpientry' && <KpiEntryPage />}
               {page === 'kpidash' && <KpiDashboardPage />}
@@ -831,7 +836,7 @@ function ManagementView() {
   // Every page counts only when it is ticked: Loss entry does not bring Quality entry with it (and the other way round).
   const own = Array.isArray(me?.pages) && me.pages.length ? me.pages : null;
   const base = own ? mgmtPages({ ...ui, management: { ...ui.management, pages: ui.management.pages.map((p) => ({ ...p, on: own.includes(p.id) })) } }) : mgmtPages(ui);
-  const pages0 = base.filter((p) => !['ole', 'daily', 'qdash', 'adash', 'pdash', 'rwkdash', 'rcadash', 'kpidash', 'kpientry', 'lqentry', 'oleentry', 'qentry', 'rca', 'capaday', 'idleday', 'lossan', 'rejan', 'rwkan', 'dash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'entrydash', 'oledrill', 'quality'].includes(p.id) || OLE_LINES.some((l) => LINE_IDS.includes(l)));
+  const pages0 = base.filter((p) => !['ole', 'daily', 'qdash', 'adash', 'pdash', 'rwkdash', 'rcadash', 'kpidash', 'kpientry', 'lqentry', 'oleentry', 'qentry', 'rca', 'capaday', 'idleday', 'capatrack', 'lossan', 'rejan', 'rwkan', 'dash', 'oleview', 'olea', 'olep', 'oleq', 'olecal', 'olemonth', 'entrydash', 'oledrill', 'quality'].includes(p.id) || OLE_LINES.some((l) => LINE_IDS.includes(l)));
   // Morning entry is the first job of the day: first in the list (and the page a supervisor opens on)
   const pages = [...pages0.filter((p) => p.id === 'daily'), ...pages0.filter((p) => p.id !== 'daily')];
   // FPY / RTY only for a login that has the Quality page (the admin chooses: Setup → Management view or the login's own pages)
@@ -904,6 +909,7 @@ function ManagementView() {
               {page === 'custprod' && <CustomerProductionPage />}
               {page === 'rcadash' && <RcaDashboardPage onOpen={setPage} canOpen={pages.map((p) => p.id)} />}
               {(page === 'capaday' || page === 'idleday') && <DailyCapaPage key={page} kind={page === 'capaday' ? 'rework' : 'idle'} isAdmin={false} />}
+              {page === 'capatrack' && <CapaTrackerPage />}
               {page === 'lossan' && <LossAnalysisPage onOpen={setPage} canOpen={pages.map((p) => p.id)} />}
               {(page === 'rejan' || page === 'rwkan') && <QualityAnalysisPage key={page} kind={page === 'rejan' ? 'reject' : 'rework'} onOpen={setPage} canOpen={pages.map((p) => p.id)} />}
               {page === 'quality' && <QualityPage onOpen={setPage} />}

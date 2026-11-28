@@ -364,7 +364,7 @@ const STAGE_HEAD = ['HVIR', 'Leak', 'Func.', 'Front Insp.', 'Pre-Final', 'Final 
 const ypc = (v) => (v == null ? "—" : `${(v * 100).toFixed(2)}%`);   // as the SAWM KPI FTY & RTY sheet
 function StageFlow({ S, fpyT, rtyT, qs, onPick }) {
   const a = S.all;
-  const stT = Math.max(fpyT, 0.995);   // a single gate is expected to pass at least the FPY target (99.5 % floor)
+  const stT = fpyT;   // 28-11-2026: each stage against the FPY target (Setup → Quality stations, 96.7 %) — no 99.5 % floor
   const tone = (v, t) => (v == null ? 'text-slate-500' : v >= t ? 'text-emerald-700' : 'text-red-700');
   const bar = (v, t) => (v == null ? '#CBD5E1' : v >= t ? '#16A34A' : '#EB5757');
   const worst = a.fpy.map((v, i) => [v, i]).filter(([v]) => v != null && v < 1).sort((p, q) => p[0] - q[0])[0];
@@ -372,7 +372,7 @@ function StageFlow({ S, fpyT, rtyT, qs, onPick }) {
     <section className={card} aria-label="Assembly stages">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <h3 style={{ margin: 0 }} className="border-l-4 border-[#1F3864] pl-2.5 text-fs-15 font-extrabold uppercase tracking-wide text-[#1F3864]">Assembly stages · FPY and RTY</h3>
-        <span className="text-fs-12 text-slate-600">stage FPY = 1 − defects at the stage ÷ pieces made · RTY = product of the 6 stages{worst ? <> · weakest: <b className="text-red-700">{KPI_STAGES[worst[1]]}</b></> : ''}</span>
+        <span className="text-fs-12 text-slate-600">stage FPY = 1 − defects at the stage ÷ pieces made · <b>stage target {qs.fpyTarget}%</b> · RTY = product of the 6 stages{worst ? <> · weakest: <b className="text-red-700">{KPI_STAGES[worst[1]]}</b></> : ''}</span>
       </div>
       <div className="flex items-stretch gap-1.5 overflow-x-auto pb-1" role="list" aria-label="Stages in line order">
         {KPI_STAGES.map((name, i) => (
@@ -466,7 +466,7 @@ function StageDrawer({ S, sheet, stations, pick, setPick, onClose, fpyT, group, 
   const base = line ? S.lines.find((r) => r.line === String(line)) || S.all : S.all;
   const made = base.qty || 0;
   const fpy = idx >= 0 ? base.fpy[idx] : null;
-  const stT = Math.max(fpyT, 0.995);
+  const stT = fpyT;   // 28-11-2026: the FPY target as it is
   const name = idx >= 0 ? KPI_STAGES[idx] : 'No stage';
   const lineLbl = (l) => KPI_LINES.find((k) => k.line === String(l))?.label || `Line ${l}`;
   const allDef = base.defects || 0;

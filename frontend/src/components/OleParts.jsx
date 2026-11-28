@@ -34,7 +34,7 @@ const DEFAULT_REASONS = {
 };
 const DEFAULT_CODES = { 'Sub-assembly': ['SUB', 'inline'], 'Leak test': ['LEAK', 'test'], 'Hi-pot / electrical safety': ['HIPOT', 'test'], 'Run / performance test': ['RUN', 'test'], 'LQC (line quality check)': ['LQC', 'inline'], 'FQC (final quality check)': ['FQC', 'final'], 'OQC / packing audit': ['OQC', 'audit'] };
 /** FPY / RTY targets (%) of the admin. */
-export const DEFAULT_QUALITY = { fpyTarget: 98, rtyTarget: 97 };   // RTY target 97 % as the SAWM KPI report
+export const DEFAULT_QUALITY = { fpyTarget: 96.7, rtyTarget: 97 };   // RTY target 97 % as the SAWM KPI report
 let CUR_STATIONS = [];
 export const normReasons = (r) => {
   const out = Object.fromEntries(['stop', 'loss', 'reject', 'rework', 'station'].map((k) => [k, Array.isArray(r?.[k]) && r[k].length ? r[k]

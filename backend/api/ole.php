@@ -143,7 +143,7 @@ const OLE_DEFAULT_STATIONS = [
     ['reason' => 'Final Inspection', 'dept' => 'Quality', 'code' => 'FINAL', 'type' => 'final', 'aliases' => ['FQC (final quality check)', 'FQC']],
 ];
 /** FPY / RTY targets (%), the admin's. */
-const OLE_DEFAULT_QUALITY = ['fpyTarget' => 98.0, 'rtyTarget' => 97.0];   // RTY 97 % as the SAWM KPI report
+const OLE_DEFAULT_QUALITY = ['fpyTarget' => 96.7, 'rtyTarget' => 97.0];   // RTY 97 % as the SAWM KPI report
 
 function ole_txt($v, int $max): string { return mb_substr(trim(strip_tags((string)$v)), 0, $max); }
 

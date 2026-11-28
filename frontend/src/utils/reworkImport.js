@@ -77,7 +77,7 @@ export function planImport(items, entries) {
     g.rows += 1; g.pcs += it.total; if (it.dism) g.dism += it.total;
     for (const [h, n] of Object.entries(it.hours)) {
       const list = g.hours.get(Number(h)) || [];
-      list.push({ station: it.stage, model: it.model, reason: it.defect, qty: n, cat: it.cat, dept: it.dept, cause: it.cause, action: it.action, ...(it.dism ? { dismantle: n } : {}) });
+      list.push({ station: it.stage, model: it.model, reason: it.defect, qty: n, cat: it.cat, dept: it.dept, cause: it.cause, action: it.action, ...(it.brand ? { brand: String(it.brand).toUpperCase() } : {}), ...(it.dism ? { dismantle: n } : {}) });
       g.hours.set(Number(h), list);
     }
     days.set(k, g);

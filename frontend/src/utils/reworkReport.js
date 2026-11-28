@@ -27,9 +27,9 @@ export function reworkSheet({ entries = {}, start = '', end = '', ids = null, st
   const m = new Map();
   for (const f of qf) {
     const stage = f.station && f.station !== NO_STATION ? f.station : '';
-    const key = [f.date, f.line, stage, f.model, f.cat || '', f.defect, f.cause || '', f.action || ''].join('|');
-    const o = m.get(key) || { date: f.date, month: monthName(f.date), line: String(f.line), lineName: lineName(f.line), stage, brand: companyOf(f.model) || '', model: f.model || '',
-      cat: f.cat || '', defect: f.defect, cause: f.cause || '', action: f.action || '', hours: {}, total: 0, dismantle: 0, kinds: new Set(), first: 99 };
+    const key = [f.date, f.line, stage, f.model, f.cat || '', f.dept || '', f.defect, f.cause || '', f.action || ''].join('|');
+    const o = m.get(key) || { date: f.date, month: monthName(f.date), line: String(f.line), lineName: lineName(f.line), stage, brand: f.brand || companyOf(f.model) || '', model: f.model || '',
+      cat: f.cat || '', dept: f.dept && f.dept !== 'Not set' ? f.dept : '', defect: f.defect, cause: f.cause || '', action: f.action || '', hours: {}, total: 0, dismantle: 0, kinds: new Set(), first: 99 };
     o.hours[f.hour] = (o.hours[f.hour] || 0) + f.value;
     o.total += f.value; o.dismantle += f.dismantle || 0; o.kinds.add(f.kind); o.first = Math.min(o.first, f.hour);
     m.set(key, o);
@@ -54,25 +54,30 @@ export function groupRows(rows, field) {
   return [...m.values()].sort((a, b) => b.total - a.total || a.key.localeCompare(b.key));
 }
 
+/** the department as the plant writes it (MOULDING QA, Prod, IQC, Sub-Assy) */
+const DEPT_OUT = { 'moulding qa': 'MOULDING QA', 'sub assy': 'Sub-Assy', prod: 'Prod', iqc: 'IQC' };
+const deptCell = (d) => DEPT_OUT[String(d || '').toLowerCase()] || d || '';
+
 /** the sheet as an xlsx sheet (utils/xlsxWriter buildXlsx) — the layout of the plant file */
 export function reworkXlsxSheet({ rows, hours, totals }, { title = 'Line Rejection', name = 'Hrly. Rework data(ipqc)' } = {}) {
   const colName = (i) => { let s = ''; i += 1; while (i > 0) { const r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); } return s; };
-  const fixed = ['SR. NO.', 'Month', 'DATE', 'Stage', 'Line', 'BRAND', 'MODEL', 'Category', 'DEFECT DESCRIPTION', 'ROOT CAUSE', 'Action'];
+  // 28-11-2026: the columns of the plant's sheet (Line Rejection MIS): no Month, Department after Category, date 1-Nov-26
+  const fixed = ['SR. NO.', 'DATE', 'Stage', 'Line', 'BRAND', 'MODEL', 'Category', 'Department', 'DEFECT DESCRIPTION', 'ROOT CAUSE', 'ACTION'];
   const nT = fixed.length;               // the Total column
   const lastHour = nT + hours.length;     // last hour column
   const rsCol = lastHour + 1;
-  const dmy = (d) => `${d.slice(8, 10)}-${d.slice(5, 7)}-${d.slice(0, 4)}`;
+  const xd = (d) => { const [y, m, dd] = d.split('-').map(Number); return (Date.UTC(y, m - 1, dd) - Date.UTC(1899, 11, 30)) / 864e5; };
   const head = [...fixed, 'Total', ...hours.map(hourCol), 'INR (Rs)'].map((v) => ({ v, s: 'head' }));
   const r1 = [{ v: title, s: 'title' }, ...Array(lastHour).fill({ v: '' }), { v: 'Loss', s: 'title' }];
-  const r2 = [{ v: title, s: 'textBold' }, ...Array(nT - 1).fill({ v: '' }), { v: totals.total, s: 'int' }, ...hours.map((h) => ({ v: totals.hours[h] || null, s: 'int' })), { v: totals.rs, s: 'int' }];
+  const r2 = [{ v: title, s: 'textBold' }, ...Array(nT - 1).fill({ v: '' }), { v: totals.total, s: 'rwIntB' }, ...hours.map((h) => ({ v: totals.hours[h] || null, s: 'rwIntB' })), { v: totals.rs, s: 'rwIntB' }];
   const body = rows.map((r) => [
-    { v: r.sr, s: 'int' }, { v: r.month, s: 'text' }, { v: dmy(r.date), s: 'text' }, { v: String(r.stage || '').toUpperCase(), s: 'text' }, { v: r.lineName, s: 'text' },
-    { v: String(r.brand || '').toUpperCase(), s: 'text' }, { v: r.model, s: 'text' }, { v: String(r.cat || '').toUpperCase(), s: 'text' }, { v: String(r.defect || '').toUpperCase(), s: 'text' },
-    { v: String(r.cause || '').toUpperCase(), s: 'text' }, { v: String(r.action || '').toUpperCase(), s: 'text' }, { v: r.total, s: 'int' },
-    ...hours.map((h) => ({ v: r.hours[h] || null, s: 'int' })), { v: r.rs, s: 'int' },
+    { v: r.sr, s: 'rwInt' }, { v: xd(r.date), s: 'rwDate' }, { v: String(r.stage || '').toUpperCase(), s: 'rwText' }, { v: r.lineName, s: 'rwText' },
+    { v: String(r.brand || '').toUpperCase(), s: 'rwText' }, { v: r.model, s: 'rwText' }, { v: String(r.cat || '').toUpperCase(), s: 'rwText' }, { v: deptCell(r.dept), s: 'rwText' },
+    { v: String(r.defect || '').toUpperCase(), s: 'rwText' }, { v: String(r.cause || '').toUpperCase(), s: 'rwText' }, { v: String(r.action || '').toUpperCase(), s: 'rwText' }, { v: r.total, s: 'rwInt' },
+    ...hours.map((h) => ({ v: r.hours[h] || null, s: 'rwInt' })), { v: r.rs, s: 'rwInt' },
   ]);
   return {
-    name, cols: [6, 10, 12, 22, 12, 12, 18, 12, 30, 26, 18, 8, ...hours.map(() => 7), 11].map((width) => ({ width })),
+    name, cols: [7, 10, 22, 11, 12, 20, 12, 14, 30, 26, 18, 7, ...hours.map(() => 6), 10].map((width) => ({ width })),
     rows: [r1, r2, head, ...body],
     merges: [`A1:${colName(lastHour)}1`, `A2:${colName(nT - 1)}2`],
     freezeRow: 3, headerRow: 3, autoFilter: body.length ? `A3:${colName(rsCol)}${3 + body.length}` : null,

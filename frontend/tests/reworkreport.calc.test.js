@@ -42,10 +42,10 @@ describe('rework sheet (Book1)', () => {
   it('xlsx layout: title, totals row, header with the hours, INR', () => {
     const sh = reworkXlsxSheet(S);
     expect(sh.rows[0][0].v).toBe('Line Rejection');
-    expect(sh.rows[2].map((c) => c.v).slice(0, 13)).toEqual(['SR. NO.', 'Month', 'DATE', 'Stage', 'Line', 'BRAND', 'MODEL', 'Category', 'DEFECT DESCRIPTION', 'ROOT CAUSE', 'Action', 'Total', '09-10']);
+    expect(sh.rows[2].map((c) => c.v).slice(0, 13)).toEqual(['SR. NO.', 'DATE', 'Stage', 'Line', 'BRAND', 'MODEL', 'Category', 'Department', 'DEFECT DESCRIPTION', 'ROOT CAUSE', 'ACTION', 'Total', '09-10']);
     expect(sh.rows[2][sh.rows[2].length - 1].v).toBe('INR (Rs)');
     expect(sh.rows[1][11].v).toBe(6);
-    expect(sh.rows[3][3].v).toBe('FUNCTIONAL');
+    expect(sh.rows[3][2].v).toBe('FUNCTIONAL'); expect(sh.rows[3][1].s).toBe('rwDate'); expect(typeof sh.rows[3][1].v).toBe('number');
   });
   it('helpers', () => {
     expect(hourCol(9)).toBe('09-10'); expect(hourCol(23)).toBe('23-00');

@@ -65,6 +65,8 @@ const HPR_LIST = [
   ['hprDateB', 168, 7, 0, 'center', 0],
   ['hprHeadDate', 168, 7, 7, 'center', 0],   // 23-11-2026: a date in the yellow header (customer wise production)
   ['hprLink', 0, 8, 0, 'left', 0],           // 23-11-2026: a link to another sheet (blue, underlined)
+  // 28-11-2026: the plant's rework sheet — date 1-Nov-26, whole numbers without a comma
+  ['rwDate', 169, 0, 0, 'center', 0], ['rwInt', 1, 0, 0, 'center', 0], ['rwIntB', 1, 1, 0, 'center', 0], ['rwText', 0, 0, 0, 'left', 0],
 ];
 for (const [name, n, f, fill, h, w] of HPR_LIST) XF.push([n, f, fill, name === 'hprTitle' || name === 'hprNote' ? 0 : 1, h, w]);   // title / note: no border
 const HPR_IDS = Object.fromEntries(HPR_LIST.map(([k], i) => [k, HPR_BASE + i]));
@@ -85,7 +87,7 @@ export const zebra = (name) => {
 
 const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<numFmts count="5"><numFmt numFmtId="164" formatCode="#,##0"/><numFmt numFmtId="165" formatCode="0.0"/><numFmt numFmtId="166" formatCode="+0.0;-0.0;0.0"/><numFmt numFmtId="167" formatCode="&quot;₹&quot;\ #,##0;\-&quot;₹&quot;\ #,##0;&quot;-&quot;"/><numFmt numFmtId="168" formatCode="d\-mmm"/></numFmts>
+<numFmts count="6"><numFmt numFmtId="164" formatCode="#,##0"/><numFmt numFmtId="165" formatCode="0.0"/><numFmt numFmtId="166" formatCode="+0.0;-0.0;0.0"/><numFmt numFmtId="167" formatCode="&quot;₹&quot;\ #,##0;\-&quot;₹&quot;\ #,##0;&quot;-&quot;"/><numFmt numFmtId="168" formatCode="d\-mmm"/><numFmt numFmtId="169" formatCode="d\-mmm\-yy"/></numFmts>
 <fonts count="9">
 <font><sz val="10"/><name val="Arial"/><family val="2"/></font>
 <font><b/><sz val="10"/><name val="Arial"/><family val="2"/></font>

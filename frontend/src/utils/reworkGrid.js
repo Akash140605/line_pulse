@@ -3,7 +3,7 @@
  * model · station · defect (· category …), one box per hour. Only the rework is written: each hour's rejection rows,
  * note and the loss part stay as they are (the server keeps the loss part of a 'quality' save).
  */
-const KEYS = ['model', 'station', 'reason', 'cat', 'dept', 'cause', 'action', 'owner', 'part'];
+const KEYS = ['model', 'station', 'reason', 'cat', 'dept', 'cause', 'action', 'owner', 'part', 'brand'];   // 28-11-2026: brand (as the plant sheet) kept
 const keyOf = (x) => KEYS.map((k) => String(x[k] || '')).join('|');
 
 /** rows = hour rows of oleLineDay (r.hour, r.e = normEntry) → grid rows [{ id, model, station, reason, cat, dept, cause, action, owner, part, q: {h: n}, dis: {h: n}, disAll }] */
@@ -56,14 +56,14 @@ export function reworkOfHour(grid, h, deptOf = () => '') {
     out.push({
       station: g.station || '', model: g.model || '', reason: String(g.reason || '').trim(), dept: (g.deptPick && g.dept ? g.dept : g.dept && g.orig === `${g.station || ''}|${g.reason || ''}` ? g.dept : deptOf(g) || g.dept) || '', qty,   // 27-11-2026: a department chosen in the grid wins
       ...(g.owner ? { owner: g.owner } : {}), ...(g.part ? { part: g.part } : {}),
-      ...(g.cat ? { cat: g.cat } : {}), ...(g.cause ? { cause: g.cause } : {}), ...(g.action ? { action: g.action } : {}),
+      ...(g.cat ? { cat: g.cat } : {}), ...(g.cause ? { cause: g.cause } : {}), ...(g.action ? { action: g.action } : {}), ...(g.brand ? { brand: g.brand } : {}),
       ...(dismantle > 0 ? { dismantle } : {}),
     });
   }
   return out;
 }
 
-const canon = (list) => JSON.stringify(list.map((x) => [x.station || '', x.model || '', x.reason || '', x.dept || '', Number(x.qty) || 0, x.cat || '', x.cause || '', x.action || '', Number(x.dismantle) || 0, x.owner || '', x.part || '']).sort());
+const canon = (list) => JSON.stringify(list.map((x) => [x.station || '', x.model || '', x.reason || '', x.dept || '', Number(x.qty) || 0, x.cat || '', x.cause || '', x.action || '', Number(x.dismantle) || 0, x.owner || '', x.part || '', x.brand || '']).sort());
 
 /**
  * the entries to save: only the hours whose rework changed. hours = the hours the grid shows.

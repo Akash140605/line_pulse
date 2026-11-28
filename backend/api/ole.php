@@ -345,6 +345,7 @@ function ole_clean(array $e, array $reasons): array
                 foreach (OLE_QCATS as $c) if (strcasecmp($c, $cat) === 0) { $row['cat'] = $c; break; }
                 $cause = ole_txt($r['cause'] ?? '', 200); if ($cause !== '') $row['cause'] = $cause;
                 $act = ole_txt($r['action'] ?? '', 200); if ($act !== '') $row['action'] = $act;
+                $brand = ole_txt($r['brand'] ?? '', 40); if ($brand !== '') $row['brand'] = $brand;   // 28-11-2026: the brand of the row (as the plant's rework sheet)
                 $dm = $r['dismantle'] ?? null;
                 if ($dm !== null && $dm !== '' && $dm !== false && (string)$dm !== '0') {
                     $dn = filter_var($dm, FILTER_VALIDATE_INT);

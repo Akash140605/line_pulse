@@ -8,7 +8,7 @@ import { shiftOfDay, SHIFT_PLANT } from './shift';
 import { kpiDays } from './kpiReport';
 import { reworkSheet, RWK_RATE } from './reworkReport';
 import { targetsOn } from './targetPeriods';
-import { withMasterFallback } from './targetMethods';   // 27-11-2026: a model missing from the line's set takes the Model master cycle (as the line screens)
+import { withMasterFallback, masterAnyFor } from './targetMethods';   // 27-11-2026: a model missing from the line's set takes the Model master cycle (as the line screens)
 import { serverToday } from './serverTime';
 import { mergeTargets, isLineD } from '../hooks/useAutoTargets';
 
@@ -51,5 +51,5 @@ export function rwkDataOf(ctx, from, to) {
   if (!ctx?.D) return null;
   const co = new Map();
   for (const L of ctx.D.al?.lines || []) for (const m of L.models || []) if (m.model && m.company) co.set(m.model, m.company);
-  return reworkSheet({ entries: ctx.D.ent.entries || {}, start: from, end: to, ids: ctx.ids || null, stations: ctx.D.ent.reasons?.station || [], companyOf: (m) => co.get(m) || '', rate: RWK_RATE });
+  return reworkSheet({ entries: ctx.D.ent.entries || {}, start: from, end: to, ids: ctx.ids || null, stations: ctx.D.ent.reasons?.station || [], companyOf: (m) => co.get(m) || masterAnyFor({ model: m })?.company || '', rate: RWK_RATE });   // 28-11-2026: an imported short model takes its brand from the Model master
 }

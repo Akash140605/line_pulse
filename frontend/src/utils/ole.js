@@ -59,6 +59,7 @@ export function normEntry(e) {
     const o = {};
     if (QCATS.includes(r.cat)) o.cat = r.cat;
     if (r.cause) o.cause = String(r.cause);
+    if (r.brand) o.brand = String(r.brand);   // 28-11-2026: brand of the row (plant rework sheet)
     if (r.action) o.action = String(r.action);
     const d = Math.min(n, Math.max(0, Math.round(Number(r.dismantle) || 0)));
     if (d > 0) o.dismantle = d;

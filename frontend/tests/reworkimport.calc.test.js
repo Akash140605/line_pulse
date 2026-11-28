@@ -20,6 +20,7 @@ describe('rework sheet (MIS) import', () => {
     expect(items.length).toBe(3);
     expect(items[0]).toMatchObject({ date: '2026-11-01', line: '1', stage: 'FUNCTIONAL', defect: 'Pulsator touching', cause: 'Cascade flash', total: 3, hours: { 9: 2, 10: 1 }, dism: false });
     expect(items[1].dism).toBe(true);
+    expect(items[0].dept).toBe('Moulding QA');
     expect(bad.length).toBe(1);
   });
   it('fills only the days without rework; keeps the rejection and note of the hour; dismantle = the pieces', () => {

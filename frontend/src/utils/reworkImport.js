@@ -25,6 +25,9 @@ export function parseDate(v) {
   if (/^\d{5}(\.\d+)?$/.test(s)) { const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(Number(s)) * 864e5); return d.toISOString().slice(0, 10); }
   return null;
 }
+// the sheet's department names → the names the entry pages use
+const DEPT = { 'moulding qa': 'Moulding QA', 'sub-assy': 'Sub Assy', 'sub assy': 'Sub Assy', 'prod': 'Prod', 'production': 'Prod', 'iqc': 'IQC', 'quality': 'Quality', 'moulding store': 'Moulding Store', 'kitting store': 'Kitting Store' };
+export const deptOf = (v) => DEPT[tidy(v).toLowerCase()] || tidy(v);
 export const parseLine = (v) => { const m = tidy(v).match(/line\s*[-_ ]?\s*(\d{1,2})/i) || tidy(v).match(/^(\d{1,2})$/); return m ? String(Number(m[1])) : null; };
 
 /**
@@ -51,7 +54,7 @@ export function parseMis(rows) {
     const total = Object.values(hours).reduce((a, v) => a + v, 0);
     if (!total) { bad.push({ row: i + 1, why: `no pieces under the hours (${r[C.defect] || 'no defect'})` }); continue; }
     const action = sentence(r[C.action]);
-    items.push({ date, line, stage: tidy(r[C.stage]), brand: tidy(r[C.brand]), model: tidy(r[C.model]), cat: sentence(r[C.cat]), dept: tidy(r[C.dept]),
+    items.push({ date, line, stage: tidy(r[C.stage]), brand: tidy(r[C.brand]), model: tidy(r[C.model]), cat: sentence(r[C.cat]), dept: deptOf(r[C.dept]),
       defect: sentence(r[C.defect]) || 'Not given', cause: sentence(r[C.cause]), action, dism: /dism[ae]nt/i.test(action), total, hours });
   }
   return { items, bad };

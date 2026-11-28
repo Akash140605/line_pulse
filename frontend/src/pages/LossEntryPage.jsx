@@ -29,6 +29,7 @@ import { useAllLineSettings } from '../hooks/useLineSettings';
 import { addDays } from '../utils/mainFilter';
 import { serverToday } from '../utils/serverTime';
 import ReworkImport from '../components/ReworkImport';
+import { useAuth } from '../components/AuthGate';
 import { oleDayLines, normEntry, pct, modelTimeOfHour, stationsFor, offLabels, hr1, okFrom, watchFrom, QCATS, splitHourTarget, isNoRun, scanHourTargets } from '../utils/ole';
 import { isDismantleDefect } from '../utils/kpiStages';
 import { gridFromRows, gridEntries, gridProblems } from '../utils/reworkGrid';
@@ -135,7 +136,8 @@ const minOf = (at) => (at ? Number(at.slice(11, 13)) * 60 + Number(at.slice(14, 
 
 export default function LossEntryPage({ canEdit = false, isAdmin = false, mode = 'loss' }) {
   const QM = mode === 'quality';
-  const [rimp, setRimp] = useState(false);   // 28-11-2026: rework sheet import
+  const [rimp, setRimp] = useState(false);   // 28-11-2026: rework sheet import — the admin login only
+  const realAdmin = useAuth()?.role === 'admin';
   const IDS = useOleLines();
   const today = serverToday();
   // 23-11-2026: opened from the Entry dashboard at one line, day and hour
@@ -241,7 +243,7 @@ export default function LossEntryPage({ canEdit = false, isAdmin = false, mode =
         {L && canEdit && nextEmpty && EM.nextEmpty && <button type="button" title="Fill the next hour that still needs an entry" onClick={go(() => (three ? setSel(nextEmpty.hour) : setFill(nextEmpty)))} className="inline-flex h-8 items-center gap-1 rounded-lg bg-blue-700 px-3 text-fs-13 font-bold text-white hover:bg-blue-800"><PencilLine size={14} aria-hidden /> Next empty ({p2(nextEmpty.hour)}:00)</button>}
         {L && canEdit && L.ok && mode !== 'loss' && EM.manyHours && <button type="button" data-testid="rg-open" title="Rework / rejection of many hours at once, model-wise (as the rework report)" onClick={go(() => setRgrid({ model: '', kind: 'rework' }))} className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#1F3864] bg-white px-3 text-fs-13 font-bold text-[#1F3864] hover:bg-[#EEF3FB]"><ListChecks size={14} aria-hidden /> Many hours · model-wise</button>}
         {/* 28-11-2026: the plant's rework sheet (MIS) into the Quality entries — admin */}
-        {isAdmin && QM && <button type="button" data-testid="ri-open" title="Import the plant's rework sheet (Line Rejection MIS) — only days without rework" onClick={() => setRimp(true)} className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 text-fs-13 font-bold text-slate-700 hover:bg-slate-100"><FileUp size={14} />Import rework sheet</button>}
+        {realAdmin && QM && <button type="button" data-testid="ri-open" title="Import the plant's rework sheet (Line Rejection MIS) — only days without rework" onClick={() => setRimp(true)} className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 text-fs-13 font-bold text-slate-700 hover:bg-slate-100"><FileUp size={14} />Import rework sheet</button>}
         {L && canEdit && L.ok && !QM && EM.lineOff && <button type="button" title="Line off all day (holiday, no plan, …)" aria-label={L.dayOff ? 'Line off all day: change' : 'Line off all day'} onClick={() => setDayDlg(true)} className={`inline-flex h-8 items-center gap-1 rounded-lg border px-3 text-fs-13 font-bold ${L.dayOff ? 'border-slate-500 bg-slate-700 text-white' : 'border-slate-400 bg-white text-slate-800 hover:bg-slate-50'}`}><CalendarOff size={14} aria-hidden /> {L.dayOff ? 'Line off: change' : 'Line off'}</button>}
       </HeaderBar>
       <section className={card} style={{ padding: '8px 12px' }} aria-label={QM ? 'Quality entry' : mode === 'both' ? 'Loss & quality entry' : 'Loss entry'}>
@@ -295,7 +297,7 @@ export default function LossEntryPage({ canEdit = false, isAdmin = false, mode =
       {L && L.ok && !L.closed && !QM && <DayLostByModel L={L} line={line} date={date} nowMin={endM} lastScanHour={lastH} DS={DS} />}
       {L && <HourTable L={L} date={date} TG={QM ? null : TG} onRetry={D.reload} busy={D.loading} />}
       {isAdmin && !QM && <ReasonsEditor reasons={D.ent.reasons} onSaved={(r) => D.setEnt((x) => ({ ...x, reasons: normReasons(r) }))} />}
-      {rimp && <ReworkImport onClose={() => setRimp(false)} onDone={() => D.reloadEnt?.()} />}
+      {rimp && realAdmin && <ReworkImport onClose={() => setRimp(false)} onDone={() => D.reloadEnt?.()} />}
       {isAdmin && QM && <StationSetup reasons={D.ent.reasons} onSaved={(r) => D.setEnt((x) => ({ ...x, reasons: normReasons(r) }))} />}
       {rgrid && L && <ReworkGrid key={rgrid.kind || 'rework'} kind={rgrid.kind || 'rework'} onKind={(k, m) => setRgrid({ kind: k, model: m })} model0={rgrid.model || ''} L={L} line={line} date={date} reasons={D.ent.reasons} onClose={() => setRgrid(false)}
         onSaved={async (hs) => { setRgrid(false); setMsg(`Line ${line}: ${rgrid.kind === 'rejects' ? 'rejection' : 'rework'} of ${hs.length} hour${hs.length > 1 ? 's' : ''} saved (${hs.map((h) => `${p2(h)}:00`).join(', ')}).`); await D.reloadEnt(); }} />}

@@ -401,7 +401,7 @@ function PickDrawer({ pick, sheet, onClose, group, period }) {
           <div className={h4}>Entries · {nf(rows.length)}</div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-fs-12">
-              <thead><tr className="bg-[#DCE6F2] text-left text-[#1F3864]">{['Date', 'Line', 'Hour', 'Stage', 'Model', 'Defect', 'Category', 'Pcs', 'Dismantle', 'Corrective action'].map((h, i) => <th key={h} className={`px-1.5 py-1 ${i === 7 || i === 8 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+              <thead><tr className="bg-[#DCE6F2] text-left text-[#1F3864]">{['Date', 'Line', 'Hour', 'Stage', 'Model', 'Defect', 'Category', 'Pcs', 'Dismantle', 'Cause', 'Corrective action'].map((h, i) => <th key={h} className={`px-1.5 py-1 ${i === 7 || i === 8 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
               <tbody>
                 {[...rows].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) || Number(a.line) - Number(b.line)).slice(0, 300).map((r, i) => (
                   <tr key={i} className="border-b border-slate-100 align-top">
@@ -414,7 +414,7 @@ function PickDrawer({ pick, sheet, onClose, group, period }) {
                     <td className="px-1.5 py-1">{r.cat || '—'}</td>
                     <td className="px-1.5 py-1 text-right font-mono font-bold text-red-700">{nf(r.total)}</td>
                     <td className="px-1.5 py-1 text-right font-mono">{r.dismantle ? nf(r.dismantle) : ''}</td>
-                    <td className="px-1.5 py-1 text-slate-700">{r.action ? r.action : <span className="text-amber-700">not written</span>}</td>
+                    <td className="px-1.5 py-1 text-slate-700">{r.cause ? r.cause : <span className="text-amber-700">not written</span>}</td><td className="px-1.5 py-1 text-slate-700">{r.action ? r.action : <span className="text-amber-700">not written</span>}</td>
                   </tr>))}
               </tbody>
             </table>
@@ -543,7 +543,7 @@ function StageDrawer({ S, sheet, stations, pick, setPick, onClose, fpyT, group, 
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-fs-12" data-testid="qd-sd-rows">
                   <thead><tr className="bg-[#DCE6F2] text-left text-[#1F3864]">
-                    <th className="px-1.5 py-1">Date</th><th className="px-1.5 py-1">Line</th><th className="px-1.5 py-1">Hour</th><th className="px-1.5 py-1">Model</th><th className="px-1.5 py-1">Defect</th><th className="px-1.5 py-1">Category</th><th className="px-1.5 py-1 text-right">Pcs</th><th className="px-1.5 py-1 text-right">Dismantle</th><th className="px-1.5 py-1">Corrective action</th>
+                    <th className="px-1.5 py-1">Date</th><th className="px-1.5 py-1">Line</th><th className="px-1.5 py-1">Hour</th><th className="px-1.5 py-1">Model</th><th className="px-1.5 py-1">Defect</th><th className="px-1.5 py-1">Category</th><th className="px-1.5 py-1 text-right">Pcs</th><th className="px-1.5 py-1 text-right">Dismantle</th><th className="px-1.5 py-1">Cause</th><th className="px-1.5 py-1">Corrective action</th>
                   </tr></thead>
                   <tbody>
                     {d.rows.slice(0, 300).map((r, i) => (
@@ -556,7 +556,7 @@ function StageDrawer({ S, sheet, stations, pick, setPick, onClose, fpyT, group, 
                         <td className="px-1.5 py-1">{r.cat || '—'}</td>
                         <td className="px-1.5 py-1 text-right font-mono font-bold text-red-700">{nf(r.total)}</td>
                         <td className="px-1.5 py-1 text-right font-mono">{r.dismantle ? nf(r.dismantle) : ''}</td>
-                        <td className="px-1.5 py-1 text-slate-700">{r.action ? r.action : <span className="text-amber-700">not written</span>}</td>
+                        <td className="px-1.5 py-1 text-slate-700">{r.cause ? r.cause : <span className="text-amber-700">not written</span>}</td><td className="px-1.5 py-1 text-slate-700">{r.action ? r.action : <span className="text-amber-700">not written</span>}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -9,6 +9,7 @@ export const PAGES = [
   { id: 'overview', label: 'Plant overview', icon: LayoutDashboard, color: 'text-sky-300' },
   { id: 'dash', label: 'Dashboard', icon: LayoutGrid, color: 'text-sky-300' },
   { id: 'oleview', label: 'Plant Efficiency', icon: Gauge, color: 'text-sky-300' },
+  { id: 'oleformula', label: 'Efficiency formulas', icon: Sigma, color: 'text-sky-300' },
   { id: 'adash', label: 'Availability dashboard', icon: Timer, color: 'text-sky-300' },
   { id: 'pdash', label: 'Performance dashboard', icon: TrendingUp, color: 'text-sky-300' },
   { id: 'olea', label: 'Availability', icon: Timer, color: 'text-sky-300' },
@@ -73,7 +74,7 @@ const gi = (id) => { const k = FOLDERS.findIndex((f) => f.ids.includes(id)); ret
 /** the sidebar folder of a page label (the header shows it in the page's path) */
 export const pathOf = (label) => { const pg = [...PAGES, SETUP_PAGE].find((p) => p.label === label); return pg ? groupOf(pg.id) : ''; };
 /** parts of a long page the tree jumps to (as the MES: Overview → Summary · Lines · Trend · Availability · Performance · Quality) */
-const SUBS = { oleview: [['ov-summary', 'Summary'], ['ov-lines', 'Lines'], ['ov-trend', 'Trend'], ['ov-availability', 'Availability'], ['ov-performance', 'Performance'], ['ov-quality', 'Quality'], ['ov-formulas', 'Formulas']] };
+const SUBS = { oleview: [['ov-summary', 'Summary'], ['ov-lines', 'Lines'], ['ov-trend', 'Trend'], ['ov-availability', 'Availability'], ['ov-performance', 'Performance'], ['ov-quality', 'Quality']] };
 // 20-11-2026: the section lands just under the bars that stay on top (title band + filter bar), not hidden behind them
 export function stuckHeight(el) {
   const r = el.getBoundingClientRect(); let h = 0;

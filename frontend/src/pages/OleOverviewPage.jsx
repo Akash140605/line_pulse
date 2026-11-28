@@ -10,7 +10,8 @@ import { oleRange, oleSum, lossSummary, qualityOf, hm, okFrom, watchFrom, oleCon
 import { openOleDrill, openOleFocus } from '../utils/drillLink';
 import { LINE_COLOR, nf, dmy, p2, useOleLines, groupNameOf, useOleData, Gauge, band, plantOf, plantsText, companyOf, CompanyCell } from '../components/OleParts';
 import { createPortal } from 'react-dom';
-import { X, ChevronRight, Maximize2, Minimize2, CalendarDays, Factory, ListTree } from 'lucide-react';
+import { KPI_STAGES } from '../utils/kpiStages';
+import { X, ChevronRight, Maximize2, Minimize2, CalendarDays, Factory, ListTree, Printer } from 'lucide-react';
 import MesDrawer from '../components/MesDrawer';
 import { Factor, factorsOf, KpiPanel, StageFpyHost } from '../components/OleApq';
 import { DayDrawer } from './OleCalendarPage';
@@ -519,7 +520,7 @@ const nice = (t) => cap1(String(t || '').replace(/[A-Za-z][A-Za-z']*/g, (w) => (
  * 28-11-2026: Formulas — how every number of this page is worked out, with this period's own figures put in.
  * Cycle time comes only from the Model master (Method D); the other methods are for analysis and change nothing here.
  */
-function FormulaTab({ t, lines, settings }) {
+function FormulaTab({ t, lines, settings, group = '', period = '', rtyTarget = 97 }) {
   const C = oleConfig();
   const good = Math.max(0, (t.qty || 0) - (t.rejects || 0) - (C.qMode === 'rejRework' ? (t.rework || 0) : 0));
   const plan = planTargetOf(t);
@@ -541,16 +542,18 @@ function FormulaTab({ t, lines, settings }) {
     ['Quality', 'Rework [Passed + Dism.]', 'Rework written in Quality entry; Passed = Rework − Dismantled', `${nf(t.rework || 0)} [${nf(passed)} + ${nf(t.dismantle || 0)}]`],
     ['Quality', 'Good Qty', C.qMode === 'rejRework' ? 'Actual Qty − Rework − Rejected' : 'Actual Qty − Rejected', `${nf(t.qty)} − ${nf(t.qty - good)} = ${nf(good)}`],
     ['Quality', 'Quality %', 'Good Qty ÷ Actual Qty', t.qty ? `${nf(good)} ÷ ${nf(t.qty)} = ${pc(t.Q)}` : '—'],
-    ['Quality', 'Stage FPY', '1 − defects found at the stage ÷ Actual Qty (HVIR, Leakage, Functional, Front Insp., Pre-Final, Final Insp.)', ''],
-    ['Quality', 'RTY %', 'Stage FPY × … × Stage FPY (all 6 stages); target 97 %', pc(t.rty, 2)],
+    ['Quality', 'Stage FPY', '1 − defects found at the stage ÷ Actual Qty (HVIR, Leakage, Functional, Front Insp., Pre-Final, Final Insp.)', KPI_STAGES.map((n) => (t.stages || []).find((x) => String(x.name || '').toLowerCase() === n.toLowerCase())).map((x, i) => (x && x.fpy != null ? `${['HVIR', 'Leakage', 'Functional', 'Front Insp.', 'Pre-Final', 'Final Insp.'][i]} ${pc(x.fpy, 2)}` : null)).filter(Boolean)],
+    ['Quality', 'RTY %', `Stage FPY × … × Stage FPY (all 6 stages); target ${rtyTarget} %`, pc(t.rty, 2)],
     ['OLE', 'OLE %', 'Availability × Performance × Quality', `${pc(t.A)} × ${pc(t.P)} × ${pc(t.Q)} = ${pc(t.ole)}`],
   ];
   const tone = { 'Cycle time': '#7C3AED', Availability: '#2563EB', Performance: '#D97706', Quality: '#059669', OLE: '#1F3864' };
   return (
     <section id="ov-formulas" className="lp-anchor rounded-[3px] border border-[#BFBFBF] bg-white" style={{ boxShadow: "0 1px 2px rgba(15,23,42,.06)" }} aria-label="Formulas" data-testid="ov-formulas">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-slate-200 px-3 py-2">
+      <div className="lp-print-only px-3 pt-2"><div className="text-fs-18 font-extrabold text-dixon-navy">Dixon EMS · Plant Efficiency formulas</div><div className="text-fs-12 text-slate-600">{group}{period ? ` · ${period}` : ''} · printed {new Date().toLocaleString('en-IN')}</div></div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-200 px-3 py-2">
         <h3 className="lp-caps border-l-4 border-dixon-navy pl-2 text-fs-15 font-extrabold tracking-wide text-dixon-navy">Formulas — how each number is worked out</h3>
-        <span className="text-fs-12 text-slate-500">with this period&apos;s own figures · cycle time only from the Model master</span>
+        <span className="text-fs-12 text-slate-500">{group}{period ? ` · ${period}` : ''} · with this period&apos;s own figures · cycle time only from the Model master</span>
+        <button type="button" data-testid="formula-print" onClick={() => window.print()} className="no-print ml-auto inline-flex h-8 items-center gap-1.5 rounded-[3px] border border-[#1F4E79] bg-[#1F4E79] px-3 text-fs-13 font-bold text-white"><Printer size={15} aria-hidden="true" /> Print</button>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-fs-13">
@@ -561,7 +564,7 @@ function FormulaTab({ t, lines, settings }) {
                 <td className="whitespace-nowrap px-3 py-1.5">{(i === 0 || rows[i - 1][0] !== g) && <span className="rounded-full px-2 py-0.5 text-fs-11 font-extrabold uppercase tracking-wide text-white" style={{ background: tone[g] }}>{g}</span>}</td>
                 <td className="whitespace-nowrap px-3 py-1.5 font-bold text-slate-900">{name}</td>
                 <td className="px-3 py-1.5 text-slate-700">{how}</td>
-                <td className={`whitespace-nowrap px-3 py-1.5 text-right font-mono font-bold ${String(val).startsWith('Line ') ? 'text-red-700' : 'text-slate-900'}`}>{val}</td>
+                <td className={`whitespace-nowrap px-3 py-1.5 text-right font-mono font-bold ${String(val).startsWith('Line ') ? 'text-red-700' : 'text-slate-900'}`}>{Array.isArray(val) ? val.map((v) => <div key={v}>{v}</div>) : val}</td>
               </tr>
             ))}
           </tbody>
@@ -572,11 +575,11 @@ function FormulaTab({ t, lines, settings }) {
   );
 }
 
-export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
+export default function OleOverviewPage({ onOpen = null, canOpen = [], formulasOnly = false }) {
   const ALL = useOleLines();
   const today = serverToday();
   const [only, setOnly] = useState('all');
-  const [view, setView] = useState('dash');   // 28-11-2026: 'formulas' = the Formulas on their own (not under the dashboard)
+  const view = formulasOnly ? 'formulas' : 'dash';   // 28-11-2026: the Formulas are a page of their own (Efficiency formulas)   // 28-11-2026: 'formulas' = the Formulas on their own (not under the dashboard)
   const slot = useHeaderSlot();
   const aslot = useHeaderActionsSlot();
   const IDS = useMemo(() => (only !== 'all' && ALL.includes(only) ? [only] : ALL), [only, ALL.join()]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -708,7 +711,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   }, [R, RM, sameMonth, months, mode, grain, range0.start, range0.end, monthR.start, monthR.end]); // eslint-disable-line react-hooks/exhaustive-deps
   // the sidebar's "Trend": this month, day by day, then the page goes to the trend
   useEffect(() => {
-    const go = (e) => { setView(e.detail === 'ov-formulas' ? 'formulas' : 'dash'); if (e.detail !== 'ov-trend') return; setMode('period'); setGrain('day'); setRange({ start: `${today.slice(0, 8)}01`, end: today }); };
+    const go = (e) => { if (e.detail !== 'ov-trend') return; setMode('period'); setGrain('day'); setRange({ start: `${today.slice(0, 8)}01`, end: today }); };
     window.addEventListener('ems:ov-part', go);
     return () => window.removeEventListener('ems:ov-part', go);
   }, [today]);
@@ -800,7 +803,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   const openFactor = (k) => (focusOk(k) ? openFocus(k) : drillOk ? openDrill(k) : setWin({ kind: k === 'A' ? 'down' : k === 'P' ? 'perf' : 'defects' }));
 
   return (
-    <div className="flex flex-col gap-3" aria-label="OLE overview">
+    <div className={`flex flex-col gap-3 ${formulasOnly ? 'lp-formula-page' : ''}`} aria-label={formulasOnly ? 'Efficiency formulas' : 'OLE overview'}>
       <StageFpyHost />
       {/* 1 — filters: in the top bar on wide screens, on the page (wrapping) on phones and small laptops */}
       {(() => {
@@ -809,14 +812,6 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
             {['all', ...ALL].map((v) => (
               <button key={v} type="button" aria-pressed={only === v} onClick={() => setOnly(v)} aria-label={v === 'all' ? 'Overview of all lines' : `Overview of Line ${v}`}
                 className={`h-8 whitespace-nowrap border-r border-slate-300 px-3 text-fs-13 font-semibold last:border-r-0 ${only === v ? 'bg-dixon-navy text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}>{v === 'all' ? 'Overall' : `Line ${v}`}</button>
-            ))}
-          </div>
-        );
-        const viewTabs = (
-          <div className="flex shrink-0 overflow-hidden rounded-md border border-slate-300" role="group" aria-label="Dashboard or formulas">
-            {[['dash', 'Dashboard'], ['formulas', 'Formulas']].map(([v, l]) => (
-              <button key={v} type="button" data-testid={`ov-view-${v}`} aria-pressed={view === v} onClick={() => setView(v)}
-                className={`h-8 whitespace-nowrap border-r border-slate-300 px-3 text-fs-13 font-semibold last:border-r-0 ${view === v ? 'bg-dixon-navy text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}>{l}</button>
             ))}
           </div>
         );
@@ -830,10 +825,10 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
           </div>
         );
         if (slot) return (<>{aslot && acts && createPortal(acts, aslot)}{createPortal(
-          <div className="flex flex-wrap items-center gap-2">{tabs}{viewTabs}<PeriodBar header today={today} range={range0} setRange={setRange} text={periodText} busy={busy} yearMode={yearMode} trend={mode !== 'year' && !oneDay ? { value: grain, set: setGrain } : null} />{!aslot && acts}</div>, slot)}</>);
+          <div className="flex flex-wrap items-center gap-2">{tabs}<PeriodBar header today={today} range={range0} setRange={setRange} text={periodText} busy={busy} yearMode={yearMode} trend={mode !== 'year' && !oneDay ? { value: grain, set: setGrain } : null} />{!aslot && acts}</div>, slot)}</>);
         return (
           <div className="flex min-w-0 flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-2">{tabs}{viewTabs}</div>
+            {tabs}
             {acts}
             <PeriodBar today={today} range={range0} setRange={setRange} text={periodText} busy={busy} yearMode={yearMode} />
           </div>
@@ -843,7 +838,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
       {D.err && <div role="alert" className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-fs-13 font-semibold text-slate-700">{D.err}</div>}
       {!R && !D.err && <OverviewSkeleton label={`Reading ${group}`} sub={mode === 'year' ? `Every month of ${year} — the first load may take longer` : 'OLE, losses and the trend of the period'} lines={IDS.length} />}
 
-      {R && view === 'formulas' && <FormulaTab t={TQ} lines={IDS} settings={settings} />}
+      {R && view === 'formulas' && <FormulaTab t={TQ} lines={IDS} settings={settings} group={group} period={periodText} rtyTarget={Number(D.ent?.reasons?.quality?.rtyTarget) || 97} />}
       {R && view !== 'formulas' && (
         <>
           {/* 2 — the plant (or the line): navy band + gauge | A | P | Q */}

@@ -6792,3 +6792,19 @@ table[aria-label="Model-wise target vs actual"] th:first-child, table[aria-label
 .lp-models-more { font-size: 12px; font-weight: 700; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 999px; padding: 1px 10px; cursor: pointer; white-space: nowrap; }
 .lp-models-more:hover { background: #dbeafe; }
 @media (max-width: 900px) { .lp-model-chip { white-space: normal; } .lp-models-list { column-gap: 10px; } }
+
+/* 28-11-2026: Efficiency formulas — printed on its own: the table, colours kept, nothing else of the page */
+@media print {
+  .lp-formula-page > *:not(#ov-formulas) { display: none !important; }
+  #ov-formulas { border: 0 !important; box-shadow: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #ov-formulas tr { break-inside: avoid; page-break-inside: avoid; }
+  #ov-formulas .overflow-x-auto { overflow: visible !important; }
+}
+
+@media print {
+  .lp-status { display: none !important; }
+  .lp-formula-page #ov-formulas table { font-size: 11px; }
+  .lp-formula-page #ov-formulas td, .lp-formula-page #ov-formulas th { padding-top: 3px !important; padding-bottom: 3px !important; }
+}
+
+@media print { .lp-formula-page #ov-formulas > div:nth-child(2) { display: none !important; } .lp-formula-page #ov-formulas > p { padding-top: 4px !important; padding-bottom: 0 !important; } }

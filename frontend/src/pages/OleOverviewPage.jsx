@@ -51,13 +51,23 @@ const modelsCell = (ms, unit = 'min', _max = 0, co = null) => {
   const cOf = (m) => (co ? co(m.name) : '');
   const name = (m) => <>{cOf(m) && <span className="mr-1 text-fs-11 font-bold uppercase text-[#777]">{cOf(m)}</span>}<span className="font-mono font-semibold">{m.name}</span></>;
   if (ms.length === 1) return <span className="whitespace-nowrap">{name(ms[0])}</span>;
+  return <ModelsList ms={ms} name={name} val={val} />;
+};
+/** 28-11-2026: many models — the top few, then "+ N more" (a scroll box when opened), so one defect never fills the screen */
+const MODELS_SHOWN = 6;
+function ModelsList({ ms, name, val }) {
+  const [open, setOpen] = useState(false);
+  const list = open ? ms : ms.slice(0, MODELS_SHOWN);
+  const more = ms.length - MODELS_SHOWN;
   return (
-    // side by side as long as they fit, then the next line — every model, each with its pieces / time (short tables)
-    <span className="flex flex-wrap gap-x-4 gap-y-0.5 py-0.5">
-      {ms.map((m) => <span key={m.name} className="whitespace-nowrap">{name(m)} <span className="text-fs-12 font-semibold text-[#C00000]">{val(m)}</span></span>)}
+    <span className="lp-models-cell">
+      <span className={`lp-models-list ${open ? 'lp-models-open' : ''}`}>
+        {list.map((m) => <span key={m.name} className="lp-model-chip">{name(m)} <span className="text-fs-12 font-semibold text-[#C00000]">{val(m)}</span></span>)}
+      </span>
+      {more > 0 && <button type="button" data-testid="models-more" onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }} className="lp-models-more">{open ? 'Show less' : `+ ${more} more model${more > 1 ? 's' : ''}`}</button>}
     </span>
   );
-};
+}
 /** a rejection % chip: up to 2 % green, up to 5 % amber, above red */
 const rejChip = (r) => (r == null ? 'bg-slate-100 text-slate-500' : r <= 0.02 ? 'bg-emerald-100 text-emerald-800' : r <= 0.05 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800');
 

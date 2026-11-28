@@ -8,6 +8,7 @@ import { nf, dmy, p2, useOleData, useOleLines, groupNameOf, DEFAULT_QUALITY } fr
 import { useAllLineSettings } from '../hooks/useLineSettings';
 import { oleRange, stationsFor } from '../utils/ole';
 import { reworkSheet, lineName, hourCol } from '../utils/reworkReport';
+import { masterAnyFor } from '../utils/targetMethods';
 import { qualityDash, qualitySheets } from '../utils/qualityDash';
 import { ftyRows, stageSummary, stageDetail, KPI_STAGES, KPI_LINES } from '../utils/kpiStages';
 import MesDrawer from '../components/MesDrawer';
@@ -135,6 +136,13 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
   const names = useMemo(() => stationsFor(stations, IDS, { all: true }), [stations, IDS.join()]); // eslint-disable-line react-hooks/exhaustive-deps
   const sheet = useMemo(() => (R ? reworkSheet({ entries: D.ent.entries || {}, start: range.start, end: range.end, ids: IDS, stations, kinds: ['rework', 'reject'] }).rows : null),
     [R, D.ent, range.start, range.end, IDS.join()]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 28-11-2026: the company of a model — the row's brand (plant sheet), the line's model list, else the Model master
+  const coOf = useMemo(() => {
+    const m = new Map();
+    for (const L of D.al?.lines || []) for (const x of L.models || []) if (x.model && x.company) m.set(x.model, x.company);
+    for (const r of sheet || []) if (r.model && r.brand && !m.has(r.model)) m.set(r.model, r.brand);
+    return (name) => String(m.get(name) || masterAnyFor({ model: name })?.company || '').toUpperCase();
+  }, [D.al, sheet]);
   const Q = useMemo(() => (R && sheet ? qualityDash({ days: R.days, ids: IDS.map(String), stations: names, sheet, rca: D.ent.rca || {}, oneDay }) : null),
     [R, sheet, D.ent.rca, IDS.join(), names, oneDay]); // eslint-disable-line react-hooks/exhaustive-deps
   const [stage, setStage] = useState(null);   // { idx, line } of the stage drawer (click a stage)
@@ -156,7 +164,7 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
   const go = (id) => (onOpen && canOpen.includes(id) ? () => onOpen(id) : undefined);
   const rateTone = (v) => (v == null ? 'text-slate-500' : v <= limit ? 'text-emerald-700' : 'text-red-700');
   const yTone = (v, t) => (v == null ? 'text-slate-500' : v >= t ? 'text-emerald-700' : 'text-red-700');
-  const excel = () => downloadXlsx(buildXlsx(qualitySheets(Q, { title: `Quality — ${group}`, period: periodText, lineName })), `Quality dashboard ${group} ${range.start}${oneDay ? '' : `_${range.end}`}.xlsx`);
+  const excel = () => downloadXlsx(buildXlsx(qualitySheets(Q, { title: `Quality — ${group}`, period: periodText, lineName, companyOf: coOf })), `Quality dashboard ${group} ${range.start}${oneDay ? '' : `_${range.end}`}.xlsx`);
 
   if (!ALL.length) return <div className={`${card} text-fs-14 font-semibold text-slate-600`}>This login has no line.</div>;
   const t = Q?.total;
@@ -249,28 +257,29 @@ export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
               <Title right={worstText(Q.worstModel, (n) => n)}>Models</Title>
               {!Q.models.length ? <Empty /> : (() => {
                 const q = mQ.trim().toLowerCase();
-                const val = (r, k) => (k === 'name' || k === 'top' ? String(r[k] || '') : r[k] ?? -1);
-                const list = Q.models.filter((r) => !q || r.name.toLowerCase().includes(q) || String(r.top || '').toLowerCase().includes(q))
+                const val = (r, k) => (k === 'name' || k === 'top' || k === 'company' ? String(r[k] || '') : r[k] ?? -1);
+                const list = Q.models.map((r) => ({ ...r, company: coOf(r.name) })).filter((r) => !q || r.name.toLowerCase().includes(q) || r.company.toLowerCase().includes(q) || String(r.top || '').toLowerCase().includes(q))
                   .slice().sort((a, b) => { const x = val(a, mSort.k), y = val(b, mSort.k); return (typeof x === 'string' ? x.localeCompare(y) : x - y) * mSort.dir || b.bad - a.bad; });
                 const head = (k, l, right) => (
                   <th className={`${th} ${right ? 'text-right' : ''}`} aria-sort={mSort.k === k ? (mSort.dir > 0 ? 'ascending' : 'descending') : undefined}>
-                    <button type="button" data-testid={`qd-msort-${k}`} onClick={() => setMSort((o) => ({ k, dir: o.k === k ? -o.dir : k === 'name' || k === 'top' ? 1 : -1 }))} className={`inline-flex items-center gap-1 font-bold ${mSort.k === k ? 'text-[#2E75B6]' : ''}`}>{l}<span aria-hidden="true" className="text-fs-11">{mSort.k === k ? (mSort.dir > 0 ? '▲' : '▼') : '↕'}</span></button></th>);
+                    <button type="button" data-testid={`qd-msort-${k}`} onClick={() => setMSort((o) => ({ k, dir: o.k === k ? -o.dir : k === 'name' || k === 'top' || k === 'company' ? 1 : -1 }))} className={`inline-flex items-center gap-1 font-bold ${mSort.k === k ? 'text-[#2E75B6]' : ''}`}>{l}<span aria-hidden="true" className="text-fs-11">{mSort.k === k ? (mSort.dir > 0 ? '▲' : '▼') : '↕'}</span></button></th>);
                 return (<>
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <input type="search" value={mQ} onChange={(e) => setMQ(e.target.value)} placeholder="Search model or defect" aria-label="Search model or defect" data-testid="qd-mq"
+                    <input type="search" value={mQ} onChange={(e) => setMQ(e.target.value)} placeholder="Search company, model or defect" aria-label="Search company, model or defect" data-testid="qd-mq"
                       className="h-8 w-56 rounded-md border border-slate-300 bg-white px-2 text-fs-13 focus:border-blue-500 focus:outline-none" />
                     <select aria-label="Sort models" value={`${mSort.k}|${mSort.dir}`} onChange={(e) => { const [k, d] = e.target.value.split('|'); setMSort({ k, dir: Number(d) }); }} className="h-8 rounded-md border border-slate-300 bg-white px-2 text-fs-13" data-testid="qd-msort">
-                      {[['bad|-1', 'Defect most first'], ['pct|-1', 'Defect % high → low'], ['pct|1', 'Defect % low → high'], ['made|-1', 'Production most first'], ['name|1', 'Model A → Z']].map(([v, t]) => <option key={v} value={v}>{t}</option>)}
-                      {!['bad|-1', 'pct|-1', 'pct|1', 'made|-1', 'name|1'].includes(`${mSort.k}|${mSort.dir}`) && <option value={`${mSort.k}|${mSort.dir}`}>{mSort.k} {mSort.dir > 0 ? '↑' : '↓'}</option>}
+                      {[['bad|-1', 'Defect most first'], ['pct|-1', 'Defect % high → low'], ['pct|1', 'Defect % low → high'], ['made|-1', 'Production most first'], ['name|1', 'Model A → Z'], ['company|1', 'Company A → Z']].map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+                      {!['bad|-1', 'pct|-1', 'pct|1', 'made|-1', 'name|1', 'company|1'].includes(`${mSort.k}|${mSort.dir}`) && <option value={`${mSort.k}|${mSort.dir}`}>{mSort.k} {mSort.dir > 0 ? '↑' : '↓'}</option>}
                     </select>
                     <span className="ml-auto text-fs-12 text-slate-500">{list.length} of {Q.models.length} models · click a model for its defects</span>
                   </div>
                   <div className="max-h-[360px] overflow-auto">
                     <table className="w-full text-fs-13" style={{ borderCollapse: 'separate', borderSpacing: 0 }} data-testid="qd-models">
-                      <thead className="sticky top-0 z-10 bg-[#EEF3FA] shadow-[0_1px_0_#CBD5E1]"><tr>{head('name', 'Model')}{head('made', 'Production', true)}{head('bad', 'Defect', true)}{head('pct', '%', true)}{head('top', 'Top defect')}</tr></thead>
+                      <thead className="sticky top-0 z-10 bg-[#EEF3FA] shadow-[0_1px_0_#CBD5E1]"><tr>{head('company', 'Company')}{head('name', 'Model')}{head('made', 'Production', true)}{head('bad', 'Defect', true)}{head('pct', '%', true)}{head('top', 'Top defect')}</tr></thead>
                       <tbody>
                         {list.map((r) => (
                           <tr key={r.name} className="cursor-pointer hover:bg-blue-50" title={`${r.name} — click for its defects`} onClick={() => setPick({ field: 'model', value: r.name })}>
+                            <td className={`${td} whitespace-nowrap text-fs-12 font-bold uppercase text-slate-600`}>{r.company || '—'}</td>
                             <td className={`${td} whitespace-nowrap font-semibold text-[#1F3864]`}>{r.name}</td>
                             <td className={`${td} text-right font-mono`}>{nf(r.made)}</td>
                             <td className={`${td} text-right font-mono font-bold`}>{nf(r.bad)}</td>

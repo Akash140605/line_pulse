@@ -88,7 +88,7 @@ const I = (v) => ({ v: v ?? null, s: 'hprInt' });
 const P = (v) => ({ v: v == null ? null : v / 100, s: 'hprPct' });
 const sheetOf = (name, head, body, widths) => ({ name, cols: widths.map((width) => ({ width })), rows: [head.map(H), ...body], freezeRow: 1 });
 
-export function qualitySheets(Q, { title = 'Quality', period = '', lineName = (l) => `Line ${l}` } = {}) {
+export function qualitySheets(Q, { title = 'Quality', period = '', lineName = (l) => `Line ${l}`, companyOf = () => '' } = {}) {
   const t = Q.total;
   const sum = [
     [{ v: title, s: 'hprTitle' }], [{ v: period, s: 'hprNote' }], [],
@@ -108,8 +108,8 @@ export function qualitySheets(Q, { title = 'Quality', period = '', lineName = (l
       Q.stations.map((r) => [T(r.label), I(r.bad), { v: r.fpy, s: 'hprPct' }, T(r.rty ? 'Yes' : 'No'), T(r.top)]), [24, 10, 9, 8, 30]),
     sheetOf('Defects', ['Defect', 'Pieces', 'Share %', 'Cumulative %', 'Models'],
       Q.defects.map((r) => [T(r.name), I(r.bad), P(r.share), P(r.cum), T(r.models.join(', '))]), [34, 9, 10, 13, 40]),
-    sheetOf('Models', ['Model', 'Made', 'Rework', 'Rework %', 'PPM', 'Top defect'],
-      Q.models.map((r) => [T(r.name), I(r.made), I(r.bad), P(r.pct), I(r.ppm), T(r.top)]), [26, 10, 10, 10, 10, 30]),
+    sheetOf('Models', ['Company', 'Model', 'Made', 'Rework', 'Rework %', 'PPM', 'Top defect'],
+      Q.models.map((r) => [T(companyOf(r.name) || ''), T(r.name), I(r.made), I(r.bad), P(r.pct), I(r.ppm), T(r.top)]), [14, 26, 10, 10, 10, 10, 30]),
     sheetOf('Category', ['Category', 'Pieces', 'Dismantled', 'Share %'],
       Q.cats.map((r) => [T(r.name), I(r.bad), I(r.dismantle), P(r.share)]), [20, 10, 11, 10]),
   ];

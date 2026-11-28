@@ -135,7 +135,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
               <Tile testid="fd-main" name="Performance" value={pct(t.P)} sub={`Target ${(ok * 100).toFixed(0)}% · ${group}`} tone={tone(t.P)} />
               <Tile name="Plan target qty" value={nf(t.target)} sub="HPR / SAWM plan" />
               <Tile name="Actual qty" value={nf(t.qty)} sub={t.ach == null ? '—' : `${pct(t.ach)} of the plan`} tone={t.ach == null ? 'text-slate-900' : t.ach >= 1 ? 'text-emerald-700' : 'text-red-700'} />
-              <Tile name="+ / − vs plan" value={signed(t.short)} sub={t.short == null ? '—' : t.short < 0 ? 'pieces short of the plan' : 'pieces over the plan'} tone={t.short == null ? 'text-slate-900' : t.short < 0 ? 'text-red-700' : 'text-emerald-700'} />
+              <Tile name="Short / Excess" value={signed(t.short)} sub={t.short == null ? '—' : t.short < 0 ? 'pieces short of the plan' : 'pieces over the plan'} tone={t.short == null ? 'text-slate-900' : t.short < 0 ? 'text-red-700' : 'text-emerald-700'} />
               <Tile name="Cycle time" value={sec(t.act)} sub={`actual · std ${sec(t.std)}`} tone={t.act != null && t.std != null && t.act > t.std * 1.005 ? 'text-red-700' : 'text-emerald-700'} />
               <Tile name="Speed loss" value={hh(t.speed)} sub="run time beyond the std cycle" tone={t.speed >= 3 ? 'text-red-700' : 'text-slate-900'} />
               <Tile name="Good qty" value={nf(t.good)} sub={t.qty ? `${pct(t.good / t.qty)} of actual qty` : 'pcs right'} tone="text-emerald-700" />
@@ -254,7 +254,7 @@ export default function FactorDashboardPage({ factor = 'A' }) {
                   </table>
                 ) : (
                   <table className="w-full border-collapse text-fs-13 tabular-nums" aria-label="Performance line by line table">
-                    <thead><tr>{['Line', 'Plan', 'Actual', '+ / − vs plan', 'Achieved', 'Std CT', 'Actual CT', 'Speed loss', 'Performance', 'Slowest model'].map((h, i) => <th key={h} className={`${th} ${i > 0 && i < 9 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
+                    <thead><tr>{['Line', 'Plan', 'Actual', 'Short / Excess', 'Achieved', 'Std CT', 'Actual CT', 'Speed loss', 'Performance', 'Slowest model'].map((h, i) => <th key={h} className={`${th} ${i > 0 && i < 9 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
                     <tbody>
                       {X.lines.map((r) => (
                         <tr key={r.line} className="cursor-pointer hover:bg-slate-50" title="Only this line" onClick={() => openLine(r.line)}>

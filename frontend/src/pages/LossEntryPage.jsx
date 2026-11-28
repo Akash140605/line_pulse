@@ -346,7 +346,13 @@ function ReworkGrid({ L, line, date, reasons, onClose, onSaved, model0 = '', kin
     return g.length ? g : [blankRow(stations[0]?.reason || '')];
   });
   // the rows shown (index in the grid kept) and the hour columns: one model → the hours it ran (and hours already filled)
-  const vis = grid.map((g, i) => [g, i]).filter(([g]) => !fm || g.model === fm);
+  // 28-11-2026: a stage filter and "stage order" sort on top of the model chips (only what is shown — the rows stay as they are)
+  const [fs, setFs] = useState('');
+  const [byStage, setByStage] = useState(false);
+  const stOrder = (st) => { const k = stations.findIndex((x) => x.reason === st); return k < 0 ? 99 : k; };
+  const vis0 = grid.map((g, i) => [g, i]).filter(([g]) => !fm || g.model === fm);
+  const stagesIn = [...new Set(vis0.map(([g]) => g.station).filter(Boolean))].sort((a, b) => stOrder(a) - stOrder(b));
+  const vis = vis0.filter(([g]) => !fs || g.station === fs || !g.reason).sort((a, b) => (byStage ? stOrder(a[0].station) - stOrder(b[0].station) : 0) || a[1] - b[1]);
   const cols = fm ? hrs.filter((h) => (mq[fm]?.[h] || 0) > 0 || vis.some(([g]) => Number(g.q[h]) > 0)) : hrs;
   const pickModel = (m) => {
     setFm(m);
@@ -436,6 +442,15 @@ function ReworkGrid({ L, line, date, reasons, onClose, onSaved, model0 = '', kin
           return <button key={m} type="button" data-testid="rg-model" aria-pressed={fm === m} onClick={() => pickModel(m)} title={`${m}: ${nf(pcs)} pcs in ${nh} hour${nh > 1 ? 's' : ''} — fill its rework of all those hours at once`} className={`rounded-full border px-2.5 py-1 text-fs-12 font-bold ${fm === m ? 'border-[#1F3864] bg-[#1F3864] text-white' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>{m} <span className={fm === m ? 'text-blue-100' : 'text-slate-500'}>· {nh} h · {nf(pcs)}</span></button>;
         })}
       </div>
+      {stagesIn.length > 0 && (
+        <div className="mb-2 flex flex-wrap items-center gap-1.5" role="group" aria-label="Stage">
+          <span className="text-fs-12 font-bold text-slate-600">Stage:</span>
+          {['', ...stagesIn].map((st) => {
+            const pcs = vis0.filter(([g]) => !st || g.station === st).reduce((a, [g]) => a + Object.values(g.q || {}).reduce((x, v) => x + (Number(v) || 0), 0), 0);
+            return <button key={st || 'all'} type="button" data-testid="rg-stage" aria-pressed={fs === st} onClick={() => setFs(st)} className={`rounded-full border px-2.5 py-1 text-fs-12 font-bold ${fs === st ? 'border-[#1F3864] bg-[#1F3864] text-white' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>{st || 'All stages'} · {nf(pcs)}</button>;
+          })}
+          <label className="ml-auto flex items-center gap-1.5 text-fs-12 font-bold text-slate-600"><input type="checkbox" checked={byStage} onChange={(e) => setByStage(e.target.checked)} data-testid="rg-bystage" className="h-4 w-4 accent-blue-700" />Sort by stage</label>
+        </div>)}
       <div className="overflow-x-auto" ref={tableRef} data-testid="rework-grid">
         <table className="w-full border-collapse text-fs-13">
           <thead>
@@ -533,7 +548,7 @@ function ReworkGrid({ L, line, date, reasons, onClose, onSaved, model0 = '', kin
         </table>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button type="button" data-testid="rg-add" onClick={() => setGrid((g) => [...g, blankRow(vis[vis.length - 1]?.[0].station || g[g.length - 1]?.station || '')])} className="inline-flex h-8 items-center gap-1 rounded-lg border border-blue-300 bg-blue-50 px-3 text-fs-13 font-bold text-blue-800 hover:bg-blue-100"><Plus size={14} aria-hidden /> Add row{fm ? ` (${fm})` : ''}</button>
+        <button type="button" data-testid="rg-add" onClick={() => setGrid((g) => [...g, blankRow(fs || vis[vis.length - 1]?.[0].station || g[g.length - 1]?.station || '')])} className="inline-flex h-8 items-center gap-1 rounded-lg border border-blue-300 bg-blue-50 px-3 text-fs-13 font-bold text-blue-800 hover:bg-blue-100"><Plus size={14} aria-hidden /> Add row{fm ? ` (${fm})` : ''}</button>
         <span className="text-fs-12 text-slate-600">Grey box = the model did not run that hour · the faint number = its pieces in the hour · cause / action: choose a suggestion (plant MIS) or write · Enter = next row · paste a block from Excel into a box · the small number under the hour = pieces made · columns as the rework report: stage · model · category · defect · cause · action · hours</span>
       </div>
     </MesDrawer>

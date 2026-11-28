@@ -65,6 +65,61 @@ function Ranked({ rows, label, max = 10, right, onPick = null }) {
   );
 }
 
+/**
+ * 28-11-2026: the rework entries of a drawer — filter by stage, line, category, defect / model / cause text, and sort
+ * by any column (click the head; again = the other way).
+ */
+function EntriesTable({ rows, stage = false, lineLbl, testid }) {
+  const [f, setF] = useState({ stage: 'all', line: 'all', cat: 'all', q: '' });
+  const [srt, setSrt] = useState({ k: 'date', d: 1 });
+  const uniq = (k) => [...new Set((rows || []).map((r) => r[k] || '').filter(Boolean))].sort((x, y) => String(x).localeCompare(String(y), undefined, { numeric: true }));
+  const stages = uniq('stage'), lines = uniq('line'), cats = uniq('cat');
+  const hourOf = (r) => Math.min(...Object.keys(r.hours || {}).map(Number).concat(99));
+  const val = { date: (r) => r.date, line: (r) => Number(r.line), hour: hourOf, stage: (r) => r.stage || '', model: (r) => r.model || '', defect: (r) => r.defect || '', cat: (r) => r.cat || '', total: (r) => r.total || 0, dismantle: (r) => r.dismantle || 0, cause: (r) => r.cause || '', action: (r) => r.action || '' };
+  const q = f.q.trim().toLowerCase();
+  const list = (rows || []).filter((r) => (f.stage === 'all' || r.stage === f.stage) && (f.line === 'all' || String(r.line) === f.line) && (f.cat === 'all' || r.cat === f.cat)
+    && (!q || `${r.model} ${r.defect} ${r.cause} ${r.action}`.toLowerCase().includes(q)))
+    .sort((a, b) => { const x = val[srt.k](a), y = val[srt.k](b); return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true })) * srt.d || String(a.date).localeCompare(String(b.date)) || Number(a.line) - Number(b.line); });
+  const pcs = list.reduce((a, r) => a + (r.total || 0), 0);
+  const cols = [['date', 'Date'], ['line', 'Line'], ['hour', 'Hour'], ...(stage ? [['stage', 'Stage']] : []), ['model', 'Model'], ['defect', 'Defect'], ['cat', 'Category'], ['total', 'Pcs'], ['dismantle', 'Dismantle'], ['cause', 'Cause'], ['action', 'Corrective action']];
+  const sel = 'h-8 rounded-md border border-slate-300 bg-white px-2 text-fs-12 font-semibold';
+  return (
+    <>
+      <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-fs-13 font-extrabold text-[#1F3864]">Entries · {nf(list.length)}{list.length !== (rows || []).length ? ` of ${nf((rows || []).length)}` : ''} <span className="font-semibold text-slate-500">· {nf(pcs)} pcs</span></span>
+        {stage && stages.length > 1 && <select aria-label="Stage" value={f.stage} onChange={(e) => setF((o) => ({ ...o, stage: e.target.value }))} className={sel}><option value="all">All stages</option>{stages.map((x) => <option key={x} value={x}>{x}</option>)}</select>}
+        {lines.length > 1 && <select aria-label="Line" value={f.line} onChange={(e) => setF((o) => ({ ...o, line: e.target.value }))} className={sel}><option value="all">All lines</option>{lines.map((x) => <option key={x} value={String(x)}>{lineLbl(x)}</option>)}</select>}
+        {cats.length > 1 && <select aria-label="Category" value={f.cat} onChange={(e) => setF((o) => ({ ...o, cat: e.target.value }))} className={sel}><option value="all">All categories</option>{cats.map((x) => <option key={x} value={x}>{x}</option>)}</select>}
+        <input aria-label="Search entries" value={f.q} onChange={(e) => setF((o) => ({ ...o, q: e.target.value }))} placeholder="Model, defect, cause …" className="h-8 min-w-[160px] flex-1 rounded-md border border-slate-300 px-2 text-fs-12" />
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-fs-12" data-testid={testid}>
+          <thead><tr className="bg-[#DCE6F2] text-left text-[#1F3864]">{cols.map(([k, h]) => (
+            <th key={k} className={`cursor-pointer select-none whitespace-nowrap px-1.5 py-1 hover:bg-blue-100 ${k === 'total' || k === 'dismantle' ? 'text-right' : ''}`} onClick={() => setSrt((o) => ({ k, d: o.k === k ? -o.d : k === 'total' || k === 'dismantle' ? -1 : 1 }))} aria-sort={srt.k === k ? (srt.d > 0 ? 'ascending' : 'descending') : 'none'} data-testid={`qe-sort-${k}`}>
+              {h}{srt.k === k ? (srt.d > 0 ? ' ▲' : ' ▼') : ''}</th>))}</tr></thead>
+          <tbody>
+            {list.slice(0, 300).map((r, i) => (
+              <tr key={i} className="border-b border-slate-100 align-top" data-testid="qe-row">
+                <td className="whitespace-nowrap px-1.5 py-1 font-mono">{dmy(r.date)}</td>
+                <td className="whitespace-nowrap px-1.5 py-1">{lineLbl(r.line)}</td>
+                <td className="whitespace-nowrap px-1.5 py-1 font-mono">{Object.keys(r.hours || {}).map((h) => p2(Number(h))).join(', ')}</td>
+                {stage && <td className="px-1.5 py-1">{r.stage || '—'}</td>}
+                <td className="px-1.5 py-1">{r.model || '—'}</td>
+                <td className="px-1.5 py-1 font-semibold">{r.defect || '—'}</td>
+                <td className="px-1.5 py-1">{r.cat || '—'}</td>
+                <td className="px-1.5 py-1 text-right font-mono font-bold text-red-700">{nf(r.total)}</td>
+                <td className="px-1.5 py-1 text-right font-mono">{r.dismantle ? nf(r.dismantle) : ''}</td>
+                <td className="px-1.5 py-1 text-slate-700">{r.cause ? r.cause : <span className="text-amber-700">not written</span>}</td>
+                <td className="px-1.5 py-1 text-slate-700">{r.action ? r.action : <span className="text-amber-700">not written</span>}</td>
+              </tr>))}
+          </tbody>
+        </table>
+        {list.length > 300 && <div className="mt-1 text-fs-11 text-slate-500">First 300 of {nf(list.length)} — the Excel button has all of them.</div>}
+      </div>
+    </>
+  );
+}
+
 export default function QualityDashboardPage({ onOpen = null, canOpen = [] }) {
   const ALL = useOleLines();
   const today = serverToday();
@@ -398,27 +453,7 @@ function PickDrawer({ pick, sheet, onClose, group, period }) {
             </div>); })}
         </div>
         <div className={box}>
-          <div className={h4}>Entries · {nf(rows.length)}</div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-fs-12">
-              <thead><tr className="bg-[#DCE6F2] text-left text-[#1F3864]">{['Date', 'Line', 'Hour', 'Stage', 'Model', 'Defect', 'Category', 'Pcs', 'Dismantle', 'Cause', 'Corrective action'].map((h, i) => <th key={h} className={`px-1.5 py-1 ${i === 7 || i === 8 ? 'text-right' : ''}`}>{h}</th>)}</tr></thead>
-              <tbody>
-                {[...rows].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) || Number(a.line) - Number(b.line)).slice(0, 300).map((r, i) => (
-                  <tr key={i} className="border-b border-slate-100 align-top">
-                    <td className="whitespace-nowrap px-1.5 py-1 font-mono">{dmy(r.date)}</td>
-                    <td className="whitespace-nowrap px-1.5 py-1">{lineLbl(r.line)}</td>
-                    <td className="whitespace-nowrap px-1.5 py-1 font-mono">{Object.keys(r.hours || {}).map((h) => p2(Number(h))).join(', ')}</td>
-                    <td className="px-1.5 py-1">{r.stage || '—'}</td>
-                    <td className="px-1.5 py-1">{r.model || '—'}</td>
-                    <td className="px-1.5 py-1 font-semibold">{r.defect || '—'}</td>
-                    <td className="px-1.5 py-1">{r.cat || '—'}</td>
-                    <td className="px-1.5 py-1 text-right font-mono font-bold text-red-700">{nf(r.total)}</td>
-                    <td className="px-1.5 py-1 text-right font-mono">{r.dismantle ? nf(r.dismantle) : ''}</td>
-                    <td className="px-1.5 py-1 text-slate-700">{r.cause ? r.cause : <span className="text-amber-700">not written</span>}</td><td className="px-1.5 py-1 text-slate-700">{r.action ? r.action : <span className="text-amber-700">not written</span>}</td>
-                  </tr>))}
-              </tbody>
-            </table>
-          </div>
+          <EntriesTable rows={rows} stage lineLbl={lineLbl} />
         </div>
       </div>
     </MesDrawer>
@@ -539,30 +574,7 @@ function StageDrawer({ S, sheet, stations, pick, setPick, onClose, fpyT, group, 
               </div>
             </div>
             <div className={box}>
-              <div className={h4}>Entries · {nf(d.rows.length)}</div>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-fs-12" data-testid="qd-sd-rows">
-                  <thead><tr className="bg-[#DCE6F2] text-left text-[#1F3864]">
-                    <th className="px-1.5 py-1">Date</th><th className="px-1.5 py-1">Line</th><th className="px-1.5 py-1">Hour</th><th className="px-1.5 py-1">Model</th><th className="px-1.5 py-1">Defect</th><th className="px-1.5 py-1">Category</th><th className="px-1.5 py-1 text-right">Pcs</th><th className="px-1.5 py-1 text-right">Dismantle</th><th className="px-1.5 py-1">Cause</th><th className="px-1.5 py-1">Corrective action</th>
-                  </tr></thead>
-                  <tbody>
-                    {d.rows.slice(0, 300).map((r, i) => (
-                      <tr key={i} className="border-b border-slate-100 align-top">
-                        <td className="whitespace-nowrap px-1.5 py-1 font-mono">{dmy(r.date)}</td>
-                        <td className="whitespace-nowrap px-1.5 py-1">{lineLbl(r.line)}</td>
-                        <td className="whitespace-nowrap px-1.5 py-1 font-mono">{Object.keys(r.hours || {}).map((h) => p2(Number(h))).join(', ')}</td>
-                        <td className="px-1.5 py-1">{r.model || '—'}</td>
-                        <td className="px-1.5 py-1 font-semibold">{r.defect || '—'}</td>
-                        <td className="px-1.5 py-1">{r.cat || '—'}</td>
-                        <td className="px-1.5 py-1 text-right font-mono font-bold text-red-700">{nf(r.total)}</td>
-                        <td className="px-1.5 py-1 text-right font-mono">{r.dismantle ? nf(r.dismantle) : ''}</td>
-                        <td className="px-1.5 py-1 text-slate-700">{r.cause ? r.cause : <span className="text-amber-700">not written</span>}</td><td className="px-1.5 py-1 text-slate-700">{r.action ? r.action : <span className="text-amber-700">not written</span>}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {d.rows.length > 300 && <div className="mt-1 text-fs-11 text-slate-500">First 300 of {nf(d.rows.length)} — the Excel button above has all of them.</div>}
-              </div>
+              <EntriesTable rows={d.rows} lineLbl={lineLbl} testid="qd-sd-rows" />
             </div>
           </>
         )}

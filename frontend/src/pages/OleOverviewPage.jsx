@@ -576,6 +576,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   const ALL = useOleLines();
   const today = serverToday();
   const [only, setOnly] = useState('all');
+  const [view, setView] = useState('dash');   // 28-11-2026: 'formulas' = the Formulas on their own (not under the dashboard)
   const slot = useHeaderSlot();
   const aslot = useHeaderActionsSlot();
   const IDS = useMemo(() => (only !== 'all' && ALL.includes(only) ? [only] : ALL), [only, ALL.join()]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -707,7 +708,7 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   }, [R, RM, sameMonth, months, mode, grain, range0.start, range0.end, monthR.start, monthR.end]); // eslint-disable-line react-hooks/exhaustive-deps
   // the sidebar's "Trend": this month, day by day, then the page goes to the trend
   useEffect(() => {
-    const go = (e) => { if (e.detail !== 'ov-trend') return; setMode('period'); setGrain('day'); setRange({ start: `${today.slice(0, 8)}01`, end: today }); };
+    const go = (e) => { setView(e.detail === 'ov-formulas' ? 'formulas' : 'dash'); if (e.detail !== 'ov-trend') return; setMode('period'); setGrain('day'); setRange({ start: `${today.slice(0, 8)}01`, end: today }); };
     window.addEventListener('ems:ov-part', go);
     return () => window.removeEventListener('ems:ov-part', go);
   }, [today]);
@@ -811,6 +812,14 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
             ))}
           </div>
         );
+        const viewTabs = (
+          <div className="flex shrink-0 overflow-hidden rounded-md border border-slate-300" role="group" aria-label="Dashboard or formulas">
+            {[['dash', 'Dashboard'], ['formulas', 'Formulas']].map(([v, l]) => (
+              <button key={v} type="button" data-testid={`ov-view-${v}`} aria-pressed={view === v} onClick={() => setView(v)}
+                className={`h-8 whitespace-nowrap border-r border-slate-300 px-3 text-fs-13 font-semibold last:border-r-0 ${view === v ? 'bg-dixon-navy text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}>{l}</button>
+            ))}
+          </div>
+        );
         const yearMode = { on: mode === 'year', set: (v) => { setMode(v ? 'year' : 'period'); setDet(null); setPickDay(null); }, value: year, setValue: (v) => { setYear(v); setDet(null); } };
         const busy = !!R && (D.stale || D.loading);
         // 24-11-2026: what the navy band of the summary carried (updated time, Day by day) sits in this strip; the band is gone
@@ -821,10 +830,10 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
           </div>
         );
         if (slot) return (<>{aslot && acts && createPortal(acts, aslot)}{createPortal(
-          <div className="flex flex-wrap items-center gap-2">{tabs}<PeriodBar header today={today} range={range0} setRange={setRange} text={periodText} busy={busy} yearMode={yearMode} trend={mode !== 'year' && !oneDay ? { value: grain, set: setGrain } : null} />{!aslot && acts}</div>, slot)}</>);
+          <div className="flex flex-wrap items-center gap-2">{tabs}{viewTabs}<PeriodBar header today={today} range={range0} setRange={setRange} text={periodText} busy={busy} yearMode={yearMode} trend={mode !== 'year' && !oneDay ? { value: grain, set: setGrain } : null} />{!aslot && acts}</div>, slot)}</>);
         return (
           <div className="flex min-w-0 flex-col gap-2">
-            {tabs}
+            <div className="flex flex-wrap items-center gap-2">{tabs}{viewTabs}</div>
             {acts}
             <PeriodBar today={today} range={range0} setRange={setRange} text={periodText} busy={busy} yearMode={yearMode} />
           </div>
@@ -834,7 +843,8 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
       {D.err && <div role="alert" className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-fs-13 font-semibold text-slate-700">{D.err}</div>}
       {!R && !D.err && <OverviewSkeleton label={`Reading ${group}`} sub={mode === 'year' ? `Every month of ${year} — the first load may take longer` : 'OLE, losses and the trend of the period'} lines={IDS.length} />}
 
-      {R && (
+      {R && view === 'formulas' && <FormulaTab t={TQ} lines={IDS} settings={settings} />}
+      {R && view !== 'formulas' && (
         <>
           {/* 2 — the plant (or the line): navy band + gauge | A | P | Q */}
           <section id="ov-summary" className={`${card} lp-anchor overflow-hidden`} aria-label="OLE of the period">
@@ -1054,8 +1064,6 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
             onLine={(l) => setWin({ kind: 'linePerf', line: l })}
             onOpenLine={det.line ? () => { const l = det.line; setDet(null); setOnly(l); } : null} />}
           {pickDay && <DayDrawer date={pickDay} day={dDay} ids={dScope} info={dInfo} losses={dLoss} co={co} onClose={() => setPickDay(null)} />}
-          {/* 28-11-2026: how every number above is worked out (Model master cycle) */}
-          <FormulaTab t={TQ} lines={IDS} settings={settings} />
         </>
       )}
     </div>

@@ -10,6 +10,7 @@
  */
 import { Barcode,
   LayoutDashboard, Radio, Building2, Clock, LineChart, Target, ClipboardList, FileSpreadsheet, Boxes, Sparkles, Filter, ShieldAlert, TrendingUp, ListOrdered, ClipboardCheck, Crosshair, Gauge, Timer, Wrench, LayoutGrid, ShieldCheck, CalendarDays, BarChart3, Sunrise, PackageX, RotateCcw, CalendarRange, BadgeCheck, ListChecks, Layers,
+  Database,
 } from 'lucide-react';
 import { normalizeTheme } from './themeEngine';
 import { normalizeRefresh } from './refreshConfig';
@@ -45,6 +46,7 @@ export const MGMT_CATALOG = [
   { id: 'qentry', label: 'Quality entry', icon: ClipboardList, color: 'text-amber-300', kind: 'main', about: 'Rejection and rework of every hour with station, model and defect (only logins allowed to fill).' },
   { id: 'rca', label: 'RCA Entry', icon: Wrench, color: 'text-sky-300', kind: 'main', about: 'Every loss goes to the department of its reason; the department writes and submits the RCA.' },
   { id: 'capaday', label: 'Daily CAPA — rework', icon: ClipboardList, color: 'text-amber-300', kind: 'main', about: 'One day, one line: the top 5 defects (rework + rejection) with department, 6M, root cause, corrective and preventive action, responsibility and target date — marked when RTY is under 97 %. Saved as their RCA.' },
+  { id: 'master', label: 'Model master', icon: Database, color: 'text-sky-300', kind: 'main', about: 'Company, model, cycle time and lines of every model — view and export (only the admin changes it).' },
   { id: 'capaverify', label: 'CAPA verification', icon: BadgeCheck, color: 'text-sky-300', kind: 'main', about: 'Checks each CAPA action on the line: the same defect before and after the action, then effective (close) or not effective (reopen); PDF of the form.' },
   { id: 'capatrack', label: 'CAPA loop & follow-up', icon: ListChecks, color: 'text-sky-300', kind: 'main', about: 'The closed CAPA loop of the assembly line: write → action on line → verify → watch 30 days → closed (or redo / came back), with due dates, days late and escalation L1 owner · L2 department head · L3 plant head.' },
   { id: 'idleday', label: 'Daily CAPA — idle time', icon: ClipboardList, color: 'text-sky-300', kind: 'main', about: 'One day, one line: the top 5 idle time reasons with department, 6M, root cause, actions, responsibility and target date. Saved as their RCA.' },

@@ -505,6 +505,63 @@ const KEEP = new Set(['EPS', 'XML', 'PCB', 'SAP', 'FQC', 'LQC', 'OQC', 'IPQC', '
 const cap1 = (t) => t.replace(/^\s*[a-z]/, (c) => c.toUpperCase()).replace(/\s+\//g, ' / ').replace(/\/(?=\S)/g, '/ ').replace(/\/ /g, ' / ').replace(/\s{2,}/g, ' ');
 const nice = (t) => cap1(String(t || '').replace(/[A-Za-z][A-Za-z']*/g, (w) => (KEEP.has(w.toUpperCase()) || (w.length <= 2 && w === w.toUpperCase()) ? w.toUpperCase() : w === w.toUpperCase() ? w[0] + w.slice(1).toLowerCase() : w)));
 
+/**
+ * 28-11-2026: Formulas — how every number of this page is worked out, with this period's own figures put in.
+ * Cycle time comes only from the Model master (Method D); the other methods are for analysis and change nothing here.
+ */
+function FormulaTab({ t, lines, settings }) {
+  const C = oleConfig();
+  const good = Math.max(0, (t.qty || 0) - (t.rejects || 0) - (C.qMode === 'rejRework' ? (t.rework || 0) : 0));
+  const plan = planTargetOf(t);
+  const passed = Math.max(0, (t.rework || 0) - (t.dismantle || 0));
+  const notD = (lines || []).filter((l) => Object.values(settings?.[l]?.targets || {}).some((x) => x?.method && x.method !== 'D'));
+  const rows = [
+    ['Cycle time', 'Target cycle (s)', 'Model master cycle time of the model (+ the line allowance, now 0 s). The only source of the cycle time.', notD.length ? `Line ${notD.join(', ')}: not on Model master — change it in Line target method` : 'All lines: Model master'],
+    ['Cycle time', 'Model not in the Model master', "Its pieces take the line's average cycle of that day (so the plan has no gap).", ''],
+    ['Availability', 'Planned time', 'Shift time − lunch − tea breaks; a finished day ends at its last scan (today: at the last scan so far).', hrs(t.plannedMin)],
+    ['Availability', 'Idle time', 'Minutes written in Loss entry without a model (the line stood). A loss written against a model is slow running → Performance.', hrs(t.lossMin)],
+    ['Availability', 'Run time', 'Planned time − Idle time', `${hrs(t.plannedMin)} − ${hrs(t.lossMin)} = ${hrs(t.actualMin)}`],
+    ['Availability', 'Availability %', 'Run time ÷ Planned time', `${hrs(t.actualMin)} ÷ ${hrs(t.plannedMin)} = ${pc(t.A)}`],
+    ['Performance', 'Hour plan', 'Working minutes of the hour (lunch / tea out) × 60 ÷ target cycle of the models made in that hour (by their pieces). An hour that made nothing has no plan.', ''],
+    ['Performance', 'Plan Target Qty', C.pMode === 'run' ? 'Σ hour plans × Run time ÷ Planned time (idle minutes out — a stopped line is Availability loss only)' : 'Σ hour plans (the shift plan as it is)', plan != null ? nf(plan) : '—'],
+    ['Performance', 'Actual Qty', 'Pieces scanned at the end of the line (all hours, overtime too)', nf(t.qty)],
+    ['Performance', '+ / − vs plan', 'Actual Qty − Plan Target Qty', plan != null ? `${nf(t.qty)} − ${nf(plan)} = ${t.qty - plan >= 0 ? '+' : ''}${nf(t.qty - plan)}` : '—'],
+    ['Performance', 'Performance %', `Actual Qty ÷ Plan Target Qty${C.pCap ? ' (shown at most 100 %)' : ''}`, plan ? `${nf(t.qty)} ÷ ${nf(plan)} = ${pc(t.qty / plan)}${C.pCap && t.qty > plan ? ' → 100.0%' : ''}` : '—'],
+    ['Performance', 'Speed loss', 'Run time − std time of the pieces (pieces × Model master cycle)', t.speedMin != null ? hrs(t.speedMin) : '—'],
+    ['Quality', 'Rework [Passed + Dism.]', 'Rework written in Quality entry; Passed = Rework − Dismantled', `${nf(t.rework || 0)} [${nf(passed)} + ${nf(t.dismantle || 0)}]`],
+    ['Quality', 'Good Qty', C.qMode === 'rejRework' ? 'Actual Qty − Rework − Rejected' : 'Actual Qty − Rejected', `${nf(t.qty)} − ${nf(t.qty - good)} = ${nf(good)}`],
+    ['Quality', 'Quality %', 'Good Qty ÷ Actual Qty', t.qty ? `${nf(good)} ÷ ${nf(t.qty)} = ${pc(t.Q)}` : '—'],
+    ['Quality', 'Stage FPY', '1 − defects found at the stage ÷ Actual Qty (HVIR, Leakage, Functional, Front Insp., Pre-Final, Final Insp.)', ''],
+    ['Quality', 'RTY %', 'Stage FPY × … × Stage FPY (all 6 stages); target 97 %', pc(t.rty, 2)],
+    ['OLE', 'OLE %', 'Availability × Performance × Quality', `${pc(t.A)} × ${pc(t.P)} × ${pc(t.Q)} = ${pc(t.ole)}`],
+  ];
+  const tone = { 'Cycle time': '#7C3AED', Availability: '#2563EB', Performance: '#D97706', Quality: '#059669', OLE: '#1F3864' };
+  return (
+    <section id="ov-formulas" className="lp-anchor rounded-[3px] border border-[#BFBFBF] bg-white" style={{ boxShadow: "0 1px 2px rgba(15,23,42,.06)" }} aria-label="Formulas" data-testid="ov-formulas">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-slate-200 px-3 py-2">
+        <h3 className="lp-caps border-l-4 border-dixon-navy pl-2 text-fs-15 font-extrabold tracking-wide text-dixon-navy">Formulas — how each number is worked out</h3>
+        <span className="text-fs-12 text-slate-500">with this period&apos;s own figures · cycle time only from the Model master</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-fs-13">
+          <thead><tr className="bg-[#e3ecf8] text-left text-fs-12 text-dixon-navy">{['', 'Number', 'How it is worked out', 'This period'].map((h) => <th key={h} className="whitespace-nowrap border-b border-slate-300 px-3 py-1.5 font-bold">{h}</th>)}</tr></thead>
+          <tbody>
+            {rows.map(([g, name, how, val], i) => (
+              <tr key={name} className="border-b border-slate-100 align-top" data-testid="formula-row">
+                <td className="whitespace-nowrap px-3 py-1.5">{(i === 0 || rows[i - 1][0] !== g) && <span className="rounded-full px-2 py-0.5 text-fs-11 font-extrabold uppercase tracking-wide text-white" style={{ background: tone[g] }}>{g}</span>}</td>
+                <td className="whitespace-nowrap px-3 py-1.5 font-bold text-slate-900">{name}</td>
+                <td className="px-3 py-1.5 text-slate-700">{how}</td>
+                <td className={`whitespace-nowrap px-3 py-1.5 text-right font-mono font-bold ${String(val).startsWith('Line ') ? 'text-red-700' : 'text-slate-900'}`}>{val}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="px-3 py-2 text-fs-12 text-slate-500">Methods A, B and C (most common cycle, % of pieces, average cycle) on the Target pages are for analysis only — they are not used in these numbers while the lines are on Model master.</p>
+    </section>
+  );
+}
+
 export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
   const ALL = useOleLines();
   const today = serverToday();
@@ -987,6 +1044,8 @@ export default function OleOverviewPage({ onOpen = null, canOpen = [] }) {
             onLine={(l) => setWin({ kind: 'linePerf', line: l })}
             onOpenLine={det.line ? () => { const l = det.line; setDet(null); setOnly(l); } : null} />}
           {pickDay && <DayDrawer date={pickDay} day={dDay} ids={dScope} info={dInfo} losses={dLoss} co={co} onClose={() => setPickDay(null)} />}
+          {/* 28-11-2026: how every number above is worked out (Model master cycle) */}
+          <FormulaTab t={TQ} lines={IDS} settings={settings} />
         </>
       )}
     </div>

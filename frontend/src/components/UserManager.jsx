@@ -3,7 +3,7 @@ import MesDrawer from './MesDrawer';
 import { UserPlus, Search, ShieldCheck, ShieldAlert, X, KeyRound, Pencil, Trash2, Tv, User, Users, Building2, UserRound, History, Power } from 'lucide-react';
 import { api } from '../api';
 import { useAuth, linesText, PRESETS, LinePick, DeptInput, OleEditBox, PasswordForm } from './AuthGate';
-import { MGMT_CATALOG, RETIRED_PAGES } from '../utils/uiSettings';
+import { MGMT_CATALOG, RETIRED_PAGES, FOLDER_DEFAULT } from '../utils/uiSettings';
 import { fmtDateTime } from '../theme';
 
 /**
@@ -43,6 +43,14 @@ function Modal({ title, onClose, children, wide = false }) {
 function PagePick({ value, onChange }) {
   const own = value.length > 0;
   const flip = (id) => onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
+  const [q, setQ] = useState('');
+  const all = MGMT_CATALOG.filter((p) => !RETIRED_PAGES.has(p.id));
+  const groups = (() => {
+    const used = new Set();
+    const g = FOLDER_DEFAULT.map((f) => ({ name: f.name, pages: f.ids.map((id) => all.find((p) => p.id === id)).filter((p) => p && !used.has(p.id) && used.add(p.id)) })).filter((x) => x.pages.length);
+    const rest = all.filter((p) => !used.has(p.id));
+    return rest.length ? [...g, { name: 'Other', pages: rest }] : g;
+  })();
   return (
     <div className="grid gap-2">
       <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Pages of this login">
@@ -50,12 +58,34 @@ function PagePick({ value, onChange }) {
         <button type="button" role="radio" aria-checked={own} onClick={() => !own && onChange(['dash'])} className={`h-8 rounded-lg border px-2.5 text-fs-13 font-bold ${own ? 'border-blue-700 bg-blue-700 text-white' : 'border-slate-300 bg-white text-slate-700'}`}>Only these pages</button>
       </div>
       {own && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5" role="group" aria-label="Pages">
-          {MGMT_CATALOG.filter((p) => !RETIRED_PAGES.has(p.id)).map((p) => (
-            <label key={p.id} className="flex items-center gap-2 rounded-lg border border-slate-200 px-2 py-1.5 text-fs-13 font-semibold text-slate-700">
-              <input type="checkbox" checked={value.includes(p.id)} onChange={() => flip(p.id)} aria-label={`Page ${p.label}`} className="h-4 w-4 accent-blue-700" />{p.label}
-            </label>
-          ))}
+        <div className="grid gap-2" role="group" aria-label="Pages">
+          {/* 28-11-2026: the pages in their menu folders, with a search and All / None per folder */}
+          <div className="flex flex-wrap items-center gap-2">
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search a page …" aria-label="Search pages" className="h-9 min-w-[200px] flex-1 rounded-lg border border-slate-300 px-3 text-fs-13" />
+            <span className="text-fs-12 font-semibold text-slate-500">{value.length} of {all.length} pages ticked</span>
+          </div>
+          {groups.map((g) => {
+            const list = g.pages.filter((p) => !q || p.label.toLowerCase().includes(q.toLowerCase()));
+            if (!list.length) return null;
+            const on = g.pages.filter((p) => value.includes(p.id)).length;
+            return (
+              <div key={g.name} className="rounded-lg border border-slate-200" data-testid={`pg-group-${g.name}`}>
+                <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-2 py-1">
+                  <span className="text-fs-12 font-extrabold uppercase tracking-wide text-[#1F3864]">{g.name}</span>
+                  <span className="text-fs-12 font-semibold text-slate-500">{on}/{g.pages.length}</span>
+                  <button type="button" onClick={() => onChange([...new Set([...value, ...g.pages.map((p) => p.id)])])} className="ml-auto rounded px-2 py-0.5 text-fs-12 font-bold text-blue-700 hover:bg-blue-50">All</button>
+                  <button type="button" onClick={() => onChange(value.filter((id) => !g.pages.some((p) => p.id === id)))} className="rounded px-2 py-0.5 text-fs-12 font-bold text-slate-600 hover:bg-slate-100">None</button>
+                </div>
+                <div className="grid grid-cols-2 gap-1 p-1.5 sm:grid-cols-3">
+                  {list.map((p) => (
+                    <label key={p.id} className={`flex items-center gap-2 rounded-md px-2 py-1 text-fs-13 font-semibold ${value.includes(p.id) ? 'bg-blue-50 text-blue-900' : 'text-slate-700 hover:bg-slate-50'}`}>
+                      <input type="checkbox" checked={value.includes(p.id)} onChange={() => flip(p.id)} aria-label={`Page ${p.label}`} className="h-4 w-4 accent-blue-700" />{p.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

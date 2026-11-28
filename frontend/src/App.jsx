@@ -681,7 +681,7 @@ function Dashboard({ line, onLineChange, embedded = false, pageProp = null, read
               {page === 'olemonth' && <OleMonthlyPage />}
               {page === 'entrydash' && <EntryDashboardPage onOpen={setPage} canOpen={apages.map((p) => p.id)} />}
               {page === 'oledrill' && <OleDrillPage />}
-              {page === 'master' && !readOnly && <ModelMasterPage />}
+              {page === 'master' && <ModelMasterPage readOnly={readOnly} />}
               {page === 'reports' && !readOnly && <ReportsPage />}
               {page === 'repcmp' && !readOnly && <ReportComparePage />}
               {page === 'universe' && !readOnly && <ModelUniversePage />}
@@ -915,6 +915,7 @@ function ManagementView() {
               {page === 'rcadash' && <RcaDashboardPage onOpen={setPage} canOpen={pages.map((p) => p.id)} />}
               {(page === 'capaday' || page === 'idleday') && <DailyCapaPage key={page} kind={page === 'capaday' ? 'rework' : 'idle'} isAdmin={false} />}
               {page === 'capatrack' && <CapaTrackerPage myDept={me?.dept || ''} />}
+              {page === 'master' && <ModelMasterPage readOnly />}   {/* 28-11-2026: view only for a management login */}
               {page === 'capaverify' && <CapaVerifyPage isAdmin={false} />}
               {page === 'lossan' && <LossAnalysisPage onOpen={setPage} canOpen={pages.map((p) => p.id)} />}
               {(page === 'rejan' || page === 'rwkan') && <QualityAnalysisPage key={page} kind={page === 'rejan' ? 'reject' : 'rework'} onOpen={setPage} canOpen={pages.map((p) => p.id)} />}

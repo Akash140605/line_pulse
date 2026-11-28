@@ -73,7 +73,7 @@ const gi = (id) => { const k = FOLDERS.findIndex((f) => f.ids.includes(id)); ret
 /** the sidebar folder of a page label (the header shows it in the page's path) */
 export const pathOf = (label) => { const pg = [...PAGES, SETUP_PAGE].find((p) => p.label === label); return pg ? groupOf(pg.id) : ''; };
 /** parts of a long page the tree jumps to (as the MES: Overview → Summary · Lines · Trend · Availability · Performance · Quality) */
-const SUBS = { oleview: [['ov-summary', 'Summary'], ['ov-lines', 'Lines'], ['ov-trend', 'Trend'], ['ov-availability', 'Availability'], ['ov-performance', 'Performance'], ['ov-quality', 'Quality']] };
+const SUBS = { oleview: [['ov-summary', 'Summary'], ['ov-lines', 'Lines'], ['ov-trend', 'Trend'], ['ov-availability', 'Availability'], ['ov-performance', 'Performance'], ['ov-quality', 'Quality'], ['ov-formulas', 'Formulas']] };
 // 20-11-2026: the section lands just under the bars that stay on top (title band + filter bar), not hidden behind them
 export function stuckHeight(el) {
   const r = el.getBoundingClientRect(); let h = 0;

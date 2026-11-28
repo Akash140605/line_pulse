@@ -52,6 +52,8 @@ const FIELDS = [
 /** extra details of a model (kept in the master, shown and exported; not needed for the targets) */
 const EXTRA = [['code', 'Material code', 'w-40'], ['desc', 'Description', 'w-72'], ['segment', 'Segment', 'w-20'], ['capacity', 'Capacity', 'w-20'], ['type', 'Glass / Plastic', 'w-24']];
 const PAGE = 200;
+/** 28-11-2026: how complete a master row is — company, model, cycle, lines and the 5 extra columns; a row not saved = 99 (top) */
+const fillOf = (r) => (!r ? 99 : [r.company, r.model, Number(String(r.cycle ?? '').replace(',', '.')) > 0, (r.lines || []).length, ...EXTRA.map(([k]) => r[k])].filter((v) => v && String(v).trim() !== '').length);
 function guessMap(rows) {
   const head = rows[0] || [];
   const map = {};
@@ -75,7 +77,8 @@ function LineChips({ value, onChange, small = false, label }) {
   );
 }
 
-export default function ModelMasterPage() {
+// 28-11-2026: readOnly — a view login sees and exports the master; it cannot change it (the server refuses writes too)
+export default function ModelMasterPage({ readOnly = false }) {
   const [rows, setRows] = useState(null);       // the master as it is on the screen (edited)
   const [saved, setSaved] = useState([]);       // the master as saved on the server
   const [err, setErr] = useState('');
@@ -109,8 +112,13 @@ export default function ModelMasterPage() {
   }, [rows]);
   const nProb = Object.keys(problems).length;
 
+  const savedById = useMemo(() => new Map((saved || []).map((x) => [x.id, x])), [saved]);
   const shown = useMemo(() => (rows || []).filter((r) => (lineF === 'all' || (lineF === 'none' ? !(r.lines || []).length : (r.lines || []).includes(Number(lineF))))
-    && (!q || `${r.company} ${r.model} ${r.note || ''} ${r.code || ''} ${r.desc || ''} ${r.segment || ''} ${r.type || ''}`.toLowerCase().includes(q.toLowerCase()))), [rows, q, lineF]);
+    && (!q || `${r.company} ${r.model} ${r.note || ''} ${r.code || ''} ${r.desc || ''} ${r.segment || ''} ${r.type || ''}`.toLowerCase().includes(q.toLowerCase())))
+    // 28-11-2026: the properly filled models on top (by the saved row, so a row does not jump while it is typed in;
+    // a new row not saved yet stays on top)
+    .map((r, i) => ({ r, i, f: fillOf(savedById.get(r.id)) }))
+    .sort((a, b) => b.f - a.f || a.i - b.i).map((x) => x.r), [rows, q, lineF, savedById]);
   const [limit, setLimit] = useState(PAGE);
   useEffect(() => { setLimit(PAGE); }, [q, lineF]);
   const [bulk, setBulk] = useState([]);   // lines to add to / remove from every row shown
@@ -237,9 +245,11 @@ export default function ModelMasterPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <input ref={fileRef} type="file" accept=".xlsx,.csv,.txt" className="hidden" onChange={onFile} aria-label="Excel or CSV file" />
+            {!readOnly && <>
             <button type="button" className={btnB} onClick={() => fileRef.current?.click()}><Upload size={15} />Import Excel / CSV</button>
             <button type="button" className={btnW} onClick={() => setPaste('')}><ClipboardPaste size={15} />Paste from Excel</button>
             <button type="button" className={btnW} onClick={template}><Download size={15} />Template</button>
+            </>}
             <button type="button" className={btnW} onClick={exportAll} disabled={!rows.length}><Download size={15} />Export</button>
           </div>
         </div>
@@ -341,11 +351,13 @@ export default function ModelMasterPage() {
           <select value={lineF} onChange={(e) => setLineF(e.target.value)} className="h-9 rounded-md border border-slate-300 bg-white px-2 text-fs-13 font-semibold" aria-label="Show line">
             <option value="all">All lines</option>{LINE_IDS.map((l) => <option key={l} value={l}>Line {l}</option>)}<option value="none">No line yet</option>
           </select>
-          <button type="button" className={btnW} onClick={add}><Plus size={15} />Add model</button>
-          <button type="button" className={btnW} disabled={busy || dirty || !rows.length} onClick={checkTargets} title={dirty ? 'Save the master first' : 'Cycle time of the master → locked target on the mapped lines'}><Target size={15} />Set targets on lines</button>
+          {readOnly && <span className="rounded-md bg-slate-100 px-2.5 py-1 text-fs-12 font-semibold text-slate-600">View only</span>}
+          {!readOnly && <button type="button" className={btnW} onClick={add}><Plus size={15} />Add model</button>}
+          {!readOnly && <button type="button" className={btnW} disabled={busy || dirty || !rows.length} onClick={checkTargets} title={dirty ? 'Save the master first' : 'Cycle time of the master → locked target on the mapped lines'}><Target size={15} />Set targets on lines</button>}
         </div>
         {!rows.length ? <p className="mt-6 text-center text-fs-14 text-slate-500">The master is empty — import an Excel file, paste cells or add a model.</p> : (
           <div className="mt-3 max-h-[64vh] overflow-auto rounded-lg border border-slate-200">
+            <fieldset disabled={readOnly} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
             <table className="w-full text-fs-13">
               <thead className="sticky top-0 z-10 bg-slate-100"><tr className="text-left text-fs-12 text-slate-600">{['#', 'Company', 'Model', 'Cycle time (s)', 'Pcs / hr', 'Lines', ...EXTRA.map(([, l]) => l), 'Note', ''].map((h, i) => <th key={i} className="px-2 py-1.5 font-bold whitespace-nowrap">{h}</th>)}</tr></thead>
               <tbody>
@@ -368,6 +380,7 @@ export default function ModelMasterPage() {
                 })}
               </tbody>
             </table>
+            </fieldset>
             {shown.length > limit && <button type="button" className="w-full bg-slate-50 py-2 text-fs-13 font-bold text-blue-700 hover:bg-slate-100" onClick={() => setLimit((n) => n + PAGE)}>Showing {limit} of {shown.length} — show {Math.min(PAGE, shown.length - limit)} more</button>}
           </div>
         )}
@@ -406,7 +419,7 @@ export default function ModelMasterPage() {
       )}
 
       {/* save bar */}
-      {dirty && (
+      {dirty && !readOnly && (
         <div className="sticky bottom-2 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 shadow-lg">
           <span className="text-fs-13 font-bold text-amber-900">Unsaved changes{nProb ? ` · ${nProb} row(s) to fix` : ''}</span>
           <button type="button" className={`${btnB} ml-auto`} disabled={busy || nProb > 0} onClick={() => save()}><Save size={15} />Save master</button>
